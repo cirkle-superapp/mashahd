@@ -40,6 +40,10 @@ model Video {
 
   channel      Channel  @relation(fields: [channelId], references: [id])
   comments     Comment[]
+  sources      VideoSource[]
+  renditions   VideoRendition[]
+  manifests    VideoManifest[]
+  jobs         MediaProcessingJob[]
 
   @@index([category])
   @@index([channelId])
@@ -73,4 +77,127 @@ model UserState {
   watchLaterIds      String @default("") // pipe-separated video ids (Watch Later queue)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ── Streaming-platform models (hybrid CDN + WebRTC P2P) ──
+// These extend the existing Video model with ingestion-pipeline state,
+// renditions, manifests, swarms, and playback telemetry. The existing
+// Video / Channel / Comment models are preserved unchanged.
+
+model VideoSource {
+  id              String   @id @default(cuid())
+  videoId         String
+  sourceHash      String   // sha256 of the uploaded file
+  originalName    String
+  storagePath     String   // relative path under MEDIA_STORAGE_PATH
+  fileSize        Int      // bytes
+  duration        Float    // seconds
+  width           Int
+  height          Int
+  codec           String
+  audioCodec      String
+  frameRate       Float
+  bitrate         Int      // kbps
+  createdAt       DateTime @default(now())
+
+  video           Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([videoId])
+}
+
+model VideoRendition {
+  id            String   @id @default(cuid())
+  videoId       String
+  resolution    String   // "1080p", "720p", "480p", "360p"
+  height        Int
+  width         Int
+  bitrate       Int      // kbps
+  codec         String   // e.g. "h264"
+  manifestPath  String   // relative path to index.m3u8
+  createdAt     DateTime @default(now())
+
+  video         Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([videoId])
+}
+
+model VideoManifest {
+  id              String   @id @default(cuid())
+  videoId         String
+  version         String   // "v1", "v2", ...
+  hash            String   // sha256 of the manifest contents
+  manifestPath    String   // relative path to master.m3u8
+  createdAt       DateTime @default(now())
+
+  video           Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([videoId])
+}
+
+model MediaProcessingJob {
+  id              String   @id @default(cuid())
+  videoId         String
+  status          String   // UPLOADING | UPLOADED | QUEUED | PROCESSING | PACKAGING | VALIDATING | READY | FAILED | RETRYING
+  progress        Int      @default(0) // 0-100
+  error           String   @default("")
+  profile         String   @default("cpu-safe") // cpu-safe | balanced | high-quality
+  retryCount      Int      @default(0)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  video           Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([videoId])
+  @@index([status])
+}
+
+model Swarm {
+  id              String   @id @default(cuid())
+  swarmId         String   @unique // sha256(videoId + renditionId + manifestVersion)
+  videoId         String
+  renditionId     String
+  manifestVersion String
+  activePeers     Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([videoId])
+  @@index([swarmId])
+}
+
+model PlaybackSession {
+  id              String   @id @default(cuid())
+  videoId         String
+  renditionId     String
+  peerId          String   // temporary, rotated per session
+  browserId       String
+  networkType     String   @default("unknown")
+  swarmId         String?
+  p2pEnabled      Boolean  @default(false)
+  startedAt       DateTime @default(now())
+  endedAt         DateTime?
+
+  @@index([videoId])
+  @@index([peerId])
+}
+
+model PlaybackTelemetry {
+  id              String   @id @default(cuid())
+  sessionId       String
+  videoId         String
+  cdnBytes        Int      @default(0)
+  p2pBytes        Int      @default(0)
+  rebufferCount   Int      @default(0)
+  rebufferDuration Float   @default(0) // seconds
+  startupTime     Float    @default(0) // seconds
+  peerCount       Int      @default(0)
+  p2pFailures     Int      @default(0)
+  httpFallbackCount Int    @default(0)
+  currentRendition String  @default("")
+  timestamp       DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([videoId])
 }

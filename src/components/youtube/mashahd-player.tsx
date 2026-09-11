@@ -12,31 +12,49 @@ import {
   PictureInPicture2,
   Gauge,
   Check,
+  Activity,
 } from "lucide-react";
+import Hls from "hls.js";
+import { Engine, Core } from "p2p-media-loader-hlsjs";
 import { cn } from "@/lib/utils";
+import {
+  readNetworkInfo,
+  evaluatePolicy,
+  DEFAULT_P2P_CONFIG,
+  type P2PPolicy,
+} from "@/lib/p2p-policy";
 
 /**
- * MashahdPlayer — a custom video player with Mashahd's own UI identity.
+ * MashahdPlayer — a production-grade HLS player with WebRTC P2P acceleration.
  *
- * Replaces the native `<video controls>` with a bespoke control bar so the
- * video scene is visually distinct from YouTube's player. Features:
- *   - Custom play/pause, volume, scrubber
- *   - Fullscreen (native Fullscreen API + `f` key)
- *   - Picture-in-Picture toggle
- *   - Playback speed selector (0.5x – 2x)
- *   - Time display + buffered indicator
+ * Architecture (per the master spec):
+ *   1. Loads HLS via hls.js (authoritative fallback — always works).
+ *   2. Evaluates P2P policy (cellular/saveData/background → off; Wi-Fi → on).
+ *   3. If P2P is allowed, initializes p2p-media-loader-hlsjs to accelerate
+ *      segment delivery via WebRTC peers.
+ *   4. If P2P fails, is unavailable, or peers are insufficient:
+ *      playback continues through normal HLS HTTP/CDN fallback.
+ *   5. Exposes a developer-toggleable analytics HUD with real P2P/CDN stats.
  *
- * The control bar is a floating glass pill that fades out when idle and
- * reappears on mouse move — distinct from YouTube's bottom-attached bar.
+ * The player NEVER interrupts playback due to a P2P failure.
  */
 
 type SpeedOption = 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2;
 const SPEEDS: SpeedOption[] = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
+interface P2PStats {
+  p2pBytes: number;
+  cdnBytes: number;
+  peerCount: number;
+  p2pRatio: number;
+}
+
 export function MashahdPlayer({
   src,
   poster,
   videoId,
+  manifestVersion = "v1",
+  swarmId,
   autoPlay = true,
   onPlay,
   onPause,
@@ -47,6 +65,8 @@ export function MashahdPlayer({
   src: string;
   poster: string;
   videoId: string;
+  manifestVersion?: string;
+  swarmId?: string | null;
   autoPlay?: boolean;
   onPlay?: () => void;
   onPause?: () => void;
@@ -56,7 +76,13 @@ export function MashahdPlayer({
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const engineRef = useRef<Engine | null>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const telemetryTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const sessionIdRef = useRef<string>("");
+  const startTimeRef = useRef<number>(0);
+
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
@@ -68,57 +94,128 @@ export function MashahdPlayer({
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [showHud, setShowHud] = useState(false);
+  const [hudStats, setHudStats] = useState<P2PStats>({
+    p2pBytes: 0,
+    cdnBytes: 0,
+    peerCount: 0,
+    p2pRatio: 0,
+  });
+  const [p2pPolicy, setP2pPolicy] = useState<P2PPolicy | null>(null);
+  const [rebufferCount, setRebufferCount] = useState(0);
+  const [startupTime, setStartupTime] = useState(0);
 
-  // Reset on video change — handled by remounting via `key={videoId}` on
-  // the parent component, so we don't need a reset effect here. (Avoids the
-  // setState-in-effect lint rule.) Initial state already zeros these.
-
-  // Wire video events.
+  // ── Initialize HLS + P2P on mount / video change ──
   useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    const onLoaded = () => setDuration(v.duration || 0);
-    const onTime = () => {
-      setCurrent(v.currentTime);
-      onTimeUpdate?.(v.currentTime);
-      if (v.buffered.length > 0) {
-        setBuffered(v.buffered.end(v.buffered.length - 1));
+    const video = videoRef.current;
+    if (!video) return;
+
+    startTimeRef.current = performance.now();
+    sessionIdRef.current = `s_${Math.random().toString(36).slice(2, 12)}`;
+
+    // Evaluate P2P policy.
+    const net = readNetworkInfo();
+    const policy = evaluatePolicy(net, DEFAULT_P2P_CONFIG, {
+      pageVisible: document.visibilityState === "visible",
+      userOptOut: false,
+    });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setP2pPolicy(policy);
+
+    let hls: Hls;
+    let engine: Engine | null = null;
+
+    if (Hls.isSupported()) {
+      hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+      });
+      hlsRef.current = hls;
+
+      // If P2P is enabled and we have a swarmId, attach the P2P engine.
+      if (policy.enabled && swarmId) {
+        try {
+          const core = new Core(hls, {
+            swarmId,
+            segmented: true,
+            assetsStorage: undefined,
+            tracker: {
+              announce: [
+                `ws://localhost:3003/?XTransformPort=3003`,
+              ],
+            },
+            maxPeerConnections: policy.maxPeers,
+          });
+          engine = core.createEngine("hls");
+          engineRef.current = engine;
+
+          // Wire P2P stats for the HUD.
+          engine.on("stats", (stats: any) => {
+            const p2p = stats.httpDownloadedBytes || 0;
+            const cdn = stats.p2pDownloadedBytes || 0;
+            setHudStats({
+              p2pBytes: p2p,
+              cdnBytes: cdn,
+              peerCount: stats.peers?.length || 0,
+              p2pRatio: p2p + cdn > 0 ? p2p / (p2p + cdn) : 0,
+            });
+          });
+        } catch (e) {
+          // P2P init failed — silently fall back to HTTP. Playback continues.
+          console.warn("[MashahdPlayer] P2P init failed, using HTTP fallback:", e);
+        }
       }
-    };
-    const onPlayEvt = () => {
-      setPlaying(true);
-      onPlay?.();
-    };
-    const onPauseEvt = () => {
-      setPlaying(false);
-      onPause?.();
-    };
-    v.addEventListener("loadedmetadata", onLoaded);
-    v.addEventListener("timeupdate", onTime);
-    v.addEventListener("progress", onTime);
-    v.addEventListener("play", onPlayEvt);
-    v.addEventListener("pause", onPauseEvt);
-    v.addEventListener("ended", onEnded as EventListener);
-    return () => {
-      v.removeEventListener("loadedmetadata", onLoaded);
-      v.removeEventListener("timeupdate", onTime);
-      v.removeEventListener("progress", onTime);
-      v.removeEventListener("play", onPlayEvt);
-      v.removeEventListener("pause", onPauseEvt);
-      v.removeEventListener("ended", onEnded as EventListener);
-    };
-  }, [onPlay, onPause, onEnded, onTimeUpdate]);
 
-  // Fullscreen change listener.
+      hls.loadSource(src);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (autoPlay) video.play().catch(() => {});
+        setStartupTime((performance.now() - startTimeRef.current) / 1000);
+      });
+
+      // Track rebuffers.
+      hls.on(Hls.Events.FRAG_BUFFERED, () => {
+        if (video.buffered.length > 0) {
+          setBuffered(video.buffered.end(video.buffered.length - 1));
+        }
+      });
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      // Native HLS (Safari).
+      video.src = src;
+      if (autoPlay) video.play().catch(() => {});
+    }
+
+    // Telemetry — batched every 20s.
+    telemetryTimer.current = setInterval(() => {
+      sendTelemetry({
+        sessionId: sessionIdRef.current,
+        videoId,
+        cdnBytes: hudStats.cdnBytes,
+        p2pBytes: hudStats.p2pBytes,
+        rebufferCount,
+        startupTime,
+        peerCount: hudStats.peerCount,
+        currentRendition: "",
+        p2pEnabled: policy.enabled,
+      });
+    }, 20000);
+
+    return () => {
+      hlsRef.current?.destroy();
+      engineRef.current?.destroy();
+      if (telemetryTimer.current) clearInterval(telemetryTimer.current);
+    };
+  }, [src, videoId, swarmId, autoPlay]);
+
+  // ── Fullscreen change listener ──
   useEffect(() => {
-    const onFsChange = () =>
-      setFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
+    const onFs = () => setFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
-  // Player control callbacks (declared before the keyboard handler that
-  // references them, to avoid the "used before declared" error).
+  // ── Keyboard shortcuts ──
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -136,14 +233,10 @@ export function MashahdPlayer({
   const toggleFullscreen = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
-    if (!document.fullscreenElement) {
-      el.requestFullscreen?.().catch(() => {});
-    } else {
-      document.exitFullscreen?.().catch(() => {});
-    }
+    if (!document.fullscreenElement) el.requestFullscreen?.().catch(() => {});
+    else document.exitFullscreen?.().catch(() => {});
   }, []);
 
-  // Keyboard shortcuts when the player is focused/hovered.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -152,24 +245,31 @@ export function MashahdPlayer({
         e.preventDefault();
         toggleFullscreen();
       }
-      if (e.key === " " || e.key === "k") {
-        const v = videoRef.current;
-        if (v && containerRef.current?.matches(":hover")) {
-          e.preventDefault();
-          togglePlay();
-        }
+      if ((e.key === " " || e.key === "k") && containerRef.current?.matches(":hover")) {
+        e.preventDefault();
+        togglePlay();
       }
-      if (e.key === "m") {
-        const v = videoRef.current;
-        if (v && containerRef.current?.matches(":hover")) {
-          e.preventDefault();
-          toggleMute();
-        }
+      if (e.key === "m" && containerRef.current?.matches(":hover")) {
+        e.preventDefault();
+        toggleMute();
+      }
+      if (e.key === "d" && containerRef.current?.matches(":hover")) {
+        e.preventDefault();
+        setShowHud((s) => !s);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [togglePlay, toggleMute, toggleFullscreen]);
+
+  // ── Rebuffer detection ──
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const onWaiting = () => setRebufferCount((c) => c + 1);
+    v.addEventListener("waiting", onWaiting);
+    return () => v.removeEventListener("waiting", onWaiting);
+  }, []);
 
   const changeVolume = (val: number) => {
     const v = videoRef.current;
@@ -191,11 +291,8 @@ export function MashahdPlayer({
     const v = videoRef.current;
     if (!v) return;
     try {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture();
-      } else if (document.pictureInPictureEnabled) {
-        await v.requestPictureInPicture();
-      }
+      if (document.pictureInPictureElement) await document.exitPictureInPicture();
+      else if (document.pictureInPictureEnabled) await v.requestPictureInPicture();
     } catch {
       /* PiP not available */
     }
@@ -209,13 +306,10 @@ export function MashahdPlayer({
     setShowSpeedMenu(false);
   };
 
-  // Auto-hide controls after 3s of inactivity when playing.
   const showControls = () => {
     setControlsVisible(true);
     clearTimeout(idleTimer.current);
-    if (playing) {
-      idleTimer.current = setTimeout(() => setControlsVisible(false), 3000);
-    }
+    if (playing) idleTimer.current = setTimeout(() => setControlsVisible(false), 3000);
   };
 
   const fmt = (s: number) => {
@@ -223,8 +317,7 @@ export function MashahdPlayer({
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
     const h = Math.floor(m / 60);
-    if (h > 0)
-      return `${h}:${String(m % 60).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+    if (h > 0) return `${h}:${String(m % 60).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
     return `${m}:${String(sec).padStart(2, "0")}`;
   };
 
@@ -238,26 +331,31 @@ export function MashahdPlayer({
       onMouseMove={showControls}
       onMouseLeave={() => playing && setControlsVisible(false)}
       onClick={(e) => {
-        // Click on the video (not the controls) toggles play.
-        if (e.target === videoRef.current || e.target === e.currentTarget) {
-          togglePlay();
-        }
+        if (e.target === videoRef.current || e.target === e.currentTarget) togglePlay();
       }}
     >
       <video
         ref={videoRef}
-        key={videoId}
         className="w-full h-full"
-        autoPlay={autoPlay}
         playsInline
         poster={poster}
-        src={src}
+        onPlay={() => { setPlaying(true); onPlay?.(); }}
+        onPause={() => { setPlaying(false); onPause?.(); }}
+        onTimeUpdate={() => {
+          if (videoRef.current) {
+            setCurrent(videoRef.current.currentTime);
+            onTimeUpdate?.(videoRef.current.currentTime);
+            if (videoRef.current.buffered.length > 0) {
+              setBuffered(videoRef.current.buffered.end(videoRef.current.buffered.length - 1));
+            }
+          }
+        }}
+        onEnded={onEnded}
       />
 
-      {/* Children overlays (bullet comments, theater toggle, etc.) */}
       {children}
 
-      {/* Center play/pause button (pulses on state change) */}
+      {/* Center play button */}
       {!playing && (
         <button
           onClick={togglePlay}
@@ -270,16 +368,51 @@ export function MashahdPlayer({
         </button>
       )}
 
-      {/* Floating glass control bar — Mashahd's unique player UI */}
+      {/* P2P badge — shows the policy decision (non-intrusive) */}
+      {p2pPolicy && (
+        <div className="absolute top-2 left-2 z-15 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 text-white text-[10px] font-medium backdrop-blur">
+          {p2pPolicy.enabled ? (
+            <>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              P2P
+            </>
+          ) : (
+            <>
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+              HTTP
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Developer analytics HUD — toggle with 'd' key */}
+      {showHud && (
+        <div className="absolute top-10 left-2 z-20 glass-strong rounded-lg p-3 text-xs text-white font-mono space-y-1 min-w-48">
+          <div className="flex items-center gap-1 font-sans font-semibold text-[hsl(var(--gold))] mb-1">
+            <Activity className="h-3 w-3" /> Analytics HUD
+          </div>
+          <div>Network: {p2pPolicy?.reason || "evaluating"}</div>
+          <div>P2P: {hudStats.peerCount} peers</div>
+          <div>P2P DL: {(hudStats.p2pBytes / 1048576).toFixed(1)} MB</div>
+          <div>CDN DL: {(hudStats.cdnBytes / 1048576).toFixed(1)} MB</div>
+          <div>P2P ratio: {(hudStats.p2pRatio * 100).toFixed(0)}%</div>
+          <div>Buffer: {buffered ? `${(buffered - current).toFixed(1)}s` : "—"}</div>
+          <div>Rebuffers: {rebufferCount}</div>
+          <div>Startup: {startupTime.toFixed(2)}s</div>
+          <div className="text-[hsl(var(--gold-light))] mt-1">
+            Savings: {(hudStats.p2pRatio * 100).toFixed(0)}% origin offload
+          </div>
+        </div>
+      )}
+
+      {/* Floating glass control bar */}
       <div
         className={cn(
           "absolute bottom-3 left-3 right-3 z-20 transition-all duration-300",
-          controlsVisible
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 translate-y-2 pointer-events-none"
+          controlsVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
         )}
       >
-        {/* Scrubber — above the control bar, full width */}
+        {/* Scrubber */}
         <div
           className="relative h-1.5 rounded-full bg-white/20 mb-2 cursor-pointer group/scrub"
           onClick={(e) => {
@@ -287,129 +420,68 @@ export function MashahdPlayer({
             seek((e.clientX - rect.left) / rect.width);
           }}
         >
-          {/* Buffered */}
-          <div
-            className="absolute inset-y-0 left-0 rounded-full bg-white/30"
-            style={{ width: `${bufferedFrac * 100}%` }}
-          />
-          {/* Progress */}
-          <div
-            className="absolute inset-y-0 left-0 rounded-full bg-gradient-gold"
-            style={{ width: `${progressFrac * 100}%` }}
-          >
-            {/* Scrub handle */}
+          <div className="absolute inset-y-0 left-0 rounded-full bg-white/30" style={{ width: `${bufferedFrac * 100}%` }} />
+          <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-gold" style={{ width: `${progressFrac * 100}%` }}>
             <span className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 h-3.5 w-3.5 rounded-full bg-gold-light shadow-glow opacity-0 group-hover/scrub:opacity-100 transition-opacity" />
           </div>
         </div>
 
-        {/* Control bar — floating glass pill */}
         <div className="glass-strong rounded-full px-2 py-1.5 flex items-center gap-1 shadow-glass border border-white/10">
-          {/* Play/Pause */}
-          <button
-            onClick={togglePlay}
-            className="grid place-items-center h-8 w-8 rounded-full hover:bg-white/15 text-white transition-colors"
-            aria-label={playing ? "Pause" : "Play"}
-          >
+          <button onClick={togglePlay} className="grid place-items-center h-8 w-8 rounded-full hover:bg-white/15 text-white" aria-label={playing ? "Pause" : "Play"}>
             {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current ml-0.5" />}
           </button>
-
-          {/* Volume */}
-          <div
-            className="flex items-center"
-            onMouseEnter={() => setShowVolumeSlider(true)}
-            onMouseLeave={() => setShowVolumeSlider(false)}
-          >
-            <button
-              onClick={toggleMute}
-              className="grid place-items-center h-8 w-8 rounded-full hover:bg-white/15 text-white transition-colors"
-              aria-label={muted ? "Unmute" : "Mute"}
-            >
+          <div className="flex items-center" onMouseEnter={() => setShowVolumeSlider(true)} onMouseLeave={() => setShowVolumeSlider(false)}>
+            <button onClick={toggleMute} className="grid place-items-center h-8 w-8 rounded-full hover:bg-white/15 text-white" aria-label={muted ? "Unmute" : "Mute"}>
               {muted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </button>
             {showVolumeSlider && (
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={muted ? 0 : volume}
-                onChange={(e) => changeVolume(Number(e.target.value))}
-                className="w-20 ml-1 accent-[hsl(var(--gold))]"
-                aria-label="Volume"
-              />
+              <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume} onChange={(e) => changeVolume(Number(e.target.value))} className="w-20 ml-1 accent-[hsl(var(--gold))]" />
             )}
           </div>
-
-          {/* Time */}
           <span className="text-white text-xs tabular-nums px-1 select-none">
             {fmt(current)} <span className="text-white/50">/ {fmt(duration)}</span>
           </span>
-
           <div className="flex-1" />
-
-          {/* Speed */}
           <div className="relative">
-            <button
-              onClick={() => setShowSpeedMenu((s) => !s)}
-              className="flex items-center gap-1 h-8 px-2 rounded-full hover:bg-white/15 text-white text-xs font-medium transition-colors"
-              aria-label="Playback speed"
-              title="Playback speed"
-            >
-              <Gauge className="h-3.5 w-3.5" />
-              {speed}x
+            <button onClick={() => setShowSpeedMenu((s) => !s)} className="flex items-center gap-1 h-8 px-2 rounded-full hover:bg-white/15 text-white text-xs font-medium" aria-label="Playback speed">
+              <Gauge className="h-3.5 w-3.5" />{speed}x
             </button>
             {showSpeedMenu && (
               <div className="absolute bottom-10 right-0 glass-strong rounded-xl border border-white/10 shadow-float overflow-hidden py-1 min-w-20">
                 {SPEEDS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => changeSpeed(s)}
-                    className={cn(
-                      "w-full px-4 py-1.5 text-left text-xs hover:bg-white/15 flex items-center justify-between gap-2",
-                      speed === s ? "text-[hsl(var(--gold-light))] font-medium" : "text-white"
-                    )}
-                  >
-                    {s}x
-                    {speed === s && <Check className="h-3 w-3" />}
+                  <button key={s} onClick={() => changeSpeed(s)} className={cn("w-full px-4 py-1.5 text-left text-xs hover:bg-white/15 flex items-center justify-between gap-2", speed === s ? "text-[hsl(var(--gold-light))] font-medium" : "text-white")}>
+                    {s}x {speed === s && <Check className="h-3 w-3" />}
                   </button>
                 ))}
               </div>
             )}
           </div>
-
-          {/* PiP */}
           {document.pictureInPictureEnabled !== undefined && (
-            <button
-              onClick={togglePiP}
-              className="grid place-items-center h-8 w-8 rounded-full hover:bg-white/15 text-white transition-colors"
-              aria-label="Picture in picture"
-              title="Picture in picture"
-            >
+            <button onClick={togglePiP} className="grid place-items-center h-8 w-8 rounded-full hover:bg-white/15 text-white" aria-label="Picture in picture">
               <PictureInPicture2 className="h-4 w-4" />
             </button>
           )}
-
-          {/* Settings (placeholder — opens speed menu for now) */}
-          <button
-            onClick={() => setShowSpeedMenu((s) => !s)}
-            className="grid place-items-center h-8 w-8 rounded-full hover:bg-white/15 text-white transition-colors"
-            aria-label="Settings"
-            title="Settings"
-          >
+          <button onClick={() => setShowSpeedMenu((s) => !s)} className="grid place-items-center h-8 w-8 rounded-full hover:bg-white/15 text-white" aria-label="Settings">
             <Settings2 className="h-4 w-4" />
           </button>
-
-          {/* Fullscreen */}
-          <button
-            onClick={toggleFullscreen}
-            className="grid place-items-center h-8 w-8 rounded-full hover:bg-white/15 text-white transition-colors"
-            aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            title={fullscreen ? "Exit fullscreen (f)" : "Fullscreen (f)"}
-          >
+          <button onClick={toggleFullscreen} className="grid place-items-center h-8 w-8 rounded-full hover:bg-white/15 text-white" aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}>
             {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </button>
         </div>
       </div>
     </div>
   );
+}
+
+/** Send a telemetry batch to the backend. */
+async function sendTelemetry(data: Record<string, unknown>) {
+  try {
+    await fetch("/api/media/telemetry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    /* telemetry is best-effort — never block playback */
+  }
 }

@@ -1,0 +1,2522 @@
+# MASTER IMPLEMENTATION PROMPT
+
+## Zero-Cost Hybrid CDN + WebRTC P2P Video Streaming Platform
+
+You are the Principal Full-Stack Architect, Video Streaming Engineer, WebRTC Engineer, Distributed Systems Engineer, Security Engineer, DevOps Engineer, Performance Engineer, QA Engineer, and Production Readiness Engineer for this project.
+
+Your task is to implement a **production-grade, YouTube-like video streaming infrastructure** whose primary objective is:
+
+> **Minimize the operator's recurring infrastructure cost to effectively zero by using self-hosted/open-source infrastructure and opportunistic WebRTC peer-to-peer delivery for eligible users, while preserving CDN/origin delivery as the authoritative fallback.**
+
+Do not build this as a toy demo.
+
+Do not create disconnected examples.
+
+Do not replace working architecture unnecessarily.
+
+Do not introduce paid cloud services or subscription-dependent infrastructure.
+
+The final implementation must be integrated, wired end-to-end, tested, observable, secure, resilient, and capable of being run entirely on self-controlled infrastructure.
+
+---
+
+# 1. NON-NEGOTIABLE OPERATING PRINCIPLE
+
+The architecture MUST follow this rule:
+
+```text
+ORIGIN / CDN = AUTHORITATIVE SOURCE
+P2P         = DELIVERY OPTIMIZATION / CACHE ACCELERATOR
+```
+
+P2P must NEVER become a mandatory dependency for playback.
+
+If P2P fails, is unavailable, is slow, has insufficient peers, encounters NAT restrictions, or violates a device/network policy:
+
+```text
+PLAYBACK MUST CONTINUE THROUGH NORMAL HTTP/HTTPS DELIVERY.
+```
+
+There must be:
+
+```text
+NO STALL
+NO DEADLOCK
+NO REQUIRED P2P
+NO REQUIRED TURN RELAY
+NO DATA LOSS
+NO USER-FACING P2P ERROR
+```
+
+---
+
+# 2. FIRST ACTION: INSPECT THE EXISTING PROJECT
+
+Before creating or modifying files:
+
+1. Inspect the complete existing repository.
+2. Determine:
+
+   * frontend framework
+   * backend framework
+   * package manager
+   * current database
+   * current authentication system
+   * current API architecture
+   * current storage architecture
+   * current deployment model
+   * existing video/media functionality
+   * existing reverse proxy
+   * existing WebSocket support
+   * existing background workers
+   * existing monitoring/logging
+3. Search for existing implementations before creating new ones.
+4. Reuse existing services and conventions wherever technically appropriate.
+5. Do not duplicate services, routes, modules, environment variables, package abstractions, database tables, or worker systems.
+6. Preserve all currently functioning functionality.
+7. Do not perform destructive migrations without first understanding the current schema and compatibility requirements.
+
+Do not blindly create files because this prompt contains example paths.
+
+Choose the correct existing locations based on the repository architecture.
+
+---
+
+# 3. ZERO-COST / SELF-HOSTED PRINCIPLE
+
+The default production architecture must NOT depend on:
+
+```text
+AWS managed services
+CloudFront
+AWS MediaConvert
+Mux
+Cloudflare Stream
+Bunny Stream
+paid P2P providers
+paid signaling services
+paid TURN providers
+managed databases
+managed Redis
+managed transcoding
+managed video hosting
+```
+
+Do not introduce any paid SaaS requirement.
+
+The platform must be capable of operating using:
+
+```text
+Self-hosted application server
+Self-hosted database
+Self-hosted Redis
+Self-hosted FFmpeg
+Self-hosted WebSocket signaling
+Self-hosted tracker
+Local/object filesystem storage
+Open-source monitoring
+Let's Encrypt
+Nginx or Caddy
+WebRTC
+HLS
+CMAF/fMP4
+```
+
+Cloud infrastructure may be supported as an OPTIONAL deployment mode, but it must not be required for the core system.
+
+---
+
+# 4. TARGET ARCHITECTURE
+
+Implement the following logical architecture:
+
+```text
+                         ┌────────────────────┐
+                         │      Web Client    │
+                         │ React + TypeScript │
+                         └─────────┬──────────┘
+                                   │
+                         HTTPS / WebSocket
+                                   │
+                    ┌──────────────┴──────────────┐
+                    │                             │
+             API / Control Plane             P2P Signaling
+                    │                             │
+                    ▼                             ▼
+          ┌──────────────────┐          ┌──────────────────┐
+          │ Application API  │          │ WebRTC Tracker   │
+          │ / Fastify/Node   │          │ + Signaling      │
+          └────────┬─────────┘          └────────┬─────────┘
+                   │                             │
+          ┌────────┼───────────────┐             │
+          │        │               │             │
+          ▼        ▼               ▼             │
+     PostgreSQL  Redis       Media Metadata       │
+                                              WebRTC peers
+                                                  │
+                                                  ▼
+                   ┌─────────────────────────────────────────┐
+                   │            Wi-Fi / Ethernet P2P         │
+                   │                                         │
+                   │ Viewer A ⇄ Viewer B ⇄ Viewer C ⇄ ...   │
+                   └────────────────────┬────────────────────┘
+                                        │
+                                        │ HTTP fallback
+                                        ▼
+                              ┌─────────────────────┐
+                              │ Origin / HTTP CDN   │
+                              │ HLS/CMAF segments   │
+                              └──────────┬──────────┘
+                                         │
+                                         ▼
+                                  Local/Object Storage
+
+Upload:
+Browser
+   ↓
+Direct upload / resumable upload
+   ↓
+Storage
+   ↓
+Media processing queue
+   ↓
+FFmpeg worker
+   ↓
+CMAF/HLS packaging
+   ↓
+Storage
+   ↓
+Playback
+```
+
+---
+
+# 5. MEDIA FORMAT
+
+Use modern streaming packaging.
+
+Preferred:
+
+```text
+HLS
++
+CMAF
++
+fragmented MP4/fMP4
+```
+
+Do NOT make MPEG-TS the only media format.
+
+Traditional `.ts` output may be supported for compatibility, but the production pipeline should prefer:
+
+```text
+init.mp4
+segment-00001.m4s
+segment-00002.m4s
+segment-00003.m4s
+...
+```
+
+with:
+
+```text
+HLS manifest:
+index.m3u8
+```
+
+Segment duration target:
+
+```text
+6 seconds
+```
+
+Use exactly 6-second segments for the default VOD profile unless an existing architecture dictates another tested value.
+
+Do not sacrifice compatibility merely to use CMAF.
+
+---
+
+# 6. VIDEO INGESTION PIPELINE
+
+Implement a production-safe asynchronous pipeline.
+
+Do NOT synchronously transcode a multi-gigabyte upload inside the request lifecycle.
+
+Architecture:
+
+```text
+Upload request
+    ↓
+Validate metadata
+    ↓
+Resumable/direct upload where possible
+    ↓
+Store source video
+    ↓
+Create media-processing job
+    ↓
+Queue
+    ↓
+FFmpeg worker
+    ↓
+Generate renditions
+    ↓
+Generate HLS/CMAF
+    ↓
+Validate generated assets
+    ↓
+Publish manifest
+    ↓
+Mark video READY
+```
+
+Required states:
+
+```text
+UPLOADING
+UPLOADED
+QUEUED
+PROCESSING
+PACKAGING
+VALIDATING
+READY
+FAILED
+RETRYING
+```
+
+Store:
+
+```text
+video_id
+source_hash
+duration
+width
+height
+codec
+audio_codec
+frame_rate
+bitrate
+file_size
+created_at
+processing_status
+manifest_version
+```
+
+---
+
+# 7. ABR RENDITIONS
+
+Implement adaptive bitrate encoding.
+
+Minimum recommended ladder:
+
+```text
+1080p
+720p
+480p
+360p
+```
+
+Do not generate a rendition if the source resolution does not support it.
+
+Generate:
+
+```text
+master.m3u8
+```
+
+with rendition playlists.
+
+Example:
+
+```text
+/video/{videoId}/{manifestVersion}/master.m3u8
+
+/video/{videoId}/{manifestVersion}/1080p/index.m3u8
+/video/{videoId}/{manifestVersion}/720p/index.m3u8
+/video/{videoId}/{manifestVersion}/480p/index.m3u8
+/video/{videoId}/{manifestVersion}/360p/index.m3u8
+```
+
+Use immutable versioned media paths.
+
+Once published, a manifest version should not unexpectedly mutate.
+
+---
+
+# 8. SWARM ID ARCHITECTURE
+
+Every compatible representation must have a deterministic swarm.
+
+Do NOT simply use a human-readable URL as the sole swarm identifier.
+
+Generate:
+
+```text
+swarmId =
+sha256(
+  videoId +
+  renditionId +
+  manifestVersion
+)
+```
+
+Examples:
+
+```text
+video123:1080p:v1
+video123:720p:v1
+video123:480p:v1
+video123:360p:v1
+```
+
+This prevents peers from exchanging incompatible media.
+
+The swarm must change when:
+
+```text
+video changes
+rendition changes
+manifest version changes
+encoding generation changes
+```
+
+The client loading exactly the same:
+
+```text
+video
++
+rendition
++
+manifest version
+```
+
+must automatically enter the same swarm.
+
+---
+
+# 9. FRONTEND PLAYER
+
+Implement a reusable React/TypeScript player component using:
+
+```text
+hls.js
+p2p-media-loader-hlsjs
+```
+
+or the best actively maintained equivalent already present in the repository.
+
+Do not implement a custom P2P media protocol if a mature library handles the media exchange correctly.
+
+The player must:
+
+1. Load HLS.
+2. Detect the network.
+3. Evaluate P2P policy.
+4. Initialize P2P only when allowed.
+5. Use standard HLS HTTP/CDN fallback automatically.
+6. Expose detailed P2P/CDN statistics.
+7. Never interrupt playback due to a P2P failure.
+
+---
+
+# 10. NETWORK POLICY
+
+Read:
+
+```ts
+navigator.connection
+```
+
+when available.
+
+Support:
+
+```text
+effectiveType
+type
+saveData
+downlink
+rtt
+```
+
+Do not assume browser support is universal.
+
+If unavailable, use conservative behavior.
+
+## CELLULAR HARD BLOCK
+
+For:
+
+```text
+2g
+3g
+4g
+5g
+```
+
+P2P MUST be completely disabled.
+
+That means:
+
+```text
+P2P receive = OFF
+P2P upload  = OFF
+peer connections = NONE
+```
+
+Playback remains:
+
+```text
+HTTP/HTTPS HLS
+```
+
+The user must not unknowingly contribute cellular data to other viewers.
+
+---
+
+# 11. DATA SAVER HARD BLOCK
+
+If:
+
+```ts
+navigator.connection?.saveData === true
+```
+
+then:
+
+```text
+P2P receive = OFF
+P2P upload = OFF
+```
+
+Regardless of Wi-Fi status.
+
+---
+
+# 12. WIFI / ETHERNET POLICY
+
+For eligible:
+
+```text
+Wi-Fi
+Ethernet / LAN
+```
+
+enable P2P.
+
+However, P2P must not be unlimited.
+
+Use bounded participation.
+
+Recommended default:
+
+```text
+maxPeers = 6
+```
+
+Allow configuration up to a safe upper bound.
+
+Implement:
+
+```text
+max upload Mbps
+max upload bytes/session
+max concurrent peers
+max peer idle time
+peer timeout
+```
+
+Never allow one viewer to become an uncontrolled bandwidth source.
+
+---
+
+# 13. ADAPTIVE P2P POLICY ENGINE
+
+Create a dedicated module/service:
+
+```text
+P2PPolicyEngine
+```
+
+It should consider:
+
+```text
+network type
+effectiveType
+saveData
+RTT
+downlink
+page visibility
+browser support
+P2P connectivity
+player buffer health
+P2P peer health
+user opt-out
+battery status when available
+```
+
+Recommended policy:
+
+```text
+CELLULAR
+P2P OFF
+
+DATA SAVER
+P2P OFF
+
+BACKGROUND TAB
+P2P OFF or receive-only
+
+BATTERY LOW
+Prefer receive-only
+Disable uploads where reliable battery information exists
+
+POOR NETWORK
+P2P OFF
+
+GOOD WIFI
+P2P ON
+
+ETHERNET
+P2P ON
+```
+
+The implementation must degrade gracefully when browser APIs are unavailable.
+
+---
+
+# 14. P2P DOWNLOAD STRATEGY
+
+For each segment request:
+
+```text
+1. Determine whether segment is available from peers.
+2. Request from eligible P2P peer(s).
+3. Keep HTTP fallback available.
+4. If peer delivery is slower than configured threshold:
+       cancel/ignore the peer request
+       retrieve via HTTP.
+5. If peer is unavailable:
+       HTTP immediately.
+6. Verify received data.
+7. Feed valid media into the normal HLS/MSE pipeline.
+```
+
+The player must never wait indefinitely for P2P.
+
+Use bounded timeouts.
+
+---
+
+# 15. P2P UPLOAD SAFETY
+
+A viewer must only share:
+
+```text
+segments already legitimately downloaded
+```
+
+Never allow arbitrary filesystem reads.
+
+Never expose:
+
+```text
+source MP4
+database
+server filesystem
+private metadata
+authentication data
+```
+
+through WebRTC.
+
+Peers should only exchange media pieces belonging to the current authorized swarm.
+
+Implement:
+
+```text
+segment ownership checks
+swarm isolation
+session validation
+maximum upload rate
+maximum contribution
+peer expiration
+```
+
+---
+
+# 16. WEBRTC SECURITY
+
+Use secure WebRTC signaling.
+
+Implement:
+
+```text
+HTTPS/WSS
+origin validation
+authenticated signaling where appropriate
+rate limiting
+peer session expiration
+swarm authorization
+connection limits
+abuse protection
+```
+
+Do not allow arbitrary Internet clients to use the tracker as an unrestricted public signaling relay.
+
+Add:
+
+```text
+IP/session rate limiting
+swarm join rate limiting
+connection rate limiting
+```
+
+---
+
+# 17. TURN POLICY
+
+Do NOT make TURN a mandatory part of the architecture.
+
+Preferred:
+
+```text
+Direct WebRTC connection
+        ↓
+success
+        ↓
+P2P
+```
+
+If direct connectivity fails:
+
+```text
+P2P unavailable
+        ↓
+HTTP HLS fallback
+```
+
+Do not automatically introduce a paid TURN dependency.
+
+The system must remain functional with:
+
+```text
+TURN absent
+```
+
+---
+
+# 18. SELF-HOSTED SIGNALING / TRACKER
+
+Implement a lightweight Node.js/WebSocket signaling service.
+
+Responsibilities:
+
+```text
+swarm discovery
+peer announcement
+peer membership
+WebRTC offer/answer exchange
+ICE candidate exchange
+peer expiration
+heartbeat
+```
+
+It MUST NOT transport video.
+
+Only:
+
+```text
+small signaling/control messages
+```
+
+should traverse the signaling server.
+
+Media flows:
+
+```text
+peer ⇄ peer
+```
+
+whenever direct WebRTC works.
+
+---
+
+# 19. TRACKER DATA MODEL
+
+For each swarm track:
+
+```text
+swarmId
+peerId
+sessionId
+joinedAt
+lastHeartbeat
+network eligibility
+renditionId
+manifestVersion
+```
+
+Expire dead peers quickly.
+
+Recommended heartbeat:
+
+```text
+15–30 seconds
+```
+
+and peer timeout:
+
+```text
+45–90 seconds
+```
+
+Tune using measurements rather than arbitrary assumptions.
+
+---
+
+# 20. PLAYER ANALYTICS HUD
+
+Build a modern dark analytics HUD beneath or overlaid at the bottom of the player.
+
+Display:
+
+```text
+Network
+Wi-Fi
+Ethernet
+Mobile
+Unknown
+
+P2P
+Peers: 4
+P2P Download: 8.7 MB
+P2P %
+81%
+
+CDN
+CDN Download: 2.1 MB
+CDN %
+19%
+
+Playback
+Buffer: 18.4 sec
+Rebuffer Events: 0
+Startup Time: 1.4 sec
+```
+
+Also show:
+
+```text
+Current rendition
+Video bitrate
+Download speed
+P2P speed
+HTTP speed
+Estimated origin savings
+```
+
+The HUD should be:
+
+```text
+modern
+dark
+minimal
+non-intrusive
+responsive
+mobile friendly
+accessible
+```
+
+Do not expose raw engineering information to normal users by default.
+
+Implement:
+
+```text
+developer/debug analytics mode
+```
+
+for detailed statistics.
+
+---
+
+# 21. COST-SAVINGS METRICS
+
+Calculate:
+
+```text
+totalMediaBytes
+p2pBytes
+cdnBytes
+p2pRatio
+estimatedOriginBytesAvoided
+```
+
+Core formula:
+
+```text
+P2P Ratio =
+p2pBytes /
+(p2pBytes + cdnBytes)
+```
+
+Use the values for analytics.
+
+Do not claim monetary savings unless an actual configured bandwidth price is supplied.
+
+Support configurable:
+
+```text
+originCostPerGB
+```
+
+for optional internal accounting.
+
+---
+
+# 22. PLAYER TELEMETRY
+
+Collect:
+
+```text
+startup_time
+time_to_first_frame
+rebuffer_count
+rebuffer_duration
+average_buffer
+playback_bitrate
+current_rendition
+cdn_bytes
+p2p_bytes
+p2p_ratio
+peer_count
+p2p_failures
+http_fallback_count
+network_type
+```
+
+Do not send analytics at extremely high frequency.
+
+Batch telemetry.
+
+Example:
+
+```text
+10–30 second client telemetry interval
+```
+
+plus event-based reporting for:
+
+```text
+startup
+stall
+quality change
+P2P disabled
+P2P failure
+playback ended
+```
+
+---
+
+# 23. DIRECT STORAGE / UPLOAD
+
+Where practical, use:
+
+```text
+client → storage
+```
+
+instead of:
+
+```text
+client → Node → storage
+```
+
+The backend should issue a controlled upload destination/token.
+
+Support resumable uploads when feasible.
+
+Node should primarily manage:
+
+```text
+authorization
+metadata
+job creation
+state
+```
+
+not act as a permanent high-bandwidth video proxy.
+
+---
+
+# 24. LOCAL STORAGE MODE
+
+Implement a zero-cost local-storage mode.
+
+Example:
+
+```text
+storage/
+  originals/
+  videos/
+    {videoId}/
+      {manifestVersion}/
+        master.m3u8
+        1080p/
+        720p/
+        480p/
+        360p/
+```
+
+Do not expose filesystem paths directly.
+
+Serve media through controlled HTTP routes or the configured reverse proxy.
+
+---
+
+# 25. OBJECT STORAGE ADAPTER
+
+Create a storage abstraction:
+
+```text
+StorageProvider
+```
+
+with implementations for:
+
+```text
+LocalFilesystemStorage
+S3CompatibleStorage
+```
+
+The application must work with local filesystem storage without any cloud account.
+
+S3-compatible support may cover:
+
+```text
+AWS S3
+Backblaze B2
+MinIO
+Cloudflare R2
+```
+
+but these are OPTIONAL.
+
+---
+
+# 26. HTTP CACHE HEADERS
+
+For immutable video segments:
+
+```http
+Cache-Control: public, max-age=31536000, immutable
+```
+
+For mutable manifests:
+
+use significantly shorter caching.
+
+Example:
+
+```text
+master.m3u8
+index.m3u8
+```
+
+must have appropriate caching behavior.
+
+Never cache a mutable manifest as immutable.
+
+---
+
+# 27. CORS
+
+The player must be able to request media correctly cross-origin where the deployment requires it.
+
+Configure:
+
+```text
+Access-Control-Allow-Origin
+Access-Control-Allow-Methods
+Access-Control-Allow-Headers
+```
+
+Do not use:
+
+```text
+Access-Control-Allow-Origin: *
+```
+
+for authenticated/private media unless there is a deliberate security reason.
+
+Support configured allowed origins:
+
+```text
+WEB_APP_ORIGINS
+```
+
+For public video delivery, determine the least-privilege CORS policy required by the deployment.
+
+---
+
+# 28. S3/B2 CORS ADAPTER
+
+Document and support an equivalent policy to:
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "https://your-frontend-domain.example"
+    ],
+    "AllowedMethods": [
+      "GET",
+      "HEAD"
+    ],
+    "AllowedHeaders": [
+      "*"
+    ],
+    "ExposeHeaders": [
+      "Content-Length",
+      "Content-Range",
+      "ETag"
+    ],
+    "MaxAgeSeconds": 86400
+  }
+]
+```
+
+Do not hard-code fake production domains.
+
+Generate deployment documentation explaining exactly where the operator substitutes their real origin.
+
+---
+
+# 29. MEDIA ACCESS SECURITY
+
+Public videos may use public immutable segment URLs.
+
+Private videos must support:
+
+```text
+signed URL
+or
+short-lived playback token
+```
+
+Never expose:
+
+```text
+source MP4
+internal storage credentials
+private storage keys
+```
+
+Do not put storage secrets into browser JavaScript.
+
+---
+
+# 30. DATABASE MODEL
+
+Adapt to the existing application's ORM/database technology.
+
+At minimum support entities equivalent to:
+
+```text
+Video
+VideoSource
+VideoRendition
+VideoManifest
+MediaProcessingJob
+Swarm
+PlaybackSession
+PeerSession
+PlaybackTelemetry
+```
+
+Important fields:
+
+```text
+Video
+id
+title
+status
+duration
+sourceHash
+createdAt
+
+VideoRendition
+id
+videoId
+resolution
+bitrate
+codec
+manifestPath
+
+VideoManifest
+id
+videoId
+version
+hash
+createdAt
+
+Swarm
+id
+videoId
+renditionId
+manifestVersion
+swarmHash
+
+PlaybackSession
+id
+videoId
+renditionId
+networkType
+startedAt
+endedAt
+
+PlaybackTelemetry
+sessionId
+cdnBytes
+p2pBytes
+rebufferCount
+startupTime
+peerCount
+timestamp
+```
+
+Avoid unnecessary database writes for every video segment.
+
+---
+
+# 31. REDIS
+
+If Redis already exists, reuse it.
+
+Use Redis for ephemeral:
+
+```text
+peer presence
+swarm membership
+heartbeats
+rate limiting
+job queues
+short-lived session state
+```
+
+Do NOT use Redis as permanent media storage.
+
+---
+
+# 32. WORKER ARCHITECTURE
+
+Create a media worker abstraction.
+
+It must:
+
+```text
+retrieve source
+inspect media
+transcode
+package
+validate
+publish
+clean temporary files
+update state
+```
+
+Clean temporary source files after successful processing according to the project's retention policy.
+
+Never delete the only copy of an uploaded source before successful processing unless explicitly configured.
+
+If the source is intended to be retained:
+
+```text
+do not delete it.
+```
+
+If source retention is disabled:
+
+```text
+delete only after validation + successful publication.
+```
+
+---
+
+# 33. FFMPEG REQUIREMENTS
+
+Use FFmpeg through a robust abstraction.
+
+Do not assume a system FFmpeg binary exists without checking.
+
+On startup:
+
+```text
+detect ffmpeg
+detect ffprobe
+verify version
+```
+
+Fail clearly if unavailable.
+
+Transcoding must include:
+
+```text
+video encoding
+audio encoding
+HLS packaging
+segment duration = 6
+ABR playlist generation
+```
+
+Use hardware acceleration only when the host actually supports it.
+
+Never assume GPU availability.
+
+CPU-only operation is mandatory.
+
+---
+
+# 34. TRANSCODING OPTIMIZATION
+
+The system must be usable on modest self-hosted hardware.
+
+Implement configurable encoding profiles.
+
+Provide at least:
+
+```text
+CPU-safe profile
+balanced profile
+high-quality profile
+```
+
+Allow environment/configuration controls for:
+
+```text
+CRF
+preset
+max concurrent jobs
+resolution ladder
+audio bitrate
+video bitrate
+```
+
+Do not hard-code enormous worker concurrency.
+
+Default conservatively.
+
+---
+
+# 35. BACKPRESSURE
+
+Prevent one machine from becoming unusable because ten huge videos are transcoding simultaneously.
+
+Implement:
+
+```text
+max concurrent transcodes
+job queue
+retry policy
+failed job state
+exponential backoff
+disk-space checks
+```
+
+Before processing:
+
+```text
+verify available disk space
+```
+
+---
+
+# 36. DISK PROTECTION
+
+Monitor:
+
+```text
+disk free
+storage size
+temporary working directory
+```
+
+Implement configurable thresholds:
+
+```text
+warning threshold
+critical threshold
+```
+
+At critical storage levels:
+
+```text
+pause new media processing
+```
+
+and report clearly.
+
+Do not silently corrupt or delete media.
+
+---
+
+# 37. REVERSE PROXY
+
+Support Nginx or Caddy.
+
+Requirements:
+
+```text
+HTTPS
+HTTP/2 where appropriate
+WebSocket upgrade
+large upload limits
+streaming-friendly buffering
+correct MIME types
+range requests
+CORS
+cache headers
+```
+
+Ensure:
+
+```text
+.m3u8
+.m4s
+.mp4
+.ts
+```
+
+have correct content types where applicable.
+
+---
+
+# 38. MIME TYPES
+
+Ensure correct content types:
+
+```text
+application/vnd.apple.mpegurl
+video/mp4
+video/iso.segment
+video/mp2t
+```
+
+depending on actual media packaging.
+
+Do not set a generic `application/octet-stream` for everything.
+
+---
+
+# 39. HTTP RANGE REQUESTS
+
+Media retrieval must support byte ranges where required.
+
+Verify:
+
+```text
+Accept-Ranges: bytes
+```
+
+and correct:
+
+```text
+Content-Range
+Content-Length
+206 Partial Content
+```
+
+behavior where relevant.
+
+---
+
+# 40. ERROR HANDLING
+
+The client must NEVER expose raw backend/FFmpeg stack traces.
+
+Convert errors into structured error objects.
+
+Example:
+
+```json
+{
+  "code": "MEDIA_PROCESSING_FAILED",
+  "message": "The video could not be processed.",
+  "retryable": true
+}
+```
+
+Log detailed engineering diagnostics server-side.
+
+---
+
+# 41. API DESIGN
+
+Expose clean APIs for:
+
+```text
+POST   /api/videos
+POST   /api/videos/:id/upload
+GET    /api/videos/:id
+GET    /api/videos/:id/status
+GET    /api/videos/:id/manifest
+GET    /api/videos/:id/playback
+GET    /api/videos/:id/analytics
+```
+
+Adapt the actual route conventions to the existing project.
+
+Do not duplicate an existing API convention.
+
+---
+
+# 42. PLAYBACK SESSION API
+
+When a player starts playback, obtain the required metadata:
+
+```json
+{
+  "videoId": "...",
+  "manifestVersion": "...",
+  "masterManifestUrl": "...",
+  "swarmConfig": {
+    "swarmId": "...",
+    "enabled": true
+  }
+}
+```
+
+The client must not invent security-sensitive playback metadata.
+
+---
+
+# 43. P2P SESSION IDENTITY
+
+Each browser session must have a temporary:
+
+```text
+peerId
+```
+
+Do not use a permanent personal identifier.
+
+Rotate/expire peer sessions.
+
+Do not expose private account information through peer discovery.
+
+---
+
+# 44. ABUSE PREVENTION
+
+Implement controls for:
+
+```text
+connection storms
+swarm flooding
+fake peers
+signaling spam
+malformed signaling messages
+oversized messages
+rapid swarm join/leave loops
+```
+
+Set maximum payload sizes.
+
+Reject malformed messages.
+
+Rate limit signaling.
+
+---
+
+# 45. LOGGING
+
+Use structured logs.
+
+At minimum capture:
+
+```text
+timestamp
+level
+service
+requestId
+sessionId
+videoId
+swarmId
+event
+duration
+errorCode
+```
+
+Do not log:
+
+```text
+passwords
+tokens
+private keys
+storage credentials
+raw authentication headers
+```
+
+---
+
+# 46. OBSERVABILITY
+
+If the project has monitoring, integrate with it.
+
+Otherwise add optional:
+
+```text
+Prometheus metrics
+OpenTelemetry
+```
+
+Expose internal metrics for:
+
+```text
+uploads
+transcodes
+transcode duration
+failed transcodes
+active playback sessions
+active swarms
+peer connections
+P2P bytes
+HTTP bytes
+fallback events
+rebuffer events
+```
+
+---
+
+# 47. HEALTH CHECKS
+
+Provide health endpoints equivalent to:
+
+```text
+/health/live
+/health/ready
+```
+
+Readiness should verify important dependencies:
+
+```text
+database
+Redis where required
+storage
+FFmpeg availability
+worker state
+```
+
+Do not report READY when a critical required dependency is unavailable.
+
+---
+
+# 48. FRONTEND USER EXPERIENCE
+
+The player UI must be polished and modern.
+
+Requirements:
+
+```text
+responsive
+keyboard accessible
+mobile friendly
+desktop optimized
+clean dark controls
+buffer indicator
+quality selector
+fullscreen
+volume
+play/pause
+seek
+captions where supported
+```
+
+Do not make technical P2P information visually dominate the viewer experience.
+
+Analytics HUD can be developer-toggleable.
+
+---
+
+# 49. MOBILE SAFETY
+
+Mobile visitors must receive normal playback without P2P participation.
+
+Specifically:
+
+```text
+mobile network:
+  receive video = YES
+  P2P download = NO
+  P2P upload = NO
+```
+
+If the browser incorrectly reports unknown network status:
+
+```text
+use conservative policy
+```
+
+Do not silently enable aggressive P2P behavior.
+
+---
+
+# 50. VIDEO VISIBILITY / TAB STATE
+
+Use:
+
+```text
+document.visibilityState
+```
+
+where appropriate.
+
+For hidden/background tabs:
+
+```text
+reduce P2P contribution
+or
+disable P2P upload
+```
+
+Do not allow background tabs to become uncontrolled upload nodes.
+
+---
+
+# 51. BROWSER COMPATIBILITY
+
+Do not crash if:
+
+```text
+WebRTC unavailable
+Network Information API unavailable
+MSE unavailable
+P2P library unavailable
+WebSocket unavailable
+```
+
+The playback system must degrade toward:
+
+```text
+normal HLS
+```
+
+where technically supported.
+
+---
+
+# 52. FEATURE FLAGS
+
+Implement feature flags/configuration for:
+
+```text
+P2P_ENABLED
+P2P_UPLOAD_ENABLED
+P2P_MAX_PEERS
+P2P_MAX_UPLOAD_MBPS
+P2P_MAX_UPLOAD_BYTES
+P2P_BACKGROUND_ENABLED
+P2P_LOW_BATTERY_MODE
+MEDIA_CMAF_ENABLED
+ABR_ENABLED
+TURN_ENABLED
+```
+
+Default safely.
+
+Recommended defaults:
+
+```text
+P2P_ENABLED=true
+P2P_UPLOAD_ENABLED=true
+P2P_MAX_PEERS=6
+P2P_MAX_UPLOAD_MBPS=2
+P2P_MAX_UPLOAD_BYTES=262144000
+TURN_ENABLED=false
+```
+
+Modify defaults where repository constraints justify it.
+
+---
+
+# 53. NO PAID DEPENDENCIES
+
+After implementation, inspect:
+
+```text
+package.json
+lockfiles
+Dockerfiles
+deployment files
+environment examples
+```
+
+for accidental paid infrastructure dependencies.
+
+Do not add packages that require paid API keys for core functionality.
+
+Open-source libraries are preferred.
+
+---
+
+# 54. DEPENDENCY SELECTION
+
+Before adding dependencies:
+
+1. Check whether the project already has an equivalent.
+2. Choose actively maintained packages.
+3. Prefer mature packages with strong browser compatibility.
+4. Avoid redundant libraries.
+5. Avoid abandoned P2P implementations.
+6. Pin compatible versions appropriately.
+7. Run dependency/security audit where available.
+
+Recommended conceptual packages include:
+
+```text
+hls.js
+p2p-media-loader-hlsjs
+fastify
+@fastify/cors
+@fastify/multipart
+ws
+pg / existing DB driver
+ioredis
+fluent-ffmpeg or a maintained FFmpeg integration
+```
+
+Use equivalents appropriate to the project's current stack.
+
+Do not blindly install everything listed.
+
+---
+
+# 55. TESTING
+
+Create automated tests for:
+
+## Network policy
+
+Test:
+
+```text
+2g → P2P OFF
+3g → P2P OFF
+4g → P2P OFF
+5g → P2P OFF
+Wi-Fi → P2P ON
+Ethernet → P2P ON
+saveData=true → P2P OFF
+unknown network → safe fallback
+```
+
+## Swarm identity
+
+Verify:
+
+```text
+same video + same rendition + same manifest = same swarm
+different rendition = different swarm
+different manifest = different swarm
+```
+
+## Playback fallback
+
+Test:
+
+```text
+P2P available → P2P delivery
+P2P unavailable → HTTP
+P2P timeout → HTTP
+peer disappears → HTTP
+invalid P2P segment → HTTP
+```
+
+## Ingestion
+
+Test:
+
+```text
+upload
+queue
+transcode
+package
+validate
+publish
+cleanup
+```
+
+## Failure cases
+
+Test:
+
+```text
+FFmpeg missing
+FFmpeg failure
+disk full
+database unavailable
+Redis unavailable where required
+storage unavailable
+malformed WebRTC signaling
+malformed upload
+```
+
+---
+
+# 56. END-TO-END TEST
+
+The final project must be testable as:
+
+```text
+Upload MP4
+   ↓
+Processing
+   ↓
+HLS master manifest
+   ↓
+Rendition manifests
+   ↓
+6-second segments
+   ↓
+Browser playback
+   ↓
+P2P swarm
+   ↓
+Segment transfer over WebRTC
+   ↓
+Analytics
+   ↓
+P2P failure simulation
+   ↓
+HTTP fallback
+   ↓
+Playback continues
+```
+
+---
+
+# 57. PERFORMANCE TEST
+
+Measure:
+
+```text
+time to first frame
+buffer health
+startup latency
+HTTP throughput
+P2P throughput
+peer join latency
+fallback latency
+CPU usage
+RAM usage
+disk usage
+transcode throughput
+```
+
+Do not optimize based solely on theoretical architecture.
+
+Use actual measurements.
+
+---
+
+# 58. COST TEST
+
+Add an internal diagnostic that can estimate:
+
+```text
+media bytes delivered by origin
+media bytes delivered by P2P
+percentage origin reduction
+```
+
+Example:
+
+```text
+Total media delivered: 100 GB
+P2P delivered: 73 GB
+HTTP delivered: 27 GB
+
+Estimated origin reduction: 73%
+```
+
+Do not fake or simulate these metrics in production.
+
+They must derive from actual measurements.
+
+---
+
+# 59. SECURITY REVIEW
+
+Before declaring completion, audit for:
+
+```text
+path traversal
+arbitrary file access
+command injection
+FFmpeg argument injection
+unrestricted upload
+oversized upload
+DoS through transcoding
+WebSocket abuse
+signaling injection
+CORS misconfiguration
+secret leakage
+private media leakage
+peer swarm poisoning
+```
+
+Use safe process invocation for FFmpeg.
+
+Never concatenate untrusted shell strings.
+
+---
+
+# 60. FILE CLEANUP
+
+Temporary files must be cleaned up:
+
+```text
+successful processing
+failed processing
+cancelled processing
+worker crash recovery
+```
+
+Implement startup cleanup/reconciliation for orphaned temporary files.
+
+Do not blindly delete unknown user media.
+
+---
+
+# 61. CRASH RECOVERY
+
+On worker restart:
+
+```text
+discover incomplete jobs
+reconcile state
+retry safe jobs
+mark impossible jobs FAILED
+clean orphan temporary files
+```
+
+The system must not remain permanently stuck in:
+
+```text
+PROCESSING
+```
+
+after a worker crash.
+
+---
+
+# 62. CONFIGURATION
+
+Create or extend:
+
+```text
+.env.example
+```
+
+without inserting real secrets.
+
+Document:
+
+```text
+APP_URL
+API_URL
+DATABASE_URL
+REDIS_URL
+MEDIA_STORAGE_PATH
+FFMPEG_PATH
+FFPROBE_PATH
+P2P_ENABLED
+P2P_MAX_PEERS
+P2P_MAX_UPLOAD_MBPS
+P2P_MAX_UPLOAD_BYTES
+P2P_SIGNALING_URL
+ALLOWED_ORIGINS
+```
+
+Only add variables actually needed.
+
+---
+
+# 63. DEPLOYMENT
+
+Provide a deployment guide for:
+
+```text
+single self-hosted Linux machine
+```
+
+with:
+
+```text
+Node.js
+PostgreSQL
+Redis
+FFmpeg
+Nginx/Caddy
+Let's Encrypt
+```
+
+The platform must be able to operate on a single machine for the initial zero-cost deployment.
+
+Architecture must still permit later horizontal scaling.
+
+---
+
+# 64. ZERO-COST SINGLE-MACHINE DEPLOYMENT
+
+Support:
+
+```text
+Internet
+   ↓
+Nginx/Caddy
+   ↓
+Node API
+   ↓
+PostgreSQL
+   ↓
+Redis
+   ↓
+FFmpeg worker
+   ↓
+Local media storage
+   ↓
+WebSocket tracker
+```
+
+P2P traffic:
+
+```text
+Viewer ⇄ Viewer
+```
+
+not:
+
+```text
+Viewer → your signaling server → video → Viewer
+```
+
+---
+
+# 65. SCALE-OUT DESIGN
+
+Do not over-engineer the first deployment.
+
+However, architecture must make future scale possible:
+
+```text
+API servers
+media workers
+signaling servers
+storage
+database
+Redis
+```
+
+can eventually be separated.
+
+The API layer should remain stateless wherever practical.
+
+---
+
+# 66. OPTIONAL SERVER-SIDE SEEDERS
+
+Design the P2P system so dedicated self-hosted seed infrastructure can eventually be added.
+
+Conceptually:
+
+```text
+CDN/origin
+    ↓
+server seed
+    ↓
+WebRTC peers
+```
+
+This is OPTIONAL and must not be required for initial operation.
+
+The abstraction must not block future implementation.
+
+---
+
+# 67. ADMIN / DEBUG PANEL
+
+Add a developer/admin diagnostics interface if the existing application supports administrative tooling.
+
+Display:
+
+```text
+active swarms
+active peers
+P2P delivery
+HTTP delivery
+fallbacks
+buffer failures
+transcoding jobs
+storage usage
+worker status
+```
+
+Do not expose this to ordinary viewers.
+
+---
+
+# 68. DOCUMENTATION
+
+Generate/update:
+
+```text
+VIDEO_STREAMING_ARCHITECTURE.md
+P2P_NETWORKING.md
+MEDIA_PIPELINE.md
+DEPLOYMENT.md
+STORAGE.md
+TROUBLESHOOTING.md
+```
+
+Use existing documentation naming conventions where present.
+
+Documentation must explain:
+
+```text
+architecture
+network policy
+swarm ID
+P2P security
+HTTP fallback
+zero-cost deployment
+storage
+FFmpeg
+monitoring
+troubleshooting
+```
+
+---
+
+# 69. DO NOT CREATE FAKE FEATURES
+
+Do not create UI that only pretends:
+
+```text
+P2P peers
+download bytes
+CDN savings
+swarm membership
+```
+
+Every metric shown as operational must be connected to real runtime data.
+
+No mocked production statistics.
+
+No static fake dashboard values.
+
+---
+
+# 70. DO NOT BREAK EXISTING APPLICATION
+
+Before modifying shared architecture:
+
+```text
+understand existing code
+identify integration points
+reuse existing abstractions
+preserve existing APIs
+preserve auth
+preserve database
+preserve UI system
+```
+
+Do not rewrite the whole project merely because another framework would theoretically be preferable.
+
+Use the existing stack where it is competent.
+
+Only replace a component when there is a concrete engineering reason.
+
+---
+
+# 71. IMPLEMENTATION ORDER
+
+Execute in this order:
+
+```text
+PHASE 1
+Repository inspection
+
+PHASE 2
+Architecture + dependency assessment
+
+PHASE 3
+Media data model
+
+PHASE 4
+Storage abstraction
+
+PHASE 5
+Media ingest pipeline
+
+PHASE 6
+FFmpeg transcoding
+
+PHASE 7
+HLS/CMAF packaging
+
+PHASE 8
+Playback API
+
+PHASE 9
+WebRTC signaling/tracker
+
+PHASE 10
+P2P policy engine
+
+PHASE 11
+React player
+
+PHASE 12
+P2P statistics
+
+PHASE 13
+Analytics telemetry
+
+PHASE 14
+Security hardening
+
+PHASE 15
+Reverse proxy/deployment
+
+PHASE 16
+Automated tests
+
+PHASE 17
+End-to-end test
+
+PHASE 18
+Performance validation
+
+PHASE 19
+Cost analysis
+
+PHASE 20
+Final production-readiness audit
+```
+
+---
+
+# 72. FINAL ACCEPTANCE CRITERIA
+
+Do NOT declare the implementation complete until all of the following are true:
+
+### Playback
+
+```text
+✓ HLS playback works
+✓ ABR works
+✓ 6-second segments work
+✓ CMAF/fMP4 works where enabled
+✓ Mobile playback works
+✓ Wi-Fi playback works
+✓ Ethernet playback works
+```
+
+### P2P
+
+```text
+✓ Wi-Fi P2P enabled
+✓ Ethernet P2P enabled
+✓ Cellular P2P disabled
+✓ Save Data disables P2P
+✓ peer limits enforced
+✓ upload limits enforced
+✓ swarm IDs deterministic
+✓ peer discovery works
+✓ WebRTC works
+✓ P2P failure falls back to HTTP
+✓ playback continues after peer failure
+```
+
+### Media pipeline
+
+```text
+✓ upload works
+✓ queue works
+✓ FFmpeg works
+✓ renditions generated
+✓ HLS manifests generated
+✓ media validated
+✓ temporary files cleaned
+✓ failed jobs recover safely
+```
+
+### Security
+
+```text
+✓ secrets protected
+✓ path traversal blocked
+✓ upload validation active
+✓ FFmpeg invocation safe
+✓ signaling protected
+✓ rate limiting active
+✓ private media protected
+✓ CORS controlled
+```
+
+### Operations
+
+```text
+✓ single-server deployment documented
+✓ no paid service required
+✓ health checks work
+✓ logs work
+✓ metrics work
+✓ configuration documented
+✓ backups/recovery documented
+```
+
+---
+
+# 73. REQUIRED FINAL REPORT
+
+When implementation is complete, provide a technical completion report containing:
+
+```text
+1. Files created
+2. Files modified
+3. Dependencies added
+4. Database migrations
+5. Environment variables
+6. Media architecture
+7. P2P architecture
+8. Swarm ID implementation
+9. Network safety rules
+10. FFmpeg profiles
+11. HLS/CMAF structure
+12. Signaling architecture
+13. Security controls
+14. Storage architecture
+15. Deployment instructions
+16. Test results
+17. Performance results
+18. Known limitations
+19. Remaining risks
+20. Recommended next optimizations
+```
+
+Also provide:
+
+```text
+P2P delivery ratio
+HTTP fallback ratio
+startup latency
+rebuffer count
+peer count
+transcoding performance
+disk consumption
+```
+
+based on actual test results where available.
+
+---
+
+# 74. CRITICAL ENGINEERING RULE
+
+Never optimize for maximum P2P utilization at the expense of:
+
+```text
+playback reliability
+mobile safety
+battery safety
+privacy
+security
+user control
+```
+
+The target architecture is:
+
+```text
+HIGH P2P OFFLOAD
++
+LOW PLAYBACK RISK
++
+ZERO CELLULAR P2P
++
+ZERO MANDATORY TURN
++
+ZERO PAID CLOUD DEPENDENCY
++
+AUTHORITATIVE HTTP FALLBACK
+```
+
+The system should behave like a normal high-quality video platform even when P2P is unavailable.
+
+P2P should quietly make the system cheaper when conditions are favorable.
+
+---
+
+# 75. FINAL DIRECTIVE TO THE AI DEVELOPER
+
+Do not merely output sample code.
+
+Inspect the repository and implement the actual system.
+
+Do not stop after creating frontend components.
+
+Wire:
+
+```text
+frontend
+→ playback API
+→ manifest
+→ HLS
+→ P2P policy
+→ swarm
+→ WebRTC signaling
+→ peer exchange
+→ P2P metrics
+→ HTTP fallback
+→ analytics
+→ backend
+→ storage
+→ FFmpeg
+→ database
+→ monitoring
+```
+
+Everything must work together.
+
+Before finishing:
+
+```text
+run tests
+run lint
+run type checks
+run build
+run migration validation
+run security checks
+run media pipeline test
+run playback test
+run P2P fallback test
+```
+
+Fix errors rather than documenting them as acceptable.
+
+Do not leave:
+
+```text
+TODO
+FIXME
+placeholder
+mock production implementation
+fake analytics
+unwired endpoint
+unfinished component
+```
+
+unless the repository's existing architecture makes a specific item genuinely impossible, in which case document the exact blocker and implement the strongest safe fallback.
+
+The final result must be a **real, integrated, production-oriented, self-hostable, zero-recurring-cost hybrid CDN + WebRTC P2P video streaming subsystem.**
