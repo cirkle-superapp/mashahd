@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaLibSQL } from '@prisma/adapter-libsql'
+import { PrismaLibSql } from '@prisma/adapter-libsql'
 import { createClient } from '@libsql/client'
 
 /**
@@ -51,7 +51,7 @@ function createPrismaClient(): PrismaClient {
         url: cleanUrl,
         authToken: authToken || undefined,
       })
-      const adapter = new PrismaLibSQL(libsql)
+      const adapter = new PrismaLibSql(libsql)
       return new PrismaClient({ adapter, log: ['error', 'warn'] })
     } catch (e) {
       console.error('[db] Failed to connect to Turso, falling back to local SQLite:', e)
