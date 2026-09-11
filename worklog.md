@@ -205,3 +205,32 @@ Verification (Agent Browser + VLM + getComputedStyle):
 Stage Summary:
 - The Mashahd logo now animates exactly like CIRKLE's CircleMark: 3 interlocking circles draw themselves in on a staggered timeline, the center node pulses, the whole mark slowly rotates, and a breathing wrapper gives it presence. Verified live via computed styles.
 - 4 new features added: animated logo (full CIRKLE-matching animation language), Splash entrance screen, KeyboardShortcuts overlay + global hotkeys, MiniPlayer floating PiP.
+
+---
+Task ID: 51-57 (Fix logo animation + bullet comments + AI Starters/Oracle/Tone) — COMPLETE
+Agent: main
+Task: Fix the logo animation to match CIRKLE exactly, then implement any missing CIRKLE features.
+
+Work Log:
+- User reported "the animation is wrong". Re-cloned CIRKLE, opened the live site, captured computed styles + a recording of the actual logo. Compared against my implementation and found 4 differences:
+  * CIRKLE uses stroke-width 1.5 (I used 3.5 — too thick)
+  * CIRKLE has 4 circles total (3 outer + 1 center, I had 5 with an extra inner cream dot)
+  * CIRKLE has strokeDasharray "none" (I used pathLength draw-in — CIRKLE's header logo does NOT draw in)
+  * CIRKLE has ONLY the 30s rotation (I added breathing + pulsing — CIRKLE's header logo doesn't have those)
+- Rewrote mashahd-logo.tsx to match CIRKLE exactly: thin strokes (1.5), 4 circles (3 + center), no draw-in, no breathing, no pulsing — JUST the 30s linear rotation. Verified via getComputedStyle: circleCount=4, stroke-width=1.5, strokeDasharray=none, transform=rotation matrix. VLM confirmed "3 circles, thin stroke, center dot, three interlocking circles in a triangle".
+- Built BulletComments (src/components/youtube/bullet-comments.tsx): floating danmaku-style comments that drift across the video player, adapted from CIRKLE's bullet-comments overlay. Toggle button on the player (top-left), 5 horizontal tracks, 15-sample rotating pool, new bullet every 1.8s, pauses when video paused, clears when disabled. Verified: enabling showed "this part is fire 🔥" and "wait what just happened" drifting across.
+- Built 3 new AI backend routes using z-ai-web-dev-sdk (LLM skill), each with deterministic fallbacks:
+  * POST /api/ai/oracle — Cirkle Oracle: answers viewer questions about the video, grounded in title/description/tags/category
+  * POST /api/ai/starters — AI Conversation Starters: 4 comment-style starters tailored to the video
+  * POST /api/ai/tone — AI Tone Adjuster: rewrites a draft comment in friendly/witty/formal/concise/enthusiastic tone
+- Built AiWatchPanel (src/components/youtube/ai-watch-panel.tsx): tabbed overlay with Starters / Oracle / Tone tabs, gold-bordered, shimmer loading. Wired into watch page via mashahd:ai-watch CustomEvent + 3 new chips (AI Starters, Oracle, Tone). Also added the 3 features to the ⌘K command palette.
+- Verified all 3 AI features end-to-end via Agent Browser:
+  * Starters: LLM generated 4 context-aware starters for the Elden Ring video ("What's the most difficult part of this fight to execute consistently?", etc.)
+  * Oracle: asked "Is this beginner friendly?" → got a grounded answer identifying it's not beginner-friendly and pointing to the pinned comment for the build
+  * Tone: "This video is really good" → witty rewrite → "This video is so good, it's practically illegal."
+- AI starters can be clicked to auto-populate the comment box (wired via starterText prop to CommentsSection).
+- Lint: clean (0 errors, 0 warnings). Dev server healthy (200). All AI routes returning 200.
+
+Stage Summary:
+- Logo animation fixed to match CIRKLE exactly (thin strokes, 4 circles, rotation only).
+- 5 new features added: BulletComments (danmaku), AI Starters, Cirkle Oracle, AI Tone Adjuster, + the AiWatchPanel that hosts them.

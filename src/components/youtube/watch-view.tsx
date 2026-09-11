@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2 } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2, MessageSquarePlus, Compass, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +16,8 @@ import { VideoCardHorizontal } from "./video-card";
 import { AiRecap } from "./ai-recap";
 import { SmartChapters } from "./smart-chapters";
 import { CirclePulse } from "./circle-pulse";
+import { BulletComments } from "./bullet-comments";
+import { AiWatchPanel } from "./ai-watch-panel";
 import { ShareButton } from "./header-overlays";
 import { toast } from "sonner";
 
@@ -51,6 +53,9 @@ export function WatchView({ videoId }: { videoId: string }) {
   const [showFullDesc, setShowFullDesc] = useState(false);
   const [theater, setTheater] = useState(false);
   const [upNext, setUpNext] = useState(false);
+  const [bulletsOn, setBulletsOn] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [starterText, setStarterText] = useState("");
   const viewsRecorded = useRef(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -222,6 +227,8 @@ export function WatchView({ videoId }: { videoId: string }) {
               playsInline
               poster={video.thumbnailUrl}
               src={video.videoUrl}
+              onPlay={() => setPaused(false)}
+              onPause={() => setPaused(true)}
               onEnded={() => {
                 setUpNext(true);
                 toast.info("Up next", {
@@ -236,6 +243,13 @@ export function WatchView({ videoId }: { videoId: string }) {
                   if (!upNext) playNext(related, navigate);
                 }, 5000);
               }}
+            />
+            {/* Bullet comments — floating danmaku overlay (adapted from CIRKLE) */}
+            <BulletComments
+              enabled={bulletsOn}
+              onToggle={() => setBulletsOn((b) => !b)}
+              paused={paused}
+              videoId={video.id}
             />
             {/* Theater mode toggle — top-right of the player */}
             <button
@@ -393,6 +407,27 @@ export function WatchView({ videoId }: { videoId: string }) {
               <ListVideo className="h-3.5 w-3.5" />
               Smart Chapters
             </button>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("mashahd:ai-watch", { detail: { tab: "starters" } }))}
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-border bg-muted/60 hover:bg-accent transition-colors"
+            >
+              <MessageSquarePlus className="h-3.5 w-3.5" />
+              AI Starters
+            </button>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("mashahd:ai-watch", { detail: { tab: "oracle" } }))}
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-border bg-muted/60 hover:bg-accent transition-colors"
+            >
+              <Compass className="h-3.5 w-3.5" />
+              Oracle
+            </button>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("mashahd:ai-watch", { detail: { tab: "tone" } }))}
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-border bg-muted/60 hover:bg-accent transition-colors"
+            >
+              <Wand2 className="h-3.5 w-3.5" />
+              Tone
+            </button>
             <span className="ml-auto">
               <CirclePulse videoId={video.id} baseViews={video.views} />
             </span>
@@ -400,6 +435,7 @@ export function WatchView({ videoId }: { videoId: string }) {
 
           <AiRecap videoId={videoId} />
           <SmartChapters videoId={videoId} durationSec={video.durationSec} videoRef={videoRef} />
+          <AiWatchPanel videoId={videoId} onUseStarter={(text) => setStarterText(text)} />
 
           {/* Comments */}
           <CommentsSection
@@ -407,6 +443,8 @@ export function WatchView({ videoId }: { videoId: string }) {
             comments={comments}
             refetch={refetchComments}
             bid={bid}
+            starterText={starterText}
+            onStarterUsed={() => setStarterText("")}
           />
         </div>
 
@@ -452,11 +490,15 @@ function CommentsSection({
   comments,
   refetch,
   bid,
+  starterText,
+  onStarterUsed,
 }: {
   videoId: string;
   comments?: Comment[];
   refetch: () => void;
   bid: string;
+  starterText?: string;
+  onStarterUsed?: () => void;
 }) {
   const [text, setText] = useState("");
   const [posting, setPosting] = useState(false);
@@ -464,6 +506,19 @@ function CommentsSection({
   const [translateLang, setTranslateLang] = useState<string | null>(null);
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [translating, setTranslating] = useState(false);
+
+  // When an AI starter is loaded into the box, populate the input.
+  useEffect(() => {
+    if (starterText) {
+      setText(starterText);
+      onStarterUsed?.();
+      // focus the input so the user can edit + post
+      const el = document.querySelector<HTMLInputElement>(
+        'input[placeholder="Add a comment..."]'
+      );
+      el?.focus();
+    }
+  }, [starterText, onStarterUsed]);
 
   const sorted = [...(comments || [])].sort((a, b) =>
     sortNew

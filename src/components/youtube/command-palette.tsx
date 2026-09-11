@@ -16,6 +16,9 @@ import {
   Sun,
   Moon,
   CornerDownLeft,
+  MessageSquarePlus,
+  Compass,
+  Wand2,
 } from "lucide-react";
 import {
   Dialog,
@@ -163,6 +166,33 @@ export function CommandPalette() {
       run: () => triggerAi("translate", close),
       keywords: "language arabic english",
     },
+    {
+      id: "ai-starters",
+      label: "Comment starters",
+      hint: "AI Starters",
+      icon: MessageSquarePlus,
+      group: "AI Features",
+      run: () => triggerWatch(close, "starters"),
+      keywords: "suggest comment conversation",
+    },
+    {
+      id: "ai-oracle",
+      label: "Ask the Oracle about this video",
+      hint: "Oracle",
+      icon: Compass,
+      group: "AI Features",
+      run: () => triggerWatch(close, "oracle"),
+      keywords: "question ask answer",
+    },
+    {
+      id: "ai-tone",
+      label: "Rewrite my comment in a different tone",
+      hint: "Tone",
+      icon: Wand2,
+      group: "AI Features",
+      run: () => triggerWatch(close, "tone"),
+      keywords: "rewrite friendly witty formal",
+    },
   ];
 
   const grouped: Record<Item["group"], Item[]> = {
@@ -241,5 +271,18 @@ function triggerAi(feature: "summarize" | "chapters" | "translate", close: () =>
     return;
   }
   window.dispatchEvent(new CustomEvent(`mashahd:ai-${feature}`, { detail: { videoId: view.videoId } }));
+  close();
+}
+
+/** Open the AI Watch panel on a specific tab (starters / oracle / tone). */
+function triggerWatch(close: () => void, tab: "starters" | "oracle" | "tone") {
+  const view = useAppStore.getState().view;
+  if (view.kind !== "watch") {
+    toast.error("Open a video first", {
+      description: "AI Starters, Oracle, and Tone need an active video.",
+    });
+    return;
+  }
+  window.dispatchEvent(new CustomEvent("mashahd:ai-watch", { detail: { tab } }));
   close();
 }
