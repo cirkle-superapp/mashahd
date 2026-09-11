@@ -25,6 +25,7 @@ import { CommandPalette } from "@/components/youtube/command-palette";
 import { Splash } from "@/components/youtube/splash";
 import { KeyboardShortcuts } from "@/components/youtube/keyboard-shortcuts";
 import { MiniPlayer } from "@/components/youtube/mini-player";
+import { OnboardingTour } from "@/components/youtube/onboarding-tour";
 import { useMashahdBridge } from "@/lib/mashahd-bridge";
 import { cn } from "@/lib/utils";
 
@@ -104,6 +105,8 @@ export default function Page() {
         <KeyboardShortcuts />
         {/* Floating mini-player (PiP-style) when navigating away from a video */}
         <MiniPlayer />
+        {/* 3-step onboarding tour for first-time visitors */}
+        <OnboardingTour />
       </div>
     </div>
   );

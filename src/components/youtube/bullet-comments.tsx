@@ -6,35 +6,13 @@ import { MessageSquarePlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * BulletComments — floating "danmaku"-style comments that drift across the
+ * BulletComments — floating danmaku-style comments that drift across the
  * video player. Adapted from CIRKLE's bullet-comments overlay.
  *
- * Each bullet is a short text that enters from the right edge at a random
- * vertical track and animates left across the player, fading out at the
- * left edge. New bullets appear every ~1.8s from a rotating pool of sample
- * comments (in a real app these would be real-time viewer messages).
- *
- * The overlay is toggleable via a button on the player and via the `enabled`
- * prop. Pausing the video pauses the bullets.
+ * When real comments are available (via the comments API), they're used as
+ * the bullet pool. Otherwise, a set of generic reactions is used as a
+ * fallback so the feature always has content to display.
  */
-
-const SAMPLE_BULLETS: { text: string; color?: string }[] = [
-  { text: "this part is fire 🔥", color: "text-rose" },
-  { text: "wait what just happened", color: "text-gold" },
-  { text: "underrated channel fr", color: "text-teal-light" },
-  { text: "anyone else replay this 5x?", color: "text-foreground" },
-  { text: "the editing tho", color: "text-rose" },
-  { text: "tutorial when", color: "text-gold" },
-  { text: "goated explanation", color: "text-teal-light" },
-  { text: "no way he nailed that", color: "text-foreground" },
-  { text: "0:47 is the moment", color: "text-rose" },
-  { text: "subscribed instantly", color: "text-gold" },
-  { text: "algorithm finally delivered", color: "text-teal-light" },
-  { text: "the soundtrack ✨", color: "text-rose" },
-  { text: "rewatching this", color: "text-foreground" },
-  { text: "quality > quantity always", color: "text-gold" },
-  { text: "who's here from the shorts shelf", color: "text-teal-light" },
-];
 
 type Bullet = {
   id: number;
@@ -44,8 +22,20 @@ type Bullet = {
   duration: number;
 };
 
-const TRACKS = 5; // number of horizontal lanes
-const TRACK_HEIGHT = 28; // px per lane
+const FALLBACK_BULLETS: { text: string; color?: string }[] = [
+  { text: "this is fire 🔥", color: "text-rose" },
+  { text: "wait what just happened", color: "text-gold" },
+  { text: "underrated channel fr", color: "text-teal-light" },
+  { text: "anyone else replay this?", color: "text-foreground" },
+  { text: "the editing tho", color: "text-rose" },
+  { text: "goated explanation", color: "text-gold" },
+  { text: "subscribed instantly", color: "text-teal-light" },
+  { text: "the soundtrack ✨", color: "text-rose" },
+];
+
+const COLORS = ["text-rose", "text-gold", "text-teal-light", "text-foreground"];
+const TRACKS = 5;
+const TRACK_HEIGHT = 28;
 
 export function BulletComments({
   enabled,
@@ -59,31 +49,46 @@ export function BulletComments({
   videoId: string;
 }) {
   const [bullets, setBullets] = useState<Bullet[]>([]);
+  const [commentPool, setCommentPool] = useState<{ text: string; color: string }[]>([]);
   const idRef = useRef(0);
   const poolIdx = useRef(0);
 
+  // Fetch real comments to use as bullet pool.
+  useEffect(() => {
+    fetch(`/api/videos/${videoId}/comments`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.comments && data.comments.length > 0) {
+          const pool = data.comments.map((c: any, i: number) => ({
+            text: c.text.slice(0, 80),
+            color: COLORS[i % COLORS.length],
+          }));
+          setCommentPool(pool);
+        }
+      })
+      .catch(() => {});
+  }, [videoId]);
+
   const spawn = useCallback(() => {
-    const b = SAMPLE_BULLETS[poolIdx.current % SAMPLE_BULLETS.length];
+    const pool = commentPool.length > 0 ? commentPool : FALLBACK_BULLETS;
+    const b = pool[poolIdx.current % pool.length];
     poolIdx.current++;
     const bullet: Bullet = {
       id: idRef.current++,
       text: b.text,
       color: b.color || "text-foreground",
       track: Math.floor(Math.random() * TRACKS),
-      duration: 9 + Math.random() * 4, // 9-13s drift
+      duration: 9 + Math.random() * 4,
     };
-    setBullets((cur) => [...cur.slice(-12), bullet]); // cap at ~13 on screen
-    // Remove after the drift completes.
+    setBullets((cur) => [...cur.slice(-12), bullet]);
     setTimeout(() => {
       setBullets((cur) => cur.filter((x) => x.id !== bullet.id));
     }, bullet.duration * 1000 + 500);
-  }, []);
+  }, [commentPool]);
 
-  // Spawn loop — pauses when the video is paused or bullets are disabled.
   useEffect(() => {
     if (!enabled || paused) return;
     const interval = setInterval(spawn, 1800);
-    // Spawn one immediately on enable.
     spawn();
     return () => clearInterval(interval);
   }, [enabled, paused, spawn, videoId]);

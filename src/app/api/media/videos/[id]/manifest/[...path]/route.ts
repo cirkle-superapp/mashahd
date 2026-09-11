@@ -10,7 +10,21 @@ import { getStorage } from "@/lib/storage";
  *
  * Segments (.m4s, init.mp4) are served with immutable cache headers by this
  * same route (segments are immutable — immutable cache).
+ *
+ * CORS: uses ALLOWED_ORIGINS env var (comma-separated) instead of wildcard.
+ * Falls back to the request origin for same-origin, or * for development.
  */
+function getCorsOrigin(req: NextRequest): string {
+  const allowed = process.env.ALLOWED_ORIGINS;
+  if (!allowed) return "*";
+  const origins = allowed.split(",").map((s) => s.trim());
+  const requestOrigin = req.headers.get("origin");
+  if (requestOrigin && origins.includes(requestOrigin)) {
+    return requestOrigin;
+  }
+  return origins[0] || "*";
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; path: string[] }> }
@@ -37,13 +51,12 @@ export async function GET(
       ? "video/mp2t"
       : "application/octet-stream";
 
-  // Segments are immutable — cache for a year. Manifests are mutable.
   const isSegment = ext === ".m4s" || ext === ".mp4" || ext === ".ts";
   const cacheControl = isSegment
     ? "public, max-age=31536000, immutable"
     : "no-cache";
+  const corsOrigin = getCorsOrigin(req);
 
-  // Support range requests for .mp4 / init segments.
   const range = req.headers.get("range");
   const data = await storage.read(rel);
   if (range && isSegment) {
@@ -59,7 +72,7 @@ export async function GET(
         "Content-Length": String(chunk.length),
         "Accept-Ranges": "bytes",
         "Cache-Control": cacheControl,
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": corsOrigin,
       },
     });
   }
@@ -71,7 +84,7 @@ export async function GET(
       "Content-Length": String(stat.size),
       "Accept-Ranges": "bytes",
       "Cache-Control": cacheControl,
-      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": corsOrigin,
     },
   });
 }
