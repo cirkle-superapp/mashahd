@@ -69,6 +69,8 @@ model UserState {
   likedVideoIds      String @default("") // pipe-separated video ids
   subscribedChannelIds String @default("") // pipe-separated channel ids
   watchedVideoIds    String @default("") // pipe-separated video ids, most recent first
+  favoriteVideoIds   String @default("") // pipe-separated video ids (Favorites / Save)
+  watchLaterIds      String @default("") // pipe-separated video ids (Watch Later queue)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

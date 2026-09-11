@@ -17,6 +17,8 @@ import {
   HistoryView,
   LikedView,
   LibraryView,
+  FavoritesView,
+  WatchLaterView,
 } from "@/components/youtube/list-views";
 import { Footer } from "@/components/youtube/footer";
 import { CommandPalette } from "@/components/youtube/command-palette";
@@ -52,6 +54,10 @@ function renderView(view: ReturnType<typeof useAppStore.getState>["view"]) {
       return <SettingsView initialTab={view.tab} />;
     case "profile":
       return <ProfileView />;
+    case "favorites":
+      return <FavoritesView />;
+    case "watchLater":
+      return <WatchLaterView />;
   }
 }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2, MessageSquarePlus, Compass, Wand2 } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2, MessageSquarePlus, Compass, Wand2, Heart, Bookmark, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,6 +18,7 @@ import { SmartChapters } from "./smart-chapters";
 import { CirclePulse } from "./circle-pulse";
 import { BulletComments } from "./bullet-comments";
 import { AiWatchPanel } from "./ai-watch-panel";
+import { MashahdPlayer } from "./mashahd-player";
 import { ShareButton } from "./header-overlays";
 import { toast } from "sonner";
 
@@ -56,6 +57,8 @@ export function WatchView({ videoId }: { videoId: string }) {
   const [bulletsOn, setBulletsOn] = useState(false);
   const [paused, setPaused] = useState(false);
   const [starterText, setStarterText] = useState("");
+  const [fav, setFav] = useState(false);
+  const [later, setLater] = useState(false);
   const viewsRecorded = useRef(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -216,34 +219,29 @@ export function WatchView({ videoId }: { videoId: string }) {
       <div className={cn("flex flex-col xl:flex-row gap-6 mx-auto", theater ? "max-w-none" : "max-w-[1800px]")}>
         {/* Main column */}
         <div className={cn("flex-1 min-w-0", theater && "xl:flex-none xl:w-full")}>
-          {/* Player + theater controls */}
-          <div className="relative w-full bg-black aspect-video">
-            <video
-              ref={videoRef}
-              key={video.id}
-              className="w-full h-full"
-              controls
-              autoPlay
-              playsInline
-              poster={video.thumbnailUrl}
-              src={video.videoUrl}
-              onPlay={() => setPaused(false)}
-              onPause={() => setPaused(true)}
-              onEnded={() => {
-                setUpNext(true);
-                toast.info("Up next", {
-                  description: "Auto-advancing to the next video in 5s…",
-                  action: {
-                    label: "Play now",
-                    onClick: () => playNext(related, navigate),
-                  },
-                  cancel: { label: "Cancel", onClick: () => setUpNext(false) },
-                });
-                setTimeout(() => {
-                  if (!upNext) playNext(related, navigate);
-                }, 5000);
-              }}
-            />
+          {/* MashahdPlayer — custom player with fullscreen, PiP, speed, etc. */}
+          <MashahdPlayer
+            src={video.videoUrl}
+            poster={video.thumbnailUrl}
+            videoId={video.id}
+            autoPlay
+            onPlay={() => setPaused(false)}
+            onPause={() => setPaused(true)}
+            onEnded={() => {
+              setUpNext(true);
+              toast.info("Up next", {
+                description: "Auto-advancing to the next video in 5s…",
+                action: {
+                  label: "Play now",
+                  onClick: () => playNext(related, navigate),
+                },
+                cancel: { label: "Cancel", onClick: () => setUpNext(false) },
+              });
+              setTimeout(() => {
+                if (!upNext) playNext(related, navigate);
+              }, 5000);
+            }}
+          >
             {/* Bullet comments — floating danmaku overlay (adapted from CIRKLE) */}
             <BulletComments
               enabled={bulletsOn}
@@ -254,14 +252,14 @@ export function WatchView({ videoId }: { videoId: string }) {
             {/* Theater mode toggle — top-right of the player */}
             <button
               onClick={() => setTheater((t) => !t)}
-              className="absolute top-2 right-2 z-10 px-2.5 py-1 rounded-full bg-black/70 hover:bg-black/90 text-white text-xs font-medium backdrop-blur flex items-center gap-1.5"
+              className="absolute top-2 left-12 z-10 px-2.5 py-1 rounded-full bg-black/70 hover:bg-black/90 text-white text-xs font-medium backdrop-blur flex items-center gap-1.5"
               aria-label={theater ? "Exit theater mode" : "Theater mode"}
               title={theater ? "Exit theater mode" : "Theater mode"}
             >
               <Maximize2 className="h-3.5 w-3.5" />
               {theater ? "Exit" : "Theater"}
             </button>
-          </div>
+          </MashahdPlayer>
 
           {/* Title */}
           <h1 className="mt-3 px-4 sm:px-0 text-lg sm:text-xl font-semibold leading-snug">
@@ -343,6 +341,56 @@ export function WatchView({ videoId }: { videoId: string }) {
                 </button>
               </div>
               <ShareButton videoId={video.id} title={video.title} />
+              <Button
+                variant="secondary"
+                size="sm"
+                className={cn(
+                  "rounded-full h-9 px-4 border",
+                  fav
+                    ? "bg-rose/15 border-rose/40 text-rose"
+                    : "bg-muted hover:bg-accent border-border"
+                )}
+                onClick={async () => {
+                  const next = !fav;
+                  setFav(next);
+                  await fetch("/api/user-state", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ browserId: bid, videoId: video.id, action: next ? "favorite" : "unfavorite" }),
+                  });
+                  toast.success(next ? "Added to Favorites" : "Removed from Favorites");
+                }}
+                aria-label={fav ? "Remove from Favorites" : "Add to Favorites"}
+                title={fav ? "Remove from Favorites" : "Add to Favorites"}
+              >
+                <Heart className={cn("h-4 w-4 mr-1.5", fav && "fill-current")} />
+                {fav ? "Favorited" : "Favorite"}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className={cn(
+                  "rounded-full h-9 px-4 border hidden sm:inline-flex",
+                  later
+                    ? "bg-gold/15 border-gold/40 text-[hsl(var(--gold))]"
+                    : "bg-muted hover:bg-accent border-border"
+                )}
+                onClick={async () => {
+                  const next = !later;
+                  setLater(next);
+                  await fetch("/api/user-state", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ browserId: bid, videoId: video.id, action: next ? "watchLater" : "removeLater" }),
+                  });
+                  toast.success(next ? "Added to Watch Later" : "Removed from queue");
+                }}
+                aria-label={later ? "Remove from Watch Later" : "Add to Watch Later"}
+                title={later ? "Remove from Watch Later" : "Add to Watch Later"}
+              >
+                {later ? <Check className="h-4 w-4 mr-1.5" /> : <Bookmark className="h-4 w-4 mr-1.5" />}
+                {later ? "Saved" : "Watch Later"}
+              </Button>
               <Button variant="secondary" size="sm" className="rounded-full h-9 px-4 bg-muted hover:bg-accent hidden sm:inline-flex">
                 <Download className="h-4 w-4 mr-1.5" /> Download
               </Button>

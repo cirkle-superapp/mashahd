@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { Heart, Bookmark } from "lucide-react";
 import { VideoCardHorizontal, VideoCard } from "./video-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Video } from "@/lib/types";
@@ -358,3 +359,97 @@ function EmptyState({ title, body }: { title: string; body: string }) {
     </div>
   );
 }
+
+export function FavoritesView() {
+  const bid = useBrowserId();
+  const { data: state, isLoading } = useQuery({
+    queryKey: ["user-state", bid],
+    queryFn: () => fetchUserState(bid),
+    enabled: !!bid,
+  });
+  const ids = state?.favoriteVideoIds || [];
+  const { data, isLoading: vLoading } = useQuery({
+    queryKey: ["videos", "favorites", ids.join("|")],
+    queryFn: () => fetchVideosRaw({ ids: ids.join("|") }),
+    enabled: ids.length > 0,
+  });
+
+  return (
+    <div className="px-4 sm:px-6 py-6 max-w-[1400px] mx-auto">
+      <h1 className="text-2xl font-bold mb-6 font-display flex items-center gap-2">
+        <Heart className="h-6 w-6 text-rose" />
+        Favorites
+      </h1>
+      {isLoading || vLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i}>
+              <Skeleton className="aspect-video w-full rounded-xl" />
+              <Skeleton className="h-4 w-3/4 mt-2" />
+            </div>
+          ))}
+        </div>
+      ) : ids.length === 0 ? (
+        <EmptyState
+          title="No favorites yet"
+          body="Tap the heart on a video to save it here for quick access."
+        />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6">
+          {data?.map((v) => (
+            <VideoCard key={v.id} video={v} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function WatchLaterView() {
+  const bid = useBrowserId();
+  const { data: state, isLoading } = useQuery({
+    queryKey: ["user-state", bid],
+    queryFn: () => fetchUserState(bid),
+    enabled: !!bid,
+  });
+  const ids = state?.watchLaterIds || [];
+  const { data, isLoading: vLoading } = useQuery({
+    queryKey: ["videos", "watchLater", ids.join("|")],
+    queryFn: () => fetchVideosRaw({ ids: ids.join("|") }),
+    enabled: ids.length > 0,
+  });
+
+  return (
+    <div className="px-4 sm:px-6 py-6 max-w-[1400px] mx-auto">
+      <h1 className="text-2xl font-bold mb-6 font-display flex items-center gap-2">
+        <Bookmark className="h-6 w-6 text-gold" />
+        Watch Later
+      </h1>
+      {isLoading || vLoading ? (
+        <div className="flex flex-col gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex gap-3">
+              <Skeleton className="w-[168px] sm:w-[280px] aspect-video rounded-lg shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : ids.length === 0 ? (
+        <EmptyState
+          title="Your queue is empty"
+          body="Tap 'Watch Later' on a video to add it to your queue."
+        />
+      ) : (
+        <div className="flex flex-col gap-4">
+          {data?.map((v) => (
+            <VideoCardHorizontal key={v.id} video={v} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Home, Flame, ListVideo, Clock, ThumbsUp, User, LayoutGrid, X, Compass, Sparkles, Settings, HelpCircle, MessageSquare } from "lucide-react";
+import { Home, Flame, ListVideo, Clock, ThumbsUp, User, LayoutGrid, X, Compass, Sparkles, Settings, HelpCircle, MessageSquare, Heart, Bookmark } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -41,6 +41,8 @@ const PRIMARY_TABS: DockTab[] = [
 ];
 
 const MORE_LINKS: { label: string; icon: React.ComponentType<{ className?: string }>; view: View }[] = [
+  { label: "Favorites", icon: Heart, view: { kind: "favorites" } },
+  { label: "Watch Later", icon: Bookmark, view: { kind: "watchLater" } },
   { label: "Library", icon: LayoutGrid, view: { kind: "library" } },
   { label: "History", icon: Clock, view: { kind: "history" } },
   { label: "Settings", icon: Settings, view: { kind: "settings", tab: "general" } },

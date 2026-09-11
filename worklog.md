@@ -294,3 +294,36 @@ Stage Summary:
 - Mashahd is now standalone (no Wasl/Lamahat/Midan UI).
 - Create a Channel: full 5-step identity verification flow (ID upload + face capture + match).
 - Go Live: prominent red button → easy setup → live stream with viewer count + chat.
+
+---
+Task ID: 68-72 (Fullscreen + unique video scene + Favorites + Watch Later + custom player) — COMPLETE
+Agent: main
+Task: Enable fullscreen when watching, make the video scene UI unique to Mashahd (not YouTube), add favorites + other missing features.
+
+Work Log:
+- Built MashahdPlayer (src/components/youtube/mashahd-player.tsx): a fully custom video player with Mashahd's own UI identity. Features: floating glass control bar (frosted glass pill, not a bottom-anchored bar like YouTube), custom play/pause, volume slider (expand on hover), gold-gradient scrubber with buffered indicator, time display, playback speed selector (0.5x-2x), Picture-in-Picture toggle, Settings menu, and Fullscreen toggle (native Fullscreen API). Keyboard shortcuts: f (fullscreen), space/k (play/pause), m (mute) when hovering the player. Controls auto-hide after 3s when playing. Center play/pause button with glass-strong + glow.
+- Replaced the native <video controls> in watch-view with <MashahdPlayer>. The children prop lets the bullet-comments + theater-toggle overlays render on top of the custom player.
+- Added Favorites + Watch Later system:
+  * Prisma: added favoriteVideoIds + watchLaterIds pipe-separated fields to UserState, pushed to SQLite.
+  * /api/user-state: extended GET to return favoriteVideoIds + watchLaterIds, extended POST to handle favorite/unfavorite + watchLater/removeLater actions.
+  * Store: added `favorites` + `watchLater` view kinds + viewToQuery/queryToView.
+  * Views: built FavoritesView (grid) + WatchLaterView (horizontal cards) in list-views.tsx.
+  * VideoCard: added hover-reveal Favorite (heart) + Watch Later (bookmark) quick-action buttons on the thumbnail.
+  * Watch page: added Favorite + Watch Later buttons in the action row (with filled-state styling).
+  * Dock: added Favorites + Watch Later to the More sheet.
+- VLM verified the player is "highly distinct from YouTube's standard player — a centralized floating pill rather than a bottom-anchored bar".
+
+Verification (Agent Browser + VLM):
+- Fullscreen: clicking the fullscreen button sets document.fullscreenElement = true. Escape exits.
+- Custom player: VLM confirmed floating frosted-glass control bar with play/pause, volume, time, speed (1x), PiP, fullscreen — "highly distinct from YouTube's standard player".
+- Favorite button: clicking toggles "Add to Favorites" → "Remove from Favorites" (persisted via /api/user-state POST).
+- Favorites view: /?v=favorites shows the Favorites heading + grid (or "No favorites yet" empty state).
+- Watch Later: button + view wired the same way.
+- More sheet: Favorites + Watch Later links appear at the top.
+- Lint: clean (0 errors, 0 warnings). Dev server healthy (200).
+
+Stage Summary:
+- Fullscreen works (native Fullscreen API + `f` keyboard shortcut).
+- Video scene is now unique to Mashahd — custom glass control bar, not YouTube's native player.
+- Favorites + Watch Later fully implemented (backend + UI + views + Dock integration).
+- Other features added: PiP toggle, playback speed control (0.5x-2x), volume slider, keyboard shortcuts (f/space/k/m), auto-hiding controls, buffered indicator.

@@ -1,17 +1,56 @@
 "use client";
 
+import { useState } from "react";
+import { Heart, Bookmark, Check } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/store/app-store";
 import { formatViews, formatDuration, timeAgo } from "@/lib/format";
 import type { Video } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { VerifiedBadge } from "./verified-badge";
+import { useBrowserId } from "@/hooks/use-browser-id";
+import { toast } from "sonner";
 
 export function VideoCard({ video }: { video: Video }) {
   const { navigate } = useAppStore();
+  const bid = useBrowserId();
+  const [fav, setFav] = useState(false);
+  const [later, setLater] = useState(false);
   const duration = formatDuration(video.durationSec);
   const when = timeAgo(video.createdAt);
   const viewsLabel = formatViews(video.views);
+
+  const toggleFav = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = !fav;
+    setFav(next);
+    try {
+      await fetch("/api/user-state", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ browserId: bid, videoId: video.id, action: next ? "favorite" : "unfavorite" }),
+      });
+      toast.success(next ? "Added to Favorites" : "Removed from Favorites");
+    } catch {
+      setFav(!next);
+    }
+  };
+
+  const toggleLater = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = !later;
+    setLater(next);
+    try {
+      await fetch("/api/user-state", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ browserId: bid, videoId: video.id, action: next ? "watchLater" : "removeLater" }),
+      });
+      toast.success(next ? "Added to Watch Later" : "Removed from queue");
+    } catch {
+      setLater(!next);
+    }
+  };
 
   return (
     <article
@@ -29,6 +68,31 @@ export function VideoCard({ video }: { video: Video }) {
         <span className="absolute bottom-1.5 right-1.5 bg-black/85 text-white text-[11px] font-medium px-1.5 py-0.5 rounded leading-none tabular-nums">
           {duration}
         </span>
+        {/* Favorite + Watch Later quick actions — appear on hover */}
+        <div className="absolute top-1.5 right-1.5 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={toggleFav}
+            className={cn(
+              "grid place-items-center h-8 w-8 rounded-full backdrop-blur transition-colors",
+              fav ? "bg-rose text-white" : "bg-black/70 text-white hover:bg-black/90"
+            )}
+            aria-label={fav ? "Remove from Favorites" : "Add to Favorites"}
+            title={fav ? "Remove from Favorites" : "Add to Favorites"}
+          >
+            <Heart className={cn("h-4 w-4", fav && "fill-current")} />
+          </button>
+          <button
+            onClick={toggleLater}
+            className={cn(
+              "grid place-items-center h-8 w-8 rounded-full backdrop-blur transition-colors",
+              later ? "bg-gold text-charcoal" : "bg-black/70 text-white hover:bg-black/90"
+            )}
+            aria-label={later ? "Remove from Watch Later" : "Add to Watch Later"}
+            title={later ? "Remove from Watch Later" : "Add to Watch Later"}
+          >
+            {later ? <Check className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
 
       {/* Meta */}
