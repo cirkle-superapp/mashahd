@@ -1,12 +1,9 @@
-/**
- * Push the Prisma schema to Turso by executing the SQL directly via @libsql/client.
- * Run with: bun run scripts/push-turso.ts
- */
 import { createClient } from "@libsql/client";
 
-const TURSO_URL = "libsql://mashahd-fortleem.aws-us-east-1.turso.io?authToken=eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODkxNTgwNzMsImlkIjoiMDFhMDkyMjEtOTUwMS03OGE2LTg0MzMtODUyZGFhMWM2MTkyIiwia2lkIjoiMlNGbjFBZlVSdTVMUXlrTGRzR3djNXdWV1V2RGVxV2FWODZRdlhST0MxYyIsInJpZCI6IjFhMjU1MTdiLTZlZDMtNDEyNy1iZjBlLTYxNzQ4MjQ2MDljMCJ9.2XFVQW1Ea2eGLXg1fcb-RUJXTcFQA9V9o6jPgHCf_MXJ3fsKX0TzEmSKd0X2NQIJhF9zTktLvFeRmwf9rx4ICg";
+const TURSO_URL = "libsql://mashahd-fortleem.aws-us-east-1.turso.io";
+const TURSO_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJnaWQiOiIyMTIyNTIwNy1iNWJmLTRjM2MtOGFiNS0xYmEzNDNlNjU5NmEiLCJpYXQiOjE3ODkxNjE4MTksImtpZCI6IjJTRm4xQWZVUnU1TFF5a0xkc0d3YzV3VldVdlRlcVdhVjg2UXZYUk9DMWMiLCJyaWQiOiJlNzM4OTU1MS0xMTFlLTQ5NWYtYjkxZi0zNmI5M2UyNThhNGUifQ.fygqboSEmsvwsSpP0CpZo9uMAY0sJS8uAYdcoE5bFmvOY0pIPyNB8W3ILQUhXXC12peyvcomvW8ax7NN5RfsBg";
 
-const client = createClient({ url: TURSO_URL });
+const client = createClient({ url: TURSO_URL, authToken: TURSO_TOKEN });
 
 const tables: string[] = [
   `CREATE TABLE IF NOT EXISTS Channel (
@@ -188,23 +185,24 @@ const tables: string[] = [
 
 async function main() {
   console.log("Pushing schema to Turso...");
+  let ok = 0, skip = 0, fail = 0;
   for (const sql of tables) {
     try {
       await client.execute(sql);
-      console.log("✓", sql.slice(0, 60).replace(/\n/g, " ") + "...");
+      ok++;
     } catch (e: any) {
       if (e.message?.includes("already exists")) {
-        console.log("↻ exists:", sql.slice(0, 60).replace(/\n/g, " ") + "...");
+        skip++;
       } else {
         console.error("✗", e.message?.slice(0, 100));
+        fail++;
       }
     }
   }
-  console.log("\n✅ Schema pushed to Turso successfully!");
-  
-  // Verify by listing tables
+  console.log(`\n✅ Done: ${ok} created, ${skip} already existed, ${fail} failed`);
+
   const result = await client.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name");
-  console.log("\nTables in Turso:");
+  console.log("\nTables in Turso database:");
   for (const row of result.rows) {
     console.log("  -", row.name);
   }

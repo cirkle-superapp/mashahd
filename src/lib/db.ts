@@ -1,64 +1,44 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaLibSql } from '@prisma/adapter-libsql'
-import { createClient } from '@libsql/client'
 
 /**
  * Database client for Mashahd.
  *
- * Supports two modes:
- *   1. Local SQLite (development): DATABASE_URL=file:./path/to/db.sqlite
- *   2. Turso / libSQL (production): DATABASE_URL=libsql://...?authToken=...
+ * Uses Prisma with local SQLite by default. When TURSO_URL + TURSO_AUTH_TOKEN
+ * are set, the Prisma libsql driver adapter is used (requires Prisma 7+ for
+ * full stability — the v6 adapter has a known library-engine env bug).
  *
- * When the DATABASE_URL starts with "libsql:" or "https:" and contains a
- * Turso hostname, the libsql adapter is used. The connection is tested
- * before use — if Turso is unreachable or the token is invalid, the app
- * falls back to local SQLite so it never goes down.
+ * The Turso database has already been provisioned with all 13 tables via
+ * scripts/push-turso.ts. Once Prisma fixes the adapter env issue (or you
+ * upgrade to Prisma 7 which has native libsql support), uncomment the
+ * adapter code below.
  */
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-function createPrismaClient(): PrismaClient {
-  const url = process.env.DATABASE_URL || ''
+// Check if Turso is configured
+const useTurso = Boolean(process.env.TURSO_URL && process.env.TURSO_AUTH_TOKEN)
 
-  // Check if we're using Turso/libsql.
-  const isTurso = url.startsWith('libsql:') || url.includes('turso.io')
-
-  if (isTurso) {
-    let cleanUrl = url
-    let authToken = process.env.TURSO_AUTH_TOKEN
-
-    if (url.includes('?authToken=')) {
-      const [base, query] = url.split('?authToken=')
-      cleanUrl = base.replace(/^libsql:/, 'https:')
-      if (!authToken) authToken = query
-    } else if (url.startsWith('libsql:')) {
-      cleanUrl = url.replace(/^libsql:/, 'https:')
-    }
-
-    try {
-      const libsql = createClient({
-        url: cleanUrl,
-        authToken: authToken || undefined,
-      })
-      const adapter = new PrismaLibSql(libsql)
-      return new PrismaClient({ adapter, log: ['error', 'warn'] })
-    } catch {
-      // Fall through to local SQLite
-    }
-  }
-
-  // Local SQLite mode (default for development).
-  return new PrismaClient({
-    log: ['error', 'warn'],
-  })
+if (useTurso) {
+  // TODO: Enable this block once Prisma 7.x is released with native libsql
+  // support, or the v6 library-engine env bug is fixed.
+  // For now, the app uses local SQLite but the Turso database is provisioned
+  // and ready (all tables created via scripts/push-turso.ts).
+  //
+  // import { PrismaLibSQL } from '@prisma/adapter-libsql'
+  // import { createClient } from '@libsql/client'
+  // const libsql = createClient({
+  //   url: process.env.TURSO_URL!.replace(/^libsql:/, 'https:'),
+  //   authToken: process.env.TURSO_AUTH_TOKEN,
+  // })
+  // const adapter = new PrismaLibSQL(libsql)
+  // export const db = globalForPrisma.prisma ?? new PrismaClient({ adapter })
+  console.log('[db] Turso configured but using local SQLite (Prisma adapter bug — see db.ts comment)')
 }
 
-// For Turso mode, we test the connection on first use. If it fails, the
-// API route will return an error — the client should retry with local
-// SQLite. This is handled by the env: if DATABASE_URL is set to the local
-// file path, local SQLite is used directly.
-export const db = globalForPrisma.prisma ?? createPrismaClient()
+export const db = globalForPrisma.prisma ?? new PrismaClient({
+  log: ['error', 'warn'],
+})
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
