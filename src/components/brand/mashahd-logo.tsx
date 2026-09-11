@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 /**
- * MashaheLogo — animated brand mark.
+ * MashahdLogo — animated brand mark.
  *
  * Adapted from CIRKLE's CircleMark (دواير): three interlocking circles
  * arranged in a triangle, with a gold→rose→teal gradient stroke and a
@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
  *   animated  — if false, renders a static mark (for favicons / SSR-safe spots)
  *   className  — extra classes on the wrapping element
  */
-export function MashaheMark({
+export function MashahdMark({
   size = 32,
   animated = true,
   className,
@@ -45,18 +45,18 @@ export function MashaheMark({
       viewBox="0 0 100 100"
       fill="none"
       role="img"
-      aria-label="Mashahe logo"
+      aria-label="Mashahd logo"
       className={cn(animated && "animate-orb-float", className)}
       {...(animProps as Record<string, unknown>)}
     >
       <defs>
-        <linearGradient id="mashahe-grad" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id="mashahd-grad" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="hsl(var(--gold-light))" />
           <stop offset="45%" stopColor="hsl(var(--gold))" />
           <stop offset="75%" stopColor="hsl(var(--rose))" />
           <stop offset="100%" stopColor="hsl(var(--teal-light))" />
         </linearGradient>
-        <radialGradient id="mashahe-core" cx="0.5" cy="0.5" r="0.5">
+        <radialGradient id="mashahd-core" cx="0.5" cy="0.5" r="0.5">
           <stop offset="0%" stopColor="hsl(var(--gold-light))" />
           <stop offset="100%" stopColor="hsl(var(--gold-dark))" />
         </radialGradient>
@@ -67,7 +67,7 @@ export function MashaheMark({
         cx="50"
         cy="32"
         r="22"
-        stroke="url(#mashahe-grad)"
+        stroke="url(#mashahd-grad)"
         strokeWidth="3.5"
         opacity="0.95"
       />
@@ -75,7 +75,7 @@ export function MashaheMark({
         cx="32"
         cy="60"
         r="22"
-        stroke="url(#mashahe-grad)"
+        stroke="url(#mashahd-grad)"
         strokeWidth="3.5"
         opacity="0.95"
       />
@@ -83,22 +83,22 @@ export function MashaheMark({
         cx="68"
         cy="60"
         r="22"
-        stroke="url(#mashahe-grad)"
+        stroke="url(#mashahd-grad)"
         strokeWidth="3.5"
         opacity="0.95"
       />
       {/* Center node — the meeting point of the three circles. */}
-      <circle cx="50" cy="50.5" r="6.5" fill="url(#mashahe-core)" />
+      <circle cx="50" cy="50.5" r="6.5" fill="url(#mashahd-core)" />
       <circle cx="50" cy="50.5" r="2.2" fill="hsl(var(--cream))" opacity="0.85" />
     </Wrap>
   );
 }
 
 /**
- * Full lockup: animated mark + "Mashahe" wordmark with the Arabic
+ * Full lockup: animated mark + "Mashahd" wordmark with the Arabic
  * "مشاهِد" set underneath in muted gold.
  */
-export function MashaheLogo({
+export function MashahdLogo({
   size = 30,
   showWordmark = true,
   animated = true,
@@ -113,7 +113,7 @@ export function MashaheLogo({
 }) {
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
-      <MashaheMark size={size} animated={animated} />
+      <MashahdMark size={size} animated={animated} />
       {showWordmark && (
         <span
           className={cn(
@@ -122,7 +122,7 @@ export function MashaheLogo({
           )}
         >
           <span className="font-semibold tracking-tight gradient-text-gold text-[1.05em]">
-            Mashahe
+            Mashahd
           </span>
           <span
             className="text-[0.62em] text-muted-foreground -mt-0.5"

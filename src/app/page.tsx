@@ -16,6 +16,7 @@ import {
   LibraryView,
 } from "@/components/youtube/list-views";
 import { Footer } from "@/components/youtube/footer";
+import { CommandPalette } from "@/components/youtube/command-palette";
 import { cn } from "@/lib/utils";
 
 function renderView(view: ReturnType<typeof useAppStore.getState>["view"]) {
@@ -81,6 +82,8 @@ export default function Page() {
           <Footer />
         </main>
       </div>
+      {/* ⌘K Command Palette — Mashahd (adapted from CIRKLE) */}
+      <CommandPalette />
     </div>
   );
 }

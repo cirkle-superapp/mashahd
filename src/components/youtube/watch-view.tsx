@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ThumbsUp, ThumbsDown, Share2, Download, MoreHorizontal, Bell } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Share2, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,6 +12,9 @@ import { formatViews, formatSubs, formatCount, timeAgo } from "@/lib/format";
 import type { VideoWithFlags, Comment, Video } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { VideoCardHorizontal } from "./video-card";
+import { AiRecap } from "./ai-recap";
+import { SmartChapters } from "./smart-chapters";
+import { CirclePulse } from "./circle-pulse";
 import { toast } from "sonner";
 
 async function fetchVideo(id: string, bid: string) {
@@ -45,6 +48,7 @@ export function WatchView({ videoId }: { videoId: string }) {
   const { navigate } = useAppStore();
   const [showFullDesc, setShowFullDesc] = useState(false);
   const viewsRecorded = useRef(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["video", videoId, bid],
@@ -167,6 +171,7 @@ export function WatchView({ videoId }: { videoId: string }) {
           {/* Player */}
           <div className="w-full bg-black aspect-video">
             <video
+              ref={videoRef}
               key={video.id}
               className="w-full h-full"
               controls
@@ -306,6 +311,31 @@ export function WatchView({ videoId }: { videoId: string }) {
             </div>
           </div>
 
+          {/* AI features — Mashahd (adapted from CIRKLE overlays).
+              Triggered via ⌘K command palette or the gold ⭐ chip row below. */}
+          <div className="mt-4 px-4 sm:px-0 flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("mashahd:ai-summarize"))}
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-gold/30 bg-[hsl(var(--gold)/0.08)] text-foreground hover:bg-[hsl(var(--gold)/0.14)] transition-colors"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--gold))]" />
+              AI Recap
+            </button>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("mashahd:ai-chapters"))}
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-border bg-muted/60 hover:bg-accent transition-colors"
+            >
+              <ListVideo className="h-3.5 w-3.5" />
+              Smart Chapters
+            </button>
+            <span className="ml-auto">
+              <CirclePulse videoId={video.id} baseViews={video.views} />
+            </span>
+          </div>
+
+          <AiRecap videoId={videoId} />
+          <SmartChapters videoId={videoId} durationSec={video.durationSec} videoRef={videoRef} />
+
           {/* Comments */}
           <CommentsSection
             videoId={videoId}
@@ -354,6 +384,9 @@ function CommentsSection({
   const [text, setText] = useState("");
   const [posting, setPosting] = useState(false);
   const [sortNew, setSortNew] = useState(true);
+  const [translateLang, setTranslateLang] = useState<string | null>(null);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [translating, setTranslating] = useState(false);
 
   const sorted = [...(comments || [])].sort((a, b) =>
     sortNew
@@ -383,7 +416,7 @@ function CommentsSection({
 
   return (
     <section className="mt-6 px-4 sm:px-0">
-      <div className="flex items-center gap-6 mb-4">
+      <div className="flex items-center gap-3 sm:gap-6 mb-4 flex-wrap">
         <h2 className="text-base font-semibold">
           {comments?.length ?? 0} Comments
         </h2>
@@ -393,6 +426,55 @@ function CommentsSection({
         >
           Sort by: {sortNew ? "Newest first" : "Top comments"}
         </button>
+        {/* Live Translate — Mashahd (adapted from CIRKLE live-translate overlay) */}
+        <div className="flex items-center gap-1.5 ml-auto">
+          <Languages
+            className={cn("h-3.5 w-3.5", translateLang && "text-[hsl(var(--gold))]")}
+          />
+          <select
+            value={translateLang || ""}
+            onChange={async (e) => {
+              const lang = e.target.value || null;
+              setTranslateLang(lang);
+              setTranslations({});
+              if (lang && comments && comments.length > 0) {
+                setTranslating(true);
+                try {
+                  const res = await fetch("/api/ai/translate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      texts: comments.map((c) => c.text),
+                      target: lang,
+                    }),
+                  });
+                  const data = await res.json();
+                  const map: Record<string, string> = {};
+                  (data.translations || []).forEach((t: string, i: number) => {
+                    if (comments[i]) map[comments[i].id] = t;
+                  });
+                  setTranslations(map);
+                  if (data.source === "fallback") toast.info("AI offline — showing original text");
+                  else toast.success(`Translated to ${lang.toUpperCase()}`);
+                } catch {
+                  toast.error("Translation failed");
+                } finally {
+                  setTranslating(false);
+                }
+              }
+            }}
+            className="text-xs bg-transparent border border-border rounded-full px-2 py-1 focus:outline-none focus:border-foreground cursor-pointer"
+            aria-label="Translate comments"
+          >
+            <option value="">Original</option>
+            <option value="en">English</option>
+            <option value="ar">العربية</option>
+            <option value="fr">Français</option>
+            <option value="es">Español</option>
+            <option value="zh">中文</option>
+          </select>
+          {translating && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        </div>
       </div>
 
       {/* New comment */}
@@ -464,8 +546,14 @@ function CommentsSection({
                 </span>
               </div>
               <p className="text-sm mt-0.5 whitespace-pre-line break-words">
-                {c.text}
+                {translations[c.id] ?? c.text}
               </p>
+              {translations[c.id] && translateLang && (
+                <p className="text-xs text-muted-foreground mt-1 italic line-through/0">
+                  <span className="opacity-70">original: </span>
+                  {c.text}
+                </p>
+              )}
               <div className="flex items-center gap-1 mt-1.5 text-muted-foreground">
                 <button className="p-1.5 hover:text-foreground rounded-full hover:bg-accent" aria-label="Like comment">
                   <ThumbsUp className="h-3.5 w-3.5" />

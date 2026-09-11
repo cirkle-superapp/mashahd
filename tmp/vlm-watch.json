@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "(1) Yes, the animated circular logo is visible in the top-left header. (2) No, the video player itself is not visible in this specific cropped view. (3) No, the 'AI Recap' panel with a gold border is not visible. (4) Yes, the 'Smart Chapters' panel with timestamps is visible. (5) No, the 'watching now' indicator with a pulsing green dot is not visible. (6) Yes, the Translate dropdown (labeled \"الأصلية\") is visible above the comments section.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789140759,
+  "id": "20260911233237342e9a5741364b22",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260911233237342e9a5741364b22",
+  "usage": {
+    "completion_tokens": 116,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 979,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1095
+  }
+}

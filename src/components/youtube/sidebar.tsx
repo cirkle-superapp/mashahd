@@ -97,10 +97,10 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <NavSection items={settingsNav} onItemClick={onNavigate} />
 
       <div className="px-5 py-4 text-xs text-muted-foreground space-y-2">
-        <p>© 2025 ZTube — Demo UI</p>
+        <p>© 2025 Mashahd — مشاهِد</p>
         <p>
-          Built with Next.js 16, TypeScript, Tailwind CSS 4 &amp; shadcn/ui. All
-          videos, channels and comments shown here are demo content.
+          Brand mark &amp; AI concepts adapted from CIRKLE (دواير). All videos,
+          channels and comments shown here are demo content.
         </p>
       </div>
     </nav>

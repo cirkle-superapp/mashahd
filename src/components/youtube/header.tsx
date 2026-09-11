@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Search, Mic, Video, Bell, Menu, User, Sun, Moon } from "lucide-react";
+import { Search, Mic, Video, Bell, Menu, Sun, Moon, Command } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/sheet";
 import { useAppStore, View } from "@/store/app-store";
 import { Sidebar } from "./sidebar";
+import { MashahdLogo } from "@/components/brand/mashahd-logo";
+import { useCommandPalette } from "@/store/command-palette-store";
 import Link from "next/link";
 
 export function Header() {
@@ -22,6 +24,7 @@ export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showSuggest, setShowSuggest] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const openPalette = useCommandPalette((s) => s.openPalette);
 
   // next-themes reads from document on the client only; we need a mounted flag
   // to avoid a hydration mismatch on the Sun/Moon icon.
@@ -73,16 +76,9 @@ export function Header() {
         <button
           className="flex items-center gap-1 px-1 group"
           onClick={() => navigate({ kind: "home" })}
-          aria-label="Home"
+          aria-label="Mashahd home"
         >
-          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-600 group-hover:bg-red-500 transition-colors">
-            <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white" aria-hidden>
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </span>
-          <span className="hidden sm:inline font-bold text-lg tracking-tight">
-            ZTube
-          </span>
+          <MashahdLogo size={28} />
         </button>
       </div>
 
@@ -220,10 +216,21 @@ export function Header() {
           aria-label="Account"
         >
           <Avatar className="h-9 w-9 rounded-full border border-border">
-            <AvatarImage src="https://api.dicebear.com/7.x/initials/svg?seed=You&backgroundColor=dc2626" alt="" />
+            <AvatarImage src="https://api.dicebear.com/7.x/initials/svg?seed=You&backgroundColor=c2a060" alt="" />
             <AvatarFallback>Y</AvatarFallback>
           </Avatar>
         </Link>
+        {/* Command palette (⌘K) trigger — Mashahd, adapted from CIRKLE. */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="rounded-full hidden lg:inline-flex"
+          onClick={() => openPalette()}
+          aria-label="Command palette"
+          title="Command palette  (⌘K)"
+        >
+          <Command className="h-4 w-4" />
+        </Button>
       </div>
     </header>
   );

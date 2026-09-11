@@ -5,6 +5,7 @@ import { useAppStore } from "@/store/app-store";
 import { formatViews, formatDuration, timeAgo } from "@/lib/format";
 import type { Video } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { VerifiedBadge } from "./verified-badge";
 
 export function VideoCard({ video }: { video: Video }) {
   const { navigate } = useAppStore();
@@ -54,9 +55,10 @@ export function VideoCard({ video }: { video: Video }) {
               e.stopPropagation();
               navigate({ kind: "channel", channelId: video.channelId });
             }}
-            className="block mt-1 text-xs text-muted-foreground hover:text-foreground transition-colors text-left truncate"
+            className="block mt-1 text-xs text-muted-foreground hover:text-foreground transition-colors text-left truncate inline-flex items-center gap-1"
           >
-            {video.channel.name}
+            <span className="truncate">{video.channel.name}</span>
+            {video.channel.subscribers >= 1_000_000 && <VerifiedBadge size={12} />}
           </button>
           <p className="text-xs text-muted-foreground truncate">
             {viewsLabel} • {when}

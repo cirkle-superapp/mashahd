@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { VideoCard } from "./video-card";
 import { CategoryChips } from "./category-chips";
+import { MoodFilter, moodToCategory, type MoodId } from "./mood-filter";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Video } from "@/lib/types";
 
@@ -19,15 +20,34 @@ async function fetchVideos(params: { category?: string; sort?: string }) {
 
 export function HomeView() {
   const [category, setCategory] = useState("All");
+  const [mood, setMood] = useState<MoodId | null>(null);
+
+  // When a mood is active, derive a category from it (overrides the chip
+  // selection so the two don't fight each other).
+  const effectiveCategory = useMemo(() => {
+    if (mood) return moodToCategory(mood) || "All";
+    return category;
+  }, [mood, category]);
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["videos", "home", category],
-    queryFn: () => fetchVideos({ category, sort: "recent" }),
+    queryKey: ["videos", "home", effectiveCategory],
+    queryFn: () => fetchVideos({ category: effectiveCategory, sort: "recent" }),
   });
 
   return (
     <div>
-      <CategoryChips active={category} onSelect={setCategory} />
+      <CategoryChips active={mood ? "All" : category} onSelect={(c) => { setCategory(c); setMood(null); }} />
+      <div className="pt-2 pb-1">
+        <MoodFilter active={mood} onSelect={setMood} />
+      </div>
       <div className="px-4 sm:px-6 py-4">
+        {mood && (
+          <p className="text-xs text-muted-foreground mb-3">
+            Showing{" "}
+            <span className="text-[hsl(var(--gold))] font-medium">{mood}</span> picks
+            from {effectiveCategory === "All" ? "all categories" : effectiveCategory}.
+          </p>
+        )}
         {isError && (
           <p className="text-destructive text-sm py-12 text-center">
             Could not load videos. Please try again.

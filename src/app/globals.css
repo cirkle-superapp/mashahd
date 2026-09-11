@@ -77,7 +77,7 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 
-  /* Mashahe brand palette — adapted from CIRKLE (دواير).
+  /* Mashahd brand palette — adapted from CIRKLE (دواير).
      Sand-gold accent + deep teal secondary, used by the animated logo,
      verified badges, and AI feature affordances. */
   --gold: 39 55% 60%;          /* #C2A060 — middle sand-gold stop */
@@ -184,7 +184,7 @@
     overflow: hidden;
   }
 
-  /* ── Mashahe brand utilities (adapted from CIRKLE) ── */
+  /* ── Mashahd brand utilities (adapted from CIRKLE) ── */
 
   /* Gold gradient text — used for the wordmark + AI affordances. */
   .gradient-text-gold {

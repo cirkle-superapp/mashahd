@@ -15,13 +15,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ZTube — Watch, share and discover videos",
+  title: "Mashahd — مشاهِد | Watch, share and discover videos",
   description:
-    "A YouTube-style video sharing demo built with Next.js 16, TypeScript, Tailwind CSS 4 and shadcn/ui. Browse the home feed, watch videos, leave comments, subscribe to channels and more.",
+    "Mashahd (مشاهِد) — an AI-native video discovery app. Browse the home feed, watch videos, leave comments, subscribe to channels, get AI summaries, smart chapters and live translations. Brand mark & AI concepts adapted from CIRKLE (دواير).",
   keywords: [
     "video",
     "streaming",
-    "youtube",
+    "mashahd",
+ "مشاهِد",
+    "cirkle",
+    "AI video",
     "next.js",
     "typescript",
     "tailwind",
@@ -32,9 +35,9 @@ export const metadata: Metadata = {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
   openGraph: {
-    title: "ZTube — Watch, share and discover videos",
-    description: "A YouTube-style video sharing demo.",
-    siteName: "ZTube",
+    title: "Mashahd — مشاهِد | Watch, share and discover videos",
+    description: "An AI-native video discovery app. Brand & concepts adapted from CIRKLE.",
+    siteName: "Mashahd",
     type: "website",
   },
 };

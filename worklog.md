@@ -74,3 +74,41 @@ Work Log:
 
 Stage Summary:
 - Exploration complete. Beginning implementation.
+
+---
+Task ID: 16-25 (Mashahd rebrand + CIRKLE feature import) — COMPLETE
+Agent: main
+Task: Rename ZTube -> Mashahd (مشاهِد), adopt CIRKLE's animated circle logo + brand palette, and import features from CIRKLE not yet implemented.
+
+Work Log:
+- User clarified the name is "mashahd" (مشاهِد), matching CIRKLE's video pillar. Fixed all references (Mashahe -> Mashahd).
+- Added Mashahd brand palette to globals.css: gold (39 55% 60%), gold-light, gold-dark, teal (195 56% 22%), rose, cream. Added brand utilities: gradient-text-gold, animate-orb-float, pulse-ring, ring-gold, shimmer-gold.
+- Created src/components/brand/mashahd-logo.tsx: MashahdMark (animated SVG — three interlocking circles in a triangle, rotating 30s linear, gold→rose→teal gradient stroke, gold center node with cream highlight) + MashahdLogo (mark + "Mashahd" wordmark with Arabic مشاهِد underneath). Adapted from CIRKLE's CircleMark.
+- Renamed ZTube -> Mashahd in: header (logo), footer (logo + wordmark + Arabic), sidebar (copyright), layout metadata (title, description, keywords, OG).
+- Built Command Palette (⌘K / Ctrl+K): src/store/command-palette-store.ts + src/components/youtube/command-palette.tsx. Groups: Navigate (6 views), Quick Actions (search, theme toggle, reload demo data), AI Features (summarize, chapters, translate). Uses shadcn Command (cmdk) + Dialog. Fixed two bugs: (1) header was reading s.open instead of s.openPalette; (2) refactored from CommandDialog to raw Dialog+Command with DialogTitle for a11y.
+- Built 3 AI backend routes using z-ai-web-dev-sdk (LLM skill):
+  * POST /api/ai/summarize — returns {tldr, takeaways[], bestMoment, vibe} JSON
+  * POST /api/ai/chapters — returns {chapters[{title,seconds,mood,summary}]} clamped to video duration
+  * POST /api/ai/translate — returns {translations[]} for a batch of comment texts to en/ar/fr/es/zh
+  All have deterministic fallbacks if the LLM fails. Verified all three return 200 with real AI output.
+- Built AiRecap component (watch-view): gold-bordered panel, listens for mashahd:ai-summarize event, shows TL;DR + numbered key takeaways + "Best moment" highlight + vibe label. Shimmer skeleton while loading.
+- Built SmartChapters component (watch-view): listens for mashahd:ai-chapters event, renders clickable chapter list with timestamps/moods/summaries, seeks the <video> on click, tracks active chapter via timeupdate, progress bar with jump segments.
+- Built CirclePulse component (watch-view): "N watching now" with pulsing green dot, count derived from views and gently fluctuates every 3.5s.
+- Added Live Translate to comments section: dropdown (Original/English/العربية/Français/Español/中文), calls /api/ai/translate, shows translated text with original below in muted italic.
+- Built MoodFilter for home (Chill/Focus/Hype/Cozy/Curious/Awe) — adapted from CIRKLE mood-feed. Selecting a mood cycles the feed through matching categories with a gold-gradient active pill.
+- Built VerifiedBadge (gold checkmark) for channels with ≥1M subscribers, added to VideoCard.
+- Mounted <CommandPalette /> globally in page.tsx.
+
+Verification (Agent Browser + VLM):
+- Home page: VLM confirmed animated circle logo, gold verified badges next to 1M+ channels, mood filter row (Chill/Focus/Hype/Cozy/Curious/Awe), Mashahd wordmark with Arabic مشاهِد.
+- Watch page (full-page VLM): confirmed (1) animated circle logo, (2) video player, (3) AI Recap panel with gold border + TL;DR + key takeaways + "INTENSE" vibe label, (4) Smart Chapters panel with timestamps and moods ("Preparation & Setup" 0:00 focused), (5) "3,215 watching now" with pulsing green dot, (6) Live Translate dropdown set to العربية.
+- Command Palette: opens via ⌘K or header button; shows Navigate/Quick Actions/AI Features groups; triggered AI Recap from palette → LLM returned a real recap.
+- AI endpoints tested via curl: summarize (source: ai, vibe: Triumphant/Intense), chapters (5 chapters with moods), translate (English→Arabic, correct translation).
+- Live Translate: comments translated to Arabic with original text shown below.
+- Lint: clean (0 errors, 0 warnings). Dev server healthy.
+
+Stage Summary:
+- Mashahd (مشاهِد) is live at http://localhost:3000/ (preview via Preview Panel).
+- Brand: animated three-circle logo (gold→rose→teal gradient, 30s rotation + float), Mashahd wordmark + Arabic مشاهِد, gold verified badges, gold-accented AI affordances.
+- 7 features imported from CIRKLE: animated circle logo, Command Palette (⌘K), AI Recap (LLM summarize), Smart Chapters (LLM chapters + video seeking), Circle Pulse (live viewers), Live Translate (LLM comment translation, 5 languages), Mood filter, Verified badge.
+- All AI features backed by real z-ai LLM calls with graceful fallbacks.

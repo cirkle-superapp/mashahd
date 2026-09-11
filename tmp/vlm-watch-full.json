@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "(1) Y - The 'Mashahd' logo in the bottom-left sidebar features three interlocking gold/teal circles.\n(2) Y - A large video player showing a cyberpunk racing game is at the top of the main content area.\n(3) Y - The 'AI Recap' panel is visible with a gold-tinted border, containing TL;DR, key takeaways, and an 'INTENSE' vibe label.\n(4) Y - The 'Smart Chapters' panel lists chapters like 'Preparation & Setup' with timestamps (0:00) and moods ('focused').\n(5) Y - A green pulsing dot appears next to the text '3,215 watching now' below the video description.\n(6) Y - A dropdown menu set to 'العربية' (Arabic) is located to the right of the '2 Comments' header.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789140775,
+  "id": "2026091123325030594baa506e4bb2",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "2026091123325030594baa506e4bb2",
+  "usage": {
+    "completion_tokens": 184,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 3134,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3318
+  }
+}
