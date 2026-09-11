@@ -1,13 +1,12 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, Share2, MoreHorizontal } from "lucide-react";
+import { Bell, Share2, MoreHorizontal, Heart, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useBrowserId } from "@/hooks/use-browser-id";
-import { formatSubs } from "@/lib/format";
+import { formatSubs, formatViews } from "@/lib/format";
 import type { ChannelWithFlags, Video } from "@/lib/types";
 import { VideoCard } from "./video-card";
 import { useAppStore } from "@/store/app-store";
@@ -64,18 +63,11 @@ export function ChannelView({ channelId }: { channelId: string }) {
         const delta = action === "subscribe" ? 1 : -1;
         return {
           ...old,
-          channel: {
-            ...old.channel,
-            subscribers: old.channel.subscribers + delta,
-          },
+          channel: { ...old.channel, subscribers: old.channel.subscribers + delta },
           subscribed: action === "subscribe",
         };
       });
-      toast.success(
-        action === "subscribe"
-          ? `Subscribed to ${channel?.name}`
-          : `Unsubscribed from ${channel?.name}`
-      );
+      toast.success(action === "subscribe" ? `Subscribed to ${channel?.name}` : `Unsubscribed from ${channel?.name}`);
     },
   });
 
@@ -83,12 +75,8 @@ export function ChannelView({ channelId }: { channelId: string }) {
   if (isError || !channel) {
     return (
       <div className="px-6 py-24 text-center">
-        <p className="text-lg font-medium text-muted-foreground">
-          Channel not found
-        </p>
-        <Button variant="secondary" className="mt-4" onClick={() => navigate({ kind: "home" })}>
-          Back to home
-        </Button>
+        <p className="text-lg font-medium text-muted-foreground">Channel not found</p>
+        <Button variant="secondary" className="mt-4" onClick={() => navigate({ kind: "home" })}>Back to home</Button>
       </div>
     );
   }
@@ -96,24 +84,24 @@ export function ChannelView({ channelId }: { channelId: string }) {
   const subscribed = data?.subscribed;
   const colors = channel.bannerColors.split(",");
   const gradient = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1] || colors[0]} 50%, ${colors[2] || colors[1] || colors[0]} 100%)`;
-
   const popular = [...(videos || [])].sort((a, b) => b.views - a.views);
+  const recent = videos || [];
+  const totalViewCount = recent.reduce((sum, v) => sum + (v.views || 0), 0);
+  const joined = new Date(channel.createdAt);
+  const joinedStr = joined.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 
   return (
     <div className="pb-12">
       {/* Banner */}
-      <div
-        className="h-32 sm:h-48 lg:h-56 w-full"
-        style={{ background: gradient }}
-      />
+      <div className="h-32 sm:h-48 lg:h-56 w-full relative" style={{ background: gradient }}>
+        <div className="absolute inset-0 bg-gradient-to-t from-background/40 to-transparent" />
+      </div>
 
-      {/* Header */}
+      {/* Hero — avatar + name + subscribe + support */}
       <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-4 sm:items-center max-w-[1500px] mx-auto">
         <Avatar className="h-24 w-24 sm:h-32 sm:w-32 rounded-full border-4 border-background -mt-12 sm:-mt-16 shrink-0">
           <AvatarImage src={channel.avatarUrl} alt="" />
-          <AvatarFallback className="text-2xl">
-            {channel.name.slice(0, 1)}
-          </AvatarFallback>
+          <AvatarFallback className="text-2xl">{channel.name.slice(0, 1)}</AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold">{channel.name}</h1>
@@ -122,33 +110,22 @@ export function ChannelView({ channelId }: { channelId: string }) {
             <span>•</span>
             <span>{formatSubs(channel.subscribers)}</span>
             <span>•</span>
-            <span>{videos?.length || 0} videos</span>
+            <span>{recent.length} videos</span>
+            <span>•</span>
+            <span>{formatViews(totalViewCount)} total views</span>
           </div>
-          <p className="mt-2 text-sm text-muted-foreground line-clamp-2 max-w-2xl">
-            {channel.description}
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground line-clamp-2 max-w-2xl">{channel.description}</p>
           <div className="mt-4 flex items-center gap-2 flex-wrap">
-            <Button
-              variant={subscribed ? "secondary" : "default"}
-              size="sm"
-              className={cn(
-                "rounded-full h-9 px-5 font-medium",
-                subscribed
-                  ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90"
-              )}
-              onClick={() =>
-                subMutation.mutate(subscribed ? "unsubscribe" : "subscribe")
-              }
-              disabled={subMutation.isPending}
-            >
-              {subscribed ? (
-                <>
-                  <Bell className="h-4 w-4 mr-1.5" /> Subscribed
-                </>
-              ) : (
-                "Subscribe"
-              )}
+            <Button variant={subscribed ? "secondary" : "default"} size="sm"
+              className={cn("rounded-full h-9 px-5 font-medium", subscribed ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" : "bg-primary text-primary-foreground hover:bg-primary/90")}
+              onClick={() => subMutation.mutate(subscribed ? "unsubscribe" : "subscribe")} disabled={subMutation.isPending}>
+              {subscribed ? (<><Bell className="h-4 w-4 mr-1.5" /> Subscribed</>) : ("Subscribe")}
+            </Button>
+            {/* Creator Support button — Cirkle's creator economy (0% fees) */}
+            <Button variant="secondary" size="sm"
+              className="rounded-full h-9 px-4 bg-gradient-to-r from-[hsl(var(--gold)/0.15)] to-transparent border border-gold/30 hover:border-gold/50"
+              onClick={() => toast.info("Support feature coming soon — CirkleMint integration", { description: "Tip creators directly with 0% fees." })}>
+              <Heart className="h-4 w-4 mr-1.5 text-rose" /> Support
             </Button>
             <Button variant="secondary" size="sm" className="rounded-full h-9 px-4 bg-muted hover:bg-accent">
               <Share2 className="h-4 w-4 mr-1.5" /> Share
@@ -160,67 +137,63 @@ export function ChannelView({ channelId }: { channelId: string }) {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="px-4 sm:px-6 mt-4">
-        <Tabs defaultValue="home">
-          <TabsList className="bg-transparent h-10 border-b border-border rounded-none w-full sm:w-auto justify-start overflow-x-auto">
-            <TabsTrigger value="home" className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none">
-              Home
-            </TabsTrigger>
-            <TabsTrigger value="videos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none">
-              Videos
-            </TabsTrigger>
-            <TabsTrigger value="popular" className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none">
-              Popular
-            </TabsTrigger>
-            <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none">
-              About
-            </TabsTrigger>
-          </TabsList>
+      {/* Single-scroll story view — no tabs, just continuous sections */}
+      <div className="px-4 sm:px-6 mt-6 max-w-[1500px] mx-auto space-y-8">
+        {/* Featured video */}
+        {popular[0] && (
+          <section>
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-4 w-4 text-gold" />
+              <h2 className="text-base font-semibold font-display">Featured</h2>
+            </div>
+            <div className="max-w-2xl"><VideoCard video={popular[0]} /></div>
+          </section>
+        )}
 
-          <TabsContent value="home" className="mt-6">
-            {popular[0] && (
-              <div className="mb-6">
-                <h2 className="text-base font-semibold mb-3">Latest video</h2>
-                <div className="max-w-2xl">
-                  <VideoCard video={popular[0]} />
-                </div>
-              </div>
-            )}
-            <h2 className="text-base font-semibold mb-3">Recent uploads</h2>
-            <VideoGrid videos={videos || []} />
-          </TabsContent>
+        {/* Recent uploads — horizontal carousel on mobile, grid on desktop */}
+        <section>
+          <h2 className="text-base font-semibold mb-3 font-display">Recent uploads</h2>
+          <div className="flex gap-4 overflow-x-auto pb-2 md:hidden custom-scroll-x">
+            {recent.map((v) => (<div key={v.id} className="shrink-0 w-64"><VideoCard video={v} /></div>))}
+          </div>
+          <div className="hidden md:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6">
+            {recent.map((v) => (<VideoCard key={v.id} video={v} />))}
+          </div>
+        </section>
 
-          <TabsContent value="videos" className="mt-6">
-            <VideoGrid videos={videos || []} />
-          </TabsContent>
+        {/* Most popular */}
+        {popular.length > 1 && (
+          <section>
+            <h2 className="text-base font-semibold mb-3 font-display">Most popular</h2>
+            <div className="flex gap-4 overflow-x-auto pb-2 md:hidden custom-scroll-x">
+              {popular.slice(0, 10).map((v) => (<div key={v.id} className="shrink-0 w-64"><VideoCard video={v} /></div>))}
+            </div>
+            <div className="hidden md:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6">
+              {popular.slice(0, 12).map((v) => (<VideoCard key={v.id} video={v} />))}
+            </div>
+          </section>
+        )}
 
-          <TabsContent value="popular" className="mt-6">
-            <VideoGrid videos={popular} />
-          </TabsContent>
-
-          <TabsContent value="about" className="mt-6">
-            <AboutPanel channel={channel} videoCount={videos?.length || 0} totalViews={totalViews(videos || [])} />
-          </TabsContent>
-        </Tabs>
+        {/* About — inline */}
+        <section>
+          <h2 className="text-base font-semibold mb-3 font-display">About</h2>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Description</h3>
+              <p className="text-sm leading-relaxed whitespace-pre-line">{channel.description}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Channel details</h3>
+              <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-xl border border-border bg-card p-3"><dt className="text-xs text-muted-foreground">Subscribers</dt><dd className="text-sm font-medium mt-0.5 tabular-nums">{formatSubs(channel.subscribers)}</dd></div>
+                <div className="rounded-xl border border-border bg-card p-3"><dt className="text-xs text-muted-foreground">Videos</dt><dd className="text-sm font-medium mt-0.5 tabular-nums">{recent.length}</dd></div>
+                <div className="rounded-xl border border-border bg-card p-3"><dt className="text-xs text-muted-foreground">Total views</dt><dd className="text-sm font-medium mt-0.5 tabular-nums">{formatViews(totalViewCount)}</dd></div>
+                <div className="rounded-xl border border-border bg-card p-3"><dt className="text-xs text-muted-foreground">Joined</dt><dd className="text-sm font-medium mt-0.5">{joinedStr}</dd></div>
+              </dl>
+            </div>
+          </div>
+        </section>
       </div>
-    </div>
-  );
-}
-
-function VideoGrid({ videos }: { videos: Video[] }) {
-  if (videos.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground py-12 text-center">
-        No videos yet.
-      </p>
-    );
-  }
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6">
-      {videos.map((v) => (
-        <VideoCard key={v.id} video={v} />
-      ))}
     </div>
   );
 }
@@ -235,102 +208,17 @@ function ChannelSkeleton() {
           <Skeleton className="h-7 w-48" />
           <Skeleton className="h-4 w-64" />
           <Skeleton className="h-4 w-96 max-w-full" />
-          <div className="flex gap-2 mt-3">
-            <Skeleton className="h-9 w-32 rounded-full" />
-            <Skeleton className="h-9 w-24 rounded-full" />
+          <div className="flex gap-2 mt-3"><Skeleton className="h-9 w-32 rounded-full" /><Skeleton className="h-9 w-24 rounded-full" /></div>
+        </div>
+      </div>
+      <div className="px-6 mt-4 space-y-8">
+        <div><Skeleton className="h-5 w-32 mb-3" /><Skeleton className="aspect-video w-full max-w-2xl rounded-xl" /></div>
+        <div><Skeleton className="h-5 w-32 mb-3" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (<div key={i}><Skeleton className="aspect-video w-full rounded-xl" /><Skeleton className="h-4 w-3/4 mt-2" /><Skeleton className="h-3 w-1/2 mt-1" /></div>))}
           </div>
         </div>
       </div>
-      <div className="px-6 mt-4">
-        <Skeleton className="h-10 w-96 max-w-full" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-6">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i}>
-              <Skeleton className="aspect-video w-full rounded-xl" />
-              <Skeleton className="h-4 w-3/4 mt-2" />
-              <Skeleton className="h-3 w-1/2 mt-1" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function totalViews(videos: Video[]): number {
-  return videos.reduce((sum, v) => sum + (v.views || 0), 0);
-}
-
-function formatBig(n: number): string {
-  if (n < 1000) return `${n}`;
-  if (n < 1_000_000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K`;
-  if (n < 1_000_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  return `${(n / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}B`;
-}
-
-function AboutPanel({
-  channel,
-  videoCount,
-  totalViews,
-}: {
-  channel: ChannelWithFlags;
-  videoCount: number;
-  totalViews: number;
-}) {
-  const joined = new Date(channel.createdAt);
-  const joinedStr = joined.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const stats = [
-    { label: "Subscribers", value: formatBig(channel.subscribers) },
-    { label: "Videos", value: `${videoCount}` },
-    { label: "Total views", value: formatBig(totalViews) },
-    { label: "Handle", value: `@${channel.handle}` },
-  ];
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div className="md:col-span-2 space-y-4">
-        <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-            Description
-          </h3>
-          <p className="text-sm leading-relaxed whitespace-pre-line">
-            {channel.description}
-          </p>
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-            Channel details
-          </h3>
-          <dl className="grid grid-cols-2 gap-3">
-            {stats.map((s) => (
-              <div key={s.label} className="rounded-xl border border-border bg-card p-3">
-                <dt className="text-xs text-muted-foreground">{s.label}</dt>
-                <dd className="text-sm font-medium mt-0.5 tabular-nums">{s.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </div>
-      <aside className="space-y-3">
-        <div className="rounded-xl border border-gold/20 bg-gradient-to-br from-[hsl(var(--gold)/0.08)] to-transparent p-4">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-            Joined
-          </h3>
-          <p className="text-sm font-medium">{joinedStr}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-            Reach
-          </h3>
-          <p className="text-sm">
-            <span className="font-medium tabular-nums">{formatBig(totalViews)}</span>{" "}
-            <span className="text-muted-foreground">total views across {videoCount} video{videoCount === 1 ? "" : "s"}.</span>
-          </p>
-        </div>
-      </aside>
     </div>
   );
 }
