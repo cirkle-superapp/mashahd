@@ -215,10 +215,10 @@ export function WatchView({ videoId }: { videoId: string }) {
                 variant={subscribed ? "secondary" : "default"}
                 size="sm"
                 className={cn(
-                  "rounded-full ml-2 h-9 px-4",
+                  "rounded-full ml-2 h-9 px-4 font-medium",
                   subscribed
-                    ? "bg-secondary text-foreground hover:bg-secondary/80"
-                    : "bg-foreground text-background hover:bg-foreground/90"
+                    ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90"
                 )}
                 onClick={() =>
                   subMutation.mutate(subscribed ? "unsubscribe" : "subscribe")
@@ -245,7 +245,7 @@ export function WatchView({ videoId }: { videoId: string }) {
                   disabled={likeMutation.isPending}
                   className={cn(
                     "flex items-center gap-2 px-4 h-full hover:bg-accent transition-colors text-sm font-medium",
-                    liked && "text-blue-500"
+                    liked && "text-teal-light"
                   )}
                   aria-label="Like"
                 >
@@ -291,7 +291,7 @@ export function WatchView({ videoId }: { videoId: string }) {
               >
                 {video.description}
                 {video.tags && (
-                  <span className="block mt-2 text-blue-500 text-xs">
+                  <span className="block mt-2 text-teal text-xs">
                     {video.tags
                       .split("|")
                       .filter(Boolean)
@@ -480,7 +480,7 @@ function CommentsSection({
       {/* New comment */}
       <div className="flex gap-3 mb-6">
         <Avatar className="h-9 w-9 rounded-full shrink-0">
-          <AvatarImage src="https://api.dicebear.com/7.x/initials/svg?seed=You&backgroundColor=dc2626" alt="" />
+          <AvatarImage src="https://api.dicebear.com/7.x/initials/svg?seed=You&backgroundColor=1a4a5a" alt="" />
           <AvatarFallback>Y</AvatarFallback>
         </Avatar>
         <div className="flex-1">
@@ -508,7 +508,7 @@ function CommentsSection({
               </Button>
               <Button
                 size="sm"
-                className="rounded-full bg-foreground text-background hover:bg-foreground/90"
+                className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={submit}
                 disabled={posting}
               >

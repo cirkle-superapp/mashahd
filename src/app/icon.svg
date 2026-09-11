@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E5C98A"/>
+      <stop offset="45%" stop-color="#C2A060"/>
+      <stop offset="75%" stop-color="#C2707A"/>
+      <stop offset="100%" stop-color="#2A6A7A"/>
+    </linearGradient>
+    <radialGradient id="core" cx="0.5" cy="0.5" r="0.5">
+      <stop stop-color="#E5C98A"/>
+      <stop offset="100%" stop-color="#9A7A3E"/>
+    </radialGradient>
+  </defs>
+  <!-- Background fill so the mark reads on browser tab bars (cream). -->
+  <rect width="100" height="100" rx="22" fill="#FDFCF9"/>
+  <!-- Three interlocking circles (Mashahd mark) -->
+  <circle cx="50" cy="32" r="22" stroke="url(#g)" stroke-width="4" fill="none"/>
+  <circle cx="32" cy="60" r="22" stroke="url(#g)" stroke-width="4" fill="none"/>
+  <circle cx="68" cy="60" r="22" stroke="url(#g)" stroke-width="4" fill="none"/>
+  <!-- Center node -->
+  <circle cx="50" cy="50.5" r="6.5" fill="url(#core)"/>
+  <circle cx="50" cy="50.5" r="2.2" fill="#FDFCF9" opacity="0.9"/>
+</svg>

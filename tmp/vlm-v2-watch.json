@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "(1) **Y** - The background is a clean off-white/cream color.\n(2) **Y** - The top-left logo is a circular gold and teal icon.\n(3) **Y** - The \"Subscribe\" button is a solid deep teal.\n(4) **Y** - The \"Like\" button (showing 18.9K) is teal, not blue.\n(5) **N** - There are no AI Recap or Smart Chapters panels visible in this view.\n(6) **N** - The comments section and Live Translate dropdown are not visible in the current viewport.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789142880,
+  "id": "202609120007578355565875ec4244",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609120007578355565875ec4244",
+  "usage": {
+    "completion_tokens": 126,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 995,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1121
+  }
+}

@@ -42,14 +42,14 @@ export function Header() {
   const [liveSearch] = useState(["next.js", "ramen recipe", "iceland travel", "elden ring", "workout", "lofi beats", "tesla"]);
 
   return (
-    <header className="sticky top-0 z-50 h-14 flex items-center gap-2 sm:gap-4 px-2 sm:px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border">
+    <header className="sticky top-0 z-50 h-14 flex items-center gap-2 sm:gap-4 px-2 sm:px-4 glass-strong border-b border-gold/15">
       {/* Left: hamburger + logo */}
       <div className="flex items-center gap-2 shrink-0">
         {/* Desktop hamburger */}
         <Button
           variant="ghost"
           size="icon"
-          className="hidden md:flex rounded-full"
+          className="hidden md:flex rounded-full hover:bg-gold/10"
           aria-label="Toggle menu"
           onClick={toggleSidebar}
         >
@@ -61,7 +61,7 @@ export function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden rounded-full"
+              className="md:hidden rounded-full hover:bg-gold/10"
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
@@ -99,7 +99,7 @@ export function Header() {
                 }
               }}
               placeholder="Search"
-              className="w-full h-10 rounded-full md:rounded-l-full md:rounded-r-none md:border-r-0 pr-12 md:pr-4 bg-muted/50 border-border focus-visible:ring-1 focus-visible:ring-red-500"
+              className="w-full h-10 rounded-full md:rounded-l-full md:rounded-r-none md:border-r-0 pr-12 md:pr-4 bg-surface/70 border-border focus-visible:ring-1 focus-visible:ring-gold/60 placeholder:text-muted-foreground"
               aria-label="Search"
             />
             {/* Mobile search submit button */}
@@ -151,7 +151,7 @@ export function Header() {
           <Button
             type="button"
             variant="secondary"
-            className="hidden md:flex h-10 rounded-r-full px-6 bg-muted hover:bg-accent border border-l-0 border-border"
+            className="hidden md:flex h-10 rounded-r-full px-6 bg-surface hover:bg-gold/10 border border-l-0 border-border text-foreground"
             onClick={() => submitSearch(searchDraft)}
             aria-label="Search"
           >
@@ -161,7 +161,7 @@ export function Header() {
           <Button
             variant="ghost"
             size="icon"
-            className="hidden md:flex ml-2 rounded-full bg-muted"
+            className="hidden md:flex ml-2 rounded-full bg-surface hover:bg-gold/10"
             aria-label="Voice search"
             title="Voice search"
           >
@@ -175,7 +175,7 @@ export function Header() {
         <Button
           variant="ghost"
           size="icon"
-          className="rounded-full hidden sm:inline-flex"
+          className="rounded-full hidden sm:inline-flex hover:bg-gold/10"
           aria-label="Create"
           title="Create"
         >
@@ -184,18 +184,18 @@ export function Header() {
         <Button
           variant="ghost"
           size="icon"
-          className="rounded-full hidden sm:inline-flex relative"
+          className="rounded-full hidden sm:inline-flex relative hover:bg-gold/10"
           aria-label="Notifications"
           title="Notifications"
         >
           <Bell className="h-5 w-5" />
-          <span className="absolute top-1 right-1.5 w-2 h-2 bg-red-600 rounded-full" />
+          <span className="absolute top-1 right-1.5 w-2 h-2 bg-gold rounded-full" />
         </Button>
         {mounted && (
           <Button
             variant="ghost"
             size="icon"
-            className="rounded-full"
+            className="rounded-full hover:bg-gold/10"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             aria-label="Toggle theme"
             title="Toggle theme"

@@ -7,6 +7,8 @@ import { Sidebar } from "@/components/youtube/sidebar";
 import { HomeView } from "@/components/youtube/home-view";
 import { WatchView } from "@/components/youtube/watch-view";
 import { ChannelView } from "@/components/youtube/channel-view";
+import { CategoryView } from "@/components/youtube/category-view";
+import { SettingsView } from "@/components/youtube/settings-view";
 import {
   SearchView,
   TrendingView,
@@ -17,6 +19,7 @@ import {
 } from "@/components/youtube/list-views";
 import { Footer } from "@/components/youtube/footer";
 import { CommandPalette } from "@/components/youtube/command-palette";
+import { useMashahdBridge } from "@/lib/mashahd-bridge";
 import { cn } from "@/lib/utils";
 
 function renderView(view: ReturnType<typeof useAppStore.getState>["view"]) {
@@ -39,11 +42,18 @@ function renderView(view: ReturnType<typeof useAppStore.getState>["view"]) {
       return <LikedView />;
     case "library":
       return <LibraryView />;
+    case "category":
+      return <CategoryView category={view.category} />;
+    case "settings":
+      return <SettingsView initialTab={view.tab} />;
   }
 }
 
 export default function Page() {
   const { view, sidebarOpen, syncFromUrl } = useAppStore();
+
+  // Mount the super-app integration bridge onto window.mashahd.
+  useMashahdBridge();
 
   // Keep the store in sync with browser back / forward.
   useEffect(() => {
@@ -56,34 +66,39 @@ export default function Page() {
       window.history.replaceState({ view }, "", window.location.href);
     }
     return () => window.removeEventListener("popstate", onPop);
-  }, [syncFromUrl]);
+  }, [syncFromUrl, view]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Header />
-      <div className="flex flex-1 min-h-0">
-        {/* Desktop sidebar */}
-        <aside
-          className={cn(
-            "hidden md:block shrink-0 border-r border-border overflow-hidden transition-all duration-200 sticky top-14 h-[calc(100vh-3.5rem)]",
-            sidebarOpen ? "w-60" : "w-0"
-          )}
-        >
-          <div className={cn("w-60 h-full", !sidebarOpen && "opacity-0")}>
-            <Sidebar />
-          </div>
-        </aside>
+    <div className="relative min-h-screen flex flex-col bg-background">
+      {/* Aurora wash — the signature Mashahd atmospheric backdrop. Faint so
+          content stays legible; only visible at the top edges. */}
+      <div className="pointer-events-none fixed inset-0 aurora-bg opacity-50" aria-hidden />
+      <div className="relative flex flex-col min-h-screen">
+        <Header />
+        <div className="flex flex-1 min-h-0">
+          {/* Desktop sidebar */}
+          <aside
+            className={cn(
+              "hidden md:block shrink-0 border-r border-border overflow-hidden transition-all duration-200 sticky top-14 h-[calc(100vh-3.5rem)] glass",
+              sidebarOpen ? "w-60" : "w-0"
+            )}
+          >
+            <div className={cn("w-60 h-full", !sidebarOpen && "opacity-0")}>
+              <Sidebar />
+            </div>
+          </aside>
 
-        {/* Main content — flex column so Footer's `mt-auto` sticks it to
-            the bottom of the viewport on short pages, and it gets pushed
-            down naturally when content is taller than the screen. */}
-        <main className="flex-1 min-w-0 flex flex-col">
-          <div className="flex-1">{renderView(view)}</div>
-          <Footer />
-        </main>
+          {/* Main content — flex column so Footer's `mt-auto` sticks it to
+              the bottom of the viewport on short pages, and it gets pushed
+              down naturally when content is taller than the screen. */}
+          <main className="flex-1 min-w-0 flex flex-col">
+            <div className="flex-1">{renderView(view)}</div>
+            <Footer />
+          </main>
+        </div>
+        {/* ⌘K Command Palette — Mashahd (adapted from CIRKLE) */}
+        <CommandPalette />
       </div>
-      {/* ⌘K Command Palette — Mashahd (adapted from CIRKLE) */}
-      <CommandPalette />
     </div>
   );
 }

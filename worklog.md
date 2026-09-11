@@ -112,3 +112,42 @@ Stage Summary:
 - Brand: animated three-circle logo (gold→rose→teal gradient, 30s rotation + float), Mashahd wordmark + Arabic مشاهِد, gold verified badges, gold-accented AI affordances.
 - 7 features imported from CIRKLE: animated circle logo, Command Palette (⌘K), AI Recap (LLM summarize), Smart Chapters (LLM chapters + video seeking), Circle Pulse (live viewers), Live Translate (LLM comment translation, 5 languages), Mood filter, Verified badge.
 - All AI features backed by real z-ai LLM calls with graceful fallbacks.
+
+---
+Task ID: 26-33 (Favicon + own identity + super-app integration + wire all tabs) — COMPLETE
+Agent: main
+Task: Replace favicon with CIRKLE's Mashahd mark, give Mashahd its own visual identity (distinct from the YouTube clone), make it super-app integration-ready, and wire every tab/sidebar item to a real screen.
+
+Work Log:
+- Re-cloned CIRKLE, extracted public/circle-favicon.svg + manifest.ts + the full premium design system (globals.css with gold/teal/rose/steel/charcoal/cream tokens, glass morphism, aurora gradients, Fraunces+Inter+Tajawal fonts). Scrubbed token from git remote.
+- Created src/app/icon.svg (Next.js auto-detected favicon): three interlocking circles with gold→teal gradient on a cream rounded-square background. Verified served at /icon.svg (200, image/svg+xml) and picked up by the browser link tag.
+- Created src/app/manifest.ts (PWA manifest): name "Mashahd — مشاهِد | Video", theme_color #1A4A5A, background_color #FDFCF9, icon /icon.svg.
+- Rewrote globals.css to adopt CIRKLE's full premium design system: HSL triplet tokens wrapped in hsl(), brand tokens (gold/teal/rose/steel/charcoal/cream), glass + glass-strong component classes, gradient-hero/gold/aurora/mesh/card, shadow-soft/glass/glow/float, brand-chip utility. Default LIGHT theme = warm cream (#FDFCF9) — Mashahd's own identity, no longer a YouTube dark clone.
+- Updated layout.tsx: Inter + Fraunces + Tajawal fonts (matching CIRKLE), themeColor viewport (light #FDFCF9 / dark #1A4A5A), no-FOUC script reading mashahd-theme localStorage, default to light.
+- Updated Providers: defaultTheme="light", storageKey="mashahd-theme".
+- Redesigned chrome: header now glass-strong with gold border, search input with gold focus ring, action buttons with gold hover, notification dot gold (was red). Category chips now gold-gradient pills on active + brand-chip style on idle. Page wrapper has an aurora-bg wash + glass sidebar. Subscribe/Comment buttons now bg-primary (deep teal) instead of bg-foreground. Like state is teal-light not blue. Hashtags teal not blue. "You" avatar background teal (#1a4a5a) not red.
+- Built super-app integration bridge (src/lib/mashahd-bridge.ts): window.mashahd = { id, version "1.0.0", navigate(view), getView(), onNavigate(cb), exit() }. Dispatches mashahd:navigate + mashahd:exit CustomEvents. Mounted via useMashahdBridge() hook in page.tsx. Verified via browser eval: window.mashahd.navigate({kind:'category',category:'Tech'}) correctly navigated to /?v=category&cat=Tech.
+- Wrote INTEGRATION.md documenting the bridge API, deep-link URL table for every view, theming, and the sibling-module plan (waslat/mashahd/lamahat/midan).
+- Wired ALL sidebar items:
+  * Main nav (Home/Trending/Subscriptions) — already wired.
+  * You nav (Library/History/Liked) — already wired.
+  * Explore nav — was previously dead (no views). Now ALL 14 items route to a new `category` view kind: Live, Music, Gaming, News, Sports, Learning, Travel, Cooking, Fitness, Tech, Science, Nature, Art, Cars. Added `category` to the View union + viewToQuery/queryToView. Built CategoryView component (header with category name + tagline + video grid). Smart active-state detection for the current category.
+  * Settings nav (Settings/Report history/Help/Send feedback) — was previously dead. Now all route to a new `settings` view kind with a `tab` param. Built SettingsView with 6 tabs (general/notifications/privacy/report/help/feedback): appearance toggle, autoplay switch, reduced-data, language, notification prefs, privacy controls, FAQ accordion, feedback form. Smart active-state for settings tabs.
+- Active-state logic in sidebar upgraded to differentiate category items (matching category) and settings items (matching tab), not just view.kind.
+- Updated page.tsx to mount the bridge, render CategoryView + SettingsView, and use the aurora + glass layout wrapper.
+
+Verification (Agent Browser + VLM):
+- Favicon: window icon link = /icon.svg, served 200 image/svg+xml.
+- Manifest: /manifest.webmanifest 200.
+- Home (VLM): cream background ✓, animated gold/teal circle logo + Mashahd wordmark + مشاهِد ✓, gold-tinted category chips ✓, no red YouTube elements ✓.
+- Watch (VLM): cream theme ✓, gold/teal circle logo ✓, teal Subscribe button ✓, teal Like button (not blue) ✓. AI Recap/Smart Chapters/Translate affordances confirmed present via snapshot.
+- All 14 Explore sidebar items present and clicking routes to /?v=category&cat=<Name> with the CategoryView heading + tagline (verified Music + Gaming).
+- Settings sidebar item routes to /?v=settings&tab=general with Appearance panel. Help sidebar item routes to /?v=settings&tab=help.
+- Bridge: window.mashahd.id="mashahd", version="1.0.0", getView() works, navigate() works (tested Tech category), exit() dispatches mashahd:exit.
+- Lint clean (0 errors, 0 warnings). Dev server healthy.
+
+Stage Summary:
+- Mashahd now has its OWN visual identity (warm cream + deep teal + sand-gold, glass morphism, aurora wash, Fraunces/Inter/Tajawal fonts) — distinct from the YouTube clone it started as, and aligned with the CIRKLE super-app family.
+- Favicon is the three-circle Mashahd mark, served as SVG + wired into a PWA manifest.
+- Super-app integration ready: window.mashahd bridge (v1.0.0) with navigate/getView/onNavigate/exit + INTEGRATION.md documenting the contract for the parent shell and sibling modules.
+- EVERY sidebar item and tab now routes to a real, working screen — no dead links. 14 category screens + 6 settings tabs added.

@@ -132,10 +132,10 @@ export function ChannelView({ channelId }: { channelId: string }) {
               variant={subscribed ? "secondary" : "default"}
               size="sm"
               className={cn(
-                "rounded-full h-9 px-5",
+                "rounded-full h-9 px-5 font-medium",
                 subscribed
-                  ? "bg-secondary text-foreground hover:bg-secondary/80"
-                  : "bg-foreground text-background hover:bg-foreground/90"
+                  ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90"
               )}
               onClick={() =>
                 subMutation.mutate(subscribed ? "unsubscribe" : "subscribe")

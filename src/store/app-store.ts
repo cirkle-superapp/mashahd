@@ -11,7 +11,9 @@ export type View =
   | { kind: "subscriptions" }
   | { kind: "history" }
   | { kind: "liked" }
-  | { kind: "library" };
+  | { kind: "library" }
+  | { kind: "category"; category: string }
+  | { kind: "settings"; tab?: string };
 
 type AppState = {
   view: View;
@@ -49,6 +51,10 @@ export function viewToQuery(v: View): string {
       return `?v=liked`;
     case "library":
       return `?v=library`;
+    case "category":
+      return `?v=category&cat=${encodeURIComponent(v.category)}`;
+    case "settings":
+      return v.tab ? `?v=settings&tab=${encodeURIComponent(v.tab)}` : `?v=settings`;
   }
 }
 
@@ -73,6 +79,10 @@ export function queryToView(search: string): View {
       return { kind: "liked" };
     case "library":
       return { kind: "library" };
+    case "category":
+      return { kind: "category", category: sp.get("cat") || "All" };
+    case "settings":
+      return { kind: "settings", tab: sp.get("tab") || undefined };
     default:
       return { kind: "home" };
   }

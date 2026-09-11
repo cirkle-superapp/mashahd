@@ -351,7 +351,7 @@ function EmptyState({ title, body }: { title: string; body: string }) {
       <p className="text-sm text-muted-foreground mt-1">{body}</p>
       <button
         onClick={() => navigate({ kind: "home" })}
-        className="mt-4 inline-flex items-center justify-center rounded-full bg-foreground text-background hover:bg-foreground/90 h-9 px-5 text-sm font-medium"
+        className="mt-4 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-5 text-sm font-medium"
       >
         Browse videos
       </button>

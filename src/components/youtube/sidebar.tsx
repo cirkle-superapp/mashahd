@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Flame, ListVideo, Clock, ThumbsUp, Library, Radio, Music2, Gamepad2, Newspaper, Trophy, GraduationCap, Shirt, Settings, Flag, HelpCircle, MessageSquare, ThumbsDown } from "lucide-react";
+import { Home, Flame, ListVideo, Clock, ThumbsUp, Library, Radio, Music2, Gamepad2, Newspaper, Trophy, GraduationCap, Plane, UtensilsCrossed, Dumbbell, Cpu, FlaskConical, Palette, Car, Leaf, Settings, Flag, HelpCircle, MessageSquare } from "lucide-react";
 import { useAppStore, View } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 
@@ -24,20 +24,27 @@ const youNav: NavItem[] = [
 ];
 
 const exploreNav: NavItem[] = [
-  { label: "Live", icon: Radio },
-  { label: "Music", icon: Music2 },
-  { label: "Gaming", icon: Gamepad2 },
-  { label: "News", icon: Newspaper },
-  { label: "Sports", icon: Trophy },
-  { label: "Learning", icon: GraduationCap },
-  { label: "Fashion & beauty", icon: Shirt },
+  { label: "Live", icon: Radio, view: { kind: "category", category: "Live" } },
+  { label: "Music", icon: Music2, view: { kind: "category", category: "Music" } },
+  { label: "Gaming", icon: Gamepad2, view: { kind: "category", category: "Gaming" } },
+  { label: "News", icon: Newspaper, view: { kind: "category", category: "News" } },
+  { label: "Sports", icon: Trophy, view: { kind: "category", category: "Sports" } },
+  { label: "Learning", icon: GraduationCap, view: { kind: "category", category: "Learning" } },
+  { label: "Travel", icon: Plane, view: { kind: "category", category: "Travel" } },
+  { label: "Cooking", icon: UtensilsCrossed, view: { kind: "category", category: "Cooking" } },
+  { label: "Fitness", icon: Dumbbell, view: { kind: "category", category: "Fitness" } },
+  { label: "Tech", icon: Cpu, view: { kind: "category", category: "Tech" } },
+  { label: "Science", icon: FlaskConical, view: { kind: "category", category: "Science" } },
+  { label: "Nature", icon: Leaf, view: { kind: "category", category: "Nature" } },
+  { label: "Art", icon: Palette, view: { kind: "category", category: "Art" } },
+  { label: "Cars", icon: Car, view: { kind: "category", category: "Cars" } },
 ];
 
 const settingsNav: NavItem[] = [
-  { label: "Settings", icon: Settings },
-  { label: "Report history", icon: Flag },
-  { label: "Help", icon: HelpCircle },
-  { label: "Send feedback", icon: MessageSquare },
+  { label: "Settings", icon: Settings, view: { kind: "settings", tab: "general" } },
+  { label: "Report history", icon: Flag, view: { kind: "settings", tab: "report" } },
+  { label: "Help", icon: HelpCircle, view: { kind: "settings", tab: "help" } },
+  { label: "Send feedback", icon: MessageSquare, view: { kind: "settings", tab: "feedback" } },
 ];
 
 function NavSection({
@@ -59,7 +66,13 @@ function NavSection({
       )}
       {items.map((item) => {
         const Icon = item.icon;
-        const active = item.view && view.kind === item.view.kind;
+        const active =
+          item.view &&
+          (item.view.kind === "category" && view.kind === "category"
+            ? (view as { kind: "category"; category: string }).category === item.view.category
+            : item.view.kind === "settings" && view.kind === "settings"
+            ? (view as { kind: "settings"; tab?: string }).tab === (item.view as { kind: "settings"; tab?: string }).tab
+            : view.kind === item.view.kind);
         return (
           <button
             key={item.label}
