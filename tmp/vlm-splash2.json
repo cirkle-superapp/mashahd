@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "N\nN\nN\nN\nN\nThe image is a blank white screen with only a small dark circle containing the letter 'N' in the bottom left corner.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789145704,
+  "id": "202609120055022e083a793e8e4a71",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609120055022e083a793e8e4a71",
+  "usage": {
+    "completion_tokens": 36,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 958,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 994
+  }
+}

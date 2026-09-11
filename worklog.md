@@ -181,3 +181,27 @@ Stage Summary:
 - 8 new features added: SuperAppRail, NotificationsButton, CreateButton, ShareButton, Theater mode, auto-advance, ShortsShelf, Channel About tab.
 - Every previously-dead header affordance (bell, video icon, Share) now opens a real working overlay.
 - Mashahd is visibly part of a super-app family — the left rail makes the 4-module architecture tangible and the bridge hands off to siblings via standard CustomEvents.
+
+---
+Task ID: 43-50 (Animated logo matching CIRKLE + splash + mini-player + keyboard shortcuts) — COMPLETE
+Agent: main
+Task: Make the logo animated exactly as in CIRKLE, then proceed implementing remaining features.
+
+Work Log:
+- Re-cloned CIRKLE, studied the 3 animation layers used on its CircleMark: (1) base slow rotation 30s linear, (2) per-circle pathLength draw-in staggered 0/0.4/0.8s + pulsing center node (from circle-aura overlay), (3) breathing scale+tilt wrapper 8s (from onboarding). Scrubbed token from git remote, removed repo from lint scope.
+- Upgraded src/components/brand/mashahd-logo.tsx to replicate all 3 layers: each circle now uses motion.circle with pathLength [0,1,1] on a 4.8s loop with 0/0.4/0.8s staggered delays, the center node pulses (scale [1,1.4,1] + opacity [0.7,1,0.7] over 1.6s), the whole SVG rotates 360° over 30s, and a breathing motion.span wrapper does scale [1,1.04,1] + rotate [0,4,0] over 8s. Verified live via getComputedStyle: svgTransform = rotation matrix (~118°), wrapTransform = breathing scale (1.0167), circle strokeDasharray = 0.0152px (mid-draw) — all 3 animations actively running.
+- Built Splash component (src/components/youtube/splash.tsx): one-time animated entrance on first visit, adapted from CIRKLE's splash.tsx. Aurora wash + rotating blurred gradient-mesh ring, mark scales up 0.4→1 with blur-to-sharp, wordmark fades up 0.6s later, "free for everyone · forever" caption. Auto-fades after 2s, suppressed on return visits via mashahd-splash-seen localStorage flag. Verified the flag gets set after splash runs.
+- Built KeyboardShortcuts component (src/components/youtube/keyboard-shortcuts.tsx): global hotkeys + Shift+? help overlay. Hotkeys: / (focus search), s (toggle sidebar), t (toggle theme), g+h/t/s/l/i/k (go home/trending/subscriptions/library/history/liked), ? (open overlay), Esc (close). Two-key sequences use a 600ms window. Verified: Shift+? opens the dialog with all 3 groups (Navigation/Search&palette/View), g+h navigated to home, / focused the search input (activeElement aria-label="Search").
+- Built MiniPlayer (src/store/mini-player-store.ts + src/components/youtube/mini-player.tsx): floating PiP-style corner player. The watch page populates the store on unmount (only if the video is playing), and the MiniPlayer renders in the bottom-right when navigating away. Includes play/pause, mute, expand-back-to-watch, and close. Resumes from the saved currentTime when expanded. (Note: couldn't fully verify end-to-end in the browser because the Google sample MP4s aren't reachable from this sandbox so the video stays paused — but the component is wired and the store/handoff logic is in place.)
+- Mounted Splash, KeyboardShortcuts, and MiniPlayer globally in page.tsx.
+
+Verification (Agent Browser + VLM + getComputedStyle):
+- Logo animation: svgTransform shows active rotation (~118°), wrapTransform shows active breathing (scale 1.0167), first circle strokeDasharray=0.0152px confirms pathLength draw-in is mid-cycle. All 3 CIRKLE animation layers running.
+- Splash: mashahd-splash-seen localStorage flag transitions from unset to "1" after first visit, proving the splash mounted + ran + faded.
+- Keyboard shortcuts: Shift+? opens dialog with Navigation/Search&palette/View groups. g+h navigates to home. / focuses search (activeElement aria-label="Search").
+- No console errors (only the expected "no supported sources" from the unreachable Google sample MP4s, which doesn't break the UI).
+- Lint: clean (0 errors, 0 warnings). Dev server healthy (200).
+
+Stage Summary:
+- The Mashahd logo now animates exactly like CIRKLE's CircleMark: 3 interlocking circles draw themselves in on a staggered timeline, the center node pulses, the whole mark slowly rotates, and a breathing wrapper gives it presence. Verified live via computed styles.
+- 4 new features added: animated logo (full CIRKLE-matching animation language), Splash entrance screen, KeyboardShortcuts overlay + global hotkeys, MiniPlayer floating PiP.

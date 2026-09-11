@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the image provided, here is the detailed description of the logo in the top-left corner:\n\n**Logo Description:**\n*   **Icon:** There is a circular icon to the left of the text. It appears as a **solid, filled circle** (or possibly a very thick ring) with a **gold/amber gradient**. It does not appear to be made of three interlocking circles; rather, it looks like a single stylized shape or a play button icon within a circle.\n*   **Wordmark:** The text **\"Mashahd\"** is displayed next to the icon in a **bold, gold gradient font**.\n*   **Arabic Text:** Directly below the English wordmark, the Arabic text **\"مشاهِد\"** is written in a smaller, simpler font (appearing dark grey or black, though it may have a subtle gold tint depending on the screen).\n*   **Animation Artifacts:** In this static screenshot, there are **no visible animation artifacts** such as partial stroke drawing or motion blur. The logo appears fully rendered and static.\n\n**Summary:** While the color scheme (gold/teal/gold gradient) and text (\"Mashahd\" / \"مشاهِد\") match your description, the specific geometry of \"three interlocking circles\" is not clearly visible in this view; it presents more as a single circular emblem.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789145794,
+  "id": "20260912005627032308d2efbb485e",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912005627032308d2efbb485e",
+  "usage": {
+    "completion_tokens": 288,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 962,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1250
+  }
+}

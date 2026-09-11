@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppStore } from "@/store/app-store";
+import { useMiniPlayer } from "@/store/mini-player-store";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { formatViews, formatSubs, formatCount, timeAgo } from "@/lib/format";
 import type { VideoWithFlags, Comment, Video } from "@/lib/types";
@@ -90,6 +91,45 @@ export function WatchView({ videoId }: { videoId: string }) {
       body: JSON.stringify({ browserId: bid, action: "watch", videoId }),
     }).catch(() => {});
   }, [bid, videoId]);
+
+  // On unmount, hand the video + current playback position to the mini-player
+  // so it can keep playing in the floating corner. We only do this if the
+  // video is actually playing (not ended/paused).
+  useEffect(() => {
+    return () => {
+      const v = videoRef.current;
+      if (!v || v.paused || v.ended) return;
+      // `video` is available via closure because this effect re-runs when
+      // the video data loads.
+      if (video) {
+        useMiniPlayer.getState().setVideo({
+          videoId: video.id,
+          videoTitle: video.title,
+          videoUrl: video.videoUrl,
+          thumbnailUrl: video.thumbnailUrl,
+          channelName: video.channel.name,
+          currentTime: v.currentTime,
+        });
+      }
+    };
+  }, [video]);
+
+  // Sync the mini-player's saved currentTime back into the full player when
+  // returning to this watch page via the mini-player's expand button.
+  useEffect(() => {
+    const mini = useMiniPlayer.getState();
+    if (mini.videoId === videoId && mini.currentTime > 0 && videoRef.current) {
+      // Defer to next frame so the video element is ready.
+      requestAnimationFrame(() => {
+        if (videoRef.current) {
+          videoRef.current.currentTime = mini.currentTime;
+          videoRef.current.play().catch(() => {});
+        }
+        // Clear the mini-player since the full page has taken over.
+        useMiniPlayer.getState().close();
+      });
+    }
+  }, [videoId, video]);
 
   // Update URL hash when watching so deep-link to a timestamp works (no-op demo)
   const likeMutation = useMutation({
