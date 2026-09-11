@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
+import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
 /**
  * POST /api/auth/login
@@ -10,8 +11,23 @@ import { randomBytes } from "node:crypto";
  *
  * Authenticates the user and returns a session token. The identifier is
  * matched against email, phone, and username columns.
+ *
+ * Rate limited: 5 attempts per minute per IP (brute-force protection).
  */
 export async function POST(req: NextRequest) {
+  // Rate limit: 5 login attempts per minute per IP.
+  const ip = getClientIP(req);
+  const rl = rateLimit(`login:${ip}`, 5, 60_000);
+  if (rl.limited) {
+    return NextResponse.json(
+      { error: "Too many login attempts. Please try again in a minute." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) },
+      }
+    );
+  }
+
   const body = await req.json().catch(() => ({}));
   const identifier: string = String(body.identifier || "").trim().toLowerCase();
   const password: string = String(body.password || "");

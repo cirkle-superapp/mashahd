@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
+import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
 /**
  * POST /api/auth/register
@@ -12,8 +13,21 @@ import { randomBytes } from "node:crypto";
  * creates a Session, and returns the session token + user profile.
  *
  * The username is validated for availability server-side (double-check).
+ * Rate limited: 3 registrations per minute per IP.
  */
 export async function POST(req: NextRequest) {
+  // Rate limit: 3 registrations per minute per IP.
+  const ip = getClientIP(req);
+  const rl = rateLimit(`register:${ip}`, 3, 60_000);
+  if (rl.limited) {
+    return NextResponse.json(
+      { error: "Too many registration attempts. Please try again in a minute." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) },
+      }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const identifier: string = String(body.identifier || "").trim();
   const password: string = String(body.password || "");

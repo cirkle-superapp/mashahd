@@ -424,22 +424,8 @@ export function ShareButton({
               );
             })}
           </div>
-
-          <button
-            onClick={() => {
-              setOpen(false);
-              navigate_to_settings();
-            }}
-            className="hidden"
-            aria-hidden
-          />
         </DialogContent>
       </Dialog>
     </>
   );
-}
-
-// Helper kept local so the Share button can suggest embed settings.
-function navigate_to_settings() {
-  // no-op placeholder
 }

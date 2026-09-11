@@ -15,7 +15,7 @@ import {
   Activity,
 } from "lucide-react";
 import Hls from "hls.js";
-import { Engine, Core } from "p2p-media-loader-hlsjs";
+import { HlsJsP2PEngine } from "p2p-media-loader-hlsjs";
 import { cn } from "@/lib/utils";
 import {
   readNetworkInfo,
@@ -77,7 +77,7 @@ export function MashahdPlayer({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
-  const engineRef = useRef<Engine | null>(null);
+  const engineRef = useRef<HlsJsP2PEngine | null>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const telemetryTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const sessionIdRef = useRef<string>("");
@@ -123,7 +123,7 @@ export function MashahdPlayer({
     setP2pPolicy(policy);
 
     let hls: Hls;
-    let engine: Engine | null = null;
+    let engine: HlsJsP2PEngine | null = null;
 
     if (Hls.isSupported()) {
       hls = new Hls({
@@ -135,31 +135,29 @@ export function MashahdPlayer({
       // If P2P is enabled and we have a swarmId, attach the P2P engine.
       if (policy.enabled && swarmId) {
         try {
-          const core = new Core(hls, {
+          engine = new HlsJsP2PEngine({
             swarmId,
-            segmented: true,
-            assetsStorage: undefined,
-            tracker: {
-              announce: [
-                `ws://localhost:3003/?XTransformPort=3003`,
-              ],
-            },
             maxPeerConnections: policy.maxPeers,
           });
-          engine = core.createEngine("hls");
+          // Wire the P2P engine into hls.js events.
+          engine.initHlsJsEvents(hls);
           engineRef.current = engine;
 
           // Wire P2P stats for the HUD.
-          engine.on("stats", (stats: any) => {
-            const p2p = stats.httpDownloadedBytes || 0;
-            const cdn = stats.p2pDownloadedBytes || 0;
-            setHudStats({
-              p2pBytes: p2p,
-              cdnBytes: cdn,
-              peerCount: stats.peers?.length || 0,
-              p2pRatio: p2p + cdn > 0 ? p2p / (p2p + cdn) : 0,
+          // The engine exposes a core instance with event handlers.
+          const core = (engine as any).core;
+          if (core?.on) {
+            core.on("segment-stats-loaded", (stats: any) => {
+              const p2p = stats.p2pDownloadedBytes || 0;
+              const cdn = stats.httpDownloadedBytes || 0;
+              setHudStats({
+                p2pBytes: p2p,
+                cdnBytes: cdn,
+                peerCount: stats.peers?.length || 0,
+                p2pRatio: p2p + cdn > 0 ? p2p / (p2p + cdn) : 0,
+              });
             });
-          });
+          }
         } catch (e) {
           // P2P init failed — silently fall back to HTTP. Playback continues.
           console.warn("[MashahdPlayer] P2P init failed, using HTTP fallback:", e);

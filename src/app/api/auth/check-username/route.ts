@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import bcrypt from "bcryptjs";
-import { randomBytes } from "node:crypto";
+import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
 /**
  * POST /api/auth/check-username
@@ -12,8 +11,19 @@ import { randomBytes } from "node:crypto";
  *
  * Called in real-time (debounced) as the user types their desired CIRKLE
  * username on the registration form.
+ *
+ * Rate limited: 20 checks per minute per IP (prevents username enumeration).
  */
 export async function POST(req: NextRequest) {
+  // Rate limit: 20 checks per minute per IP.
+  const ip = getClientIP(req);
+  const rl = rateLimit(`check-username:${ip}`, 20, 60_000);
+  if (rl.limited) {
+    return NextResponse.json(
+      { error: "Too many requests. Please slow down." },
+      { status: 429 }
+    );
+  }
   const { username } = await req.json().catch(() => ({ username: "" }));
   const cleaned = String(username || "")
     .toLowerCase()
