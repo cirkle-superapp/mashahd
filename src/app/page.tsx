@@ -20,7 +20,6 @@ import {
 } from "@/components/youtube/list-views";
 import { Footer } from "@/components/youtube/footer";
 import { CommandPalette } from "@/components/youtube/command-palette";
-import { SuperAppRail } from "@/components/youtube/super-app-rail";
 import { Splash } from "@/components/youtube/splash";
 import { KeyboardShortcuts } from "@/components/youtube/keyboard-shortcuts";
 import { MiniPlayer } from "@/components/youtube/mini-player";
@@ -82,18 +81,14 @@ export default function Page() {
       <div className="pointer-events-none fixed inset-0 aurora-bg opacity-50" aria-hidden />
       <div className="relative flex flex-col min-h-screen">
         <Header />
-        {/* Super-app module rail — switch to sibling modules (Wasl/Lamahat/Midan).
-            Hidden on small screens; the bottom Dock handles nav there. */}
-        <div className="flex flex-1 min-h-0">
-          <SuperAppRail />
-          {/* Main content — no left sidebar (replaced by the bottom Dock,
-              Mashahd's unique navigation identity). */}
-          <main className="flex-1 min-w-0 flex flex-col pb-24">
-            <div className="flex-1">{renderView(view)}</div>
-            <Footer />
-          </main>
-        </div>
-        {/* Bottom Dock — floating glass navigation (replaces the YouTube-style sidebar) */}
+        {/* Main content — Mashahd is a standalone video module. The bottom
+            Dock handles all navigation; there is no left sidebar or
+            sibling-module rail. */}
+        <main className="flex-1 min-w-0 flex flex-col pb-24">
+          <div className="flex-1">{renderView(view)}</div>
+          <Footer />
+        </main>
+        {/* Bottom Dock — floating glass navigation */}
         <Dock />
         {/* ⌘K Command Palette */}
         <CommandPalette />

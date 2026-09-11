@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Clock, ThumbsUp, ListVideo, Settings, Bell, Shield, LogOut, ChevronRight, Sparkles } from "lucide-react";
+import { Clock, ThumbsUp, ListVideo, Settings, Bell, Shield, LogOut, ChevronRight, Sparkles, Radio, UserPlus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -70,6 +70,34 @@ export function ProfileView() {
           <MashahdMark size={36} className="opacity-40 hidden sm:block" />
         </div>
       </div>
+
+      {/* Creator actions — Go Live + Create Channel */}
+      <section className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent("mashahd:go-live"))}
+          className="flex items-center gap-3 p-4 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors text-left shadow-soft"
+        >
+          <span className="grid place-items-center h-10 w-10 rounded-full bg-white/20">
+            <Radio className="h-5 w-5 fill-current" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold">Go Live</p>
+            <p className="text-xs text-white/80">Start streaming in seconds</p>
+          </div>
+        </button>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent("mashahd:create-channel"))}
+          className="flex items-center gap-3 p-4 rounded-xl border border-gold/30 bg-gradient-to-br from-[hsl(var(--gold)/0.1)] to-transparent hover:from-[hsl(var(--gold)/0.18)] transition-colors text-left"
+        >
+          <span className="grid place-items-center h-10 w-10 rounded-full bg-gradient-gold text-charcoal">
+            <UserPlus className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold">Create a channel</p>
+            <p className="text-xs text-muted-foreground">Verify your ID to start publishing</p>
+          </div>
+        </button>
+      </section>
 
       {/* Activity stats */}
       <section className="mt-6">

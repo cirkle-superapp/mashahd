@@ -19,6 +19,8 @@ import {
   MessageSquarePlus,
   Compass,
   Wand2,
+  Radio,
+  UserPlus,
 } from "lucide-react";
 import {
   Dialog,
@@ -137,6 +139,30 @@ export function CommandPalette() {
         setTimeout(() => window.location.reload(), 900);
       },
       keywords: "reset seed demo",
+    },
+    {
+      id: "qa-go-live",
+      label: "Go Live — start streaming",
+      hint: "Live",
+      icon: Radio,
+      group: "Quick Actions",
+      run: () => {
+        window.dispatchEvent(new CustomEvent("mashahd:go-live"));
+        close();
+      },
+      keywords: "stream broadcast webcam live",
+    },
+    {
+      id: "qa-create-channel",
+      label: "Create a channel",
+      hint: "Verify ID",
+      icon: UserPlus,
+      group: "Quick Actions",
+      run: () => {
+        window.dispatchEvent(new CustomEvent("mashahd:create-channel"));
+        close();
+      },
+      keywords: "new channel creator verify identity",
     },
 
     // AI features (deep-link to current watch video if any)

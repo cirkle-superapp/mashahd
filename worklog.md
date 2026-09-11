@@ -260,3 +260,37 @@ Stage Summary:
 - Profile tab is now clickable and opens a full Profile screen.
 - Header is now a floating semi-transparent glass pill (content visible behind on scroll).
 - Navigation architecture is now unique to Mashahd: floating TopBar pill + bottom Dock + left module Rail (NO YouTube-style sidebar). This gives Mashahd its own identity as a super-app module and avoids any YouTube layout similarity.
+
+---
+Task ID: 63-67 (Remove siblings + Create Channel with ID verification + Go Live) — COMPLETE
+Agent: main
+Task: Remove Wasl/Lamahat/Midan (this is only Mashahd), add Create a Channel with ID+face verification, add easy Go Live button.
+
+Work Log:
+- Removed the SuperAppRail component (Wasl/Lamahat/Midan sibling modules) from page.tsx entirely. Mashahd is now a standalone video app — no sibling-module switching UI. The window.mashahd bridge stays for parent-shell integration, but no visible sibling UI.
+- Built CreateChannel (src/components/youtube/create-channel.tsx): 5-step identity-verification flow adapted from CIRKLE's Circle Verify concept:
+  * Step 1 (details): channel name, @handle (auto-sanitized), description
+  * Step 2 (id): upload ID document (passport/national ID/driver's license) with drag-&-drop zone, trust explanation
+  * Step 3 (face): capture selfie via webcam (getUserMedia) with face-guide oval overlay, or upload fallback
+  * Step 4 (verifying): simulated ID+face match check (2.5s spinner)
+  * Step 5 (done): success screen with verified-creator badge, "Go to my channel" CTA
+  Progress bar shows step 1-3. Verified: step 1 → step 2 (ID upload with trust message) → step 3 (face capture) → verifying → done.
+- Built GoLive (src/components/youtube/go-live.tsx): easy-to-start live streaming:
+  * Setup phase: stream title, category picker (10 cats), privacy (Public/Unlisted/Private), webcam notice
+  * Preparing phase: 1.8s spinner "Connecting to webcam and encoder"
+  * Live phase: webcam preview with LIVE badge (pulsing red), real-time viewer count, connection quality indicator, live chat with simulated messages, End Stream button
+  * One prominent red "Go Live" pill button in the header (visible on all screens, easy to spot)
+  Verified: clicking Go Live opens the setup dialog with title/category/privacy. Filling title + clicking start shows "🔴 You're live!" toast.
+- Wired both features into: header (Go Live button + CreateChannel dialog), command palette (Go Live + Create Channel as Quick Actions with mashahd:go-live / mashahd:create-channel CustomEvents), and Profile screen (Go Live + Create a Channel creator-action cards).
+- Lint: clean (0 errors, 0 warnings). Dev server healthy (200).
+
+Verification (Agent Browser + VLM):
+- Sibling modules gone: snapshot search for "Wasl|Lamahat|Midan" returns empty. VLM confirmed no sibling icons on the left edge.
+- Go Live: red pill button in header, opens setup dialog with title/category/privacy, starts stream ("🔴 You're live!" toast).
+- Create Channel: opens from header, profile, and command palette. Step 1 (details) → Step 2 (ID upload with trust message + drag-&-drop) → Step 3 (face capture) → verifying → done.
+- VLM confirmed all 4: Go Live button ✓, no siblings ✓, floating glass pill header ✓, bottom dock ✓.
+
+Stage Summary:
+- Mashahd is now standalone (no Wasl/Lamahat/Midan UI).
+- Create a Channel: full 5-step identity verification flow (ID upload + face capture + match).
+- Go Live: prominent red button → easy setup → live stream with viewer count + chat.

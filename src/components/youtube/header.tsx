@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Search, Mic, Sun, Moon, Command } from "lucide-react";
+import { Search, Mic, Sun, Moon, Command, Radio } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,12 +10,16 @@ import { useAppStore, View } from "@/store/app-store";
 import { MashahdLogo } from "@/components/brand/mashahd-logo";
 import { useCommandPalette } from "@/store/command-palette-store";
 import { NotificationsButton, CreateButton } from "./header-overlays";
+import { GoLive } from "./go-live";
+import { CreateChannel } from "./create-channel";
 
 export function Header() {
   const { navigate, searchDraft, setSearchDraft } = useAppStore();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [showSuggest, setShowSuggest] = useState(false);
+  const [goLiveOpen, setGoLiveOpen] = useState(false);
+  const [createChannelOpen, setCreateChannelOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const openPalette = useCommandPalette((s) => s.openPalette);
 
@@ -23,6 +27,18 @@ export function Header() {
   // to avoid a hydration mismatch on the Sun/Moon icon.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
+
+  // Listen for command-palette triggers to open Go Live / Create Channel.
+  useEffect(() => {
+    const onGoLive = () => setGoLiveOpen(true);
+    const onCreateChannel = () => setCreateChannelOpen(true);
+    window.addEventListener("mashahd:go-live", onGoLive);
+    window.addEventListener("mashahd:create-channel", onCreateChannel);
+    return () => {
+      window.removeEventListener("mashahd:go-live", onGoLive);
+      window.removeEventListener("mashahd:create-channel", onCreateChannel);
+    };
+  }, []);
 
   const submitSearch = (q: string) => {
     const query = q.trim();
@@ -138,6 +154,17 @@ export function Header() {
 
       {/* Right: actions */}
       <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        {/* Go Live — prominent red pill, easy to start */}
+        <Button
+          onClick={() => setGoLiveOpen(true)}
+          size="sm"
+          className="rounded-full bg-red-600 text-white hover:bg-red-700 font-semibold h-9 px-3 sm:px-4"
+          aria-label="Go live"
+          title="Start a live stream"
+        >
+          <Radio className="h-4 w-4 sm:mr-1.5 fill-current" />
+          <span className="hidden sm:inline">Go Live</span>
+        </Button>
         <CreateButton />
         <NotificationsButton />
         {mounted && (
@@ -168,7 +195,6 @@ export function Header() {
             <AvatarFallback>Y</AvatarFallback>
           </Avatar>
         </button>
-        {/* Command palette (⌘K) trigger */}
         <Button
           variant="ghost"
           size="icon"
@@ -181,6 +207,9 @@ export function Header() {
         </Button>
         </div>
       </div>
+      {/* Go Live + Create Channel dialogs */}
+      <GoLive open={goLiveOpen} onOpenChange={setGoLiveOpen} />
+      <CreateChannel open={createChannelOpen} onOpenChange={setCreateChannelOpen} />
     </header>
   );
 }
