@@ -1,0 +1,74 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Channel {
+  id           String   @id @default(cuid())
+  name         String
+  handle       String   @unique
+  avatarUrl    String
+  bannerColors String // comma-separated hex colors used to render the gradient banner
+  description  String
+  subscribers  Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  videos       Video[]
+}
+
+model Video {
+  id           String   @id @default(cuid())
+  title        String
+  description  String
+  thumbnailUrl String
+  videoUrl     String
+  durationSec  Int
+  views        Int      @default(0)
+  likes        Int      @default(0)
+  dislikes     Int      @default(0)
+  category     String
+  tags         String   @default("") // pipe-separated
+  channelId    String
+  createdAt    DateTime @default(now())
+
+  channel      Channel  @relation(fields: [channelId], references: [id])
+  comments     Comment[]
+
+  @@index([category])
+  @@index([channelId])
+  @@index([createdAt])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  videoId   String
+  author    String
+  avatarUrl String
+  text      String
+  likes     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([videoId])
+}
+
+// Tracks client-side state persisted across the API (likes, subscriptions,
+// watch history). We use an anonymous browserId (generated on the client)
+// rather than full auth to keep the demo simple.
+model UserState {
+  id        String   @id @default(cuid())
+  browserId String   @unique
+  likedVideoIds      String @default("") // pipe-separated video ids
+  subscribedChannelIds String @default("") // pipe-separated channel ids
+  watchedVideoIds    String @default("") // pipe-separated video ids, most recent first
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

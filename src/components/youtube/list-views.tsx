@@ -1,0 +1,360 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { VideoCardHorizontal, VideoCard } from "./video-card";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Video } from "@/lib/types";
+import { useAppStore } from "@/store/app-store";
+import { useBrowserId } from "@/hooks/use-browser-id";
+
+async function fetchVideosRaw(params: Record<string, string>) {
+  const sp = new URLSearchParams(params);
+  const res = await fetch(`/api/videos?${sp.toString()}`);
+  if (!res.ok) throw new Error("failed");
+  const data = await res.json();
+  return data.videos as Video[];
+}
+
+async function fetchUserState(bid: string) {
+  if (!bid) return { likedVideoIds: [], subscribedChannelIds: [], watchedVideoIds: [] };
+  const res = await fetch(`/api/user-state?bid=${bid}`);
+  if (!res.ok) throw new Error("failed");
+  return res.json();
+}
+
+export function SearchView({ query }: { query: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["videos", "search", query],
+    queryFn: () => fetchVideosRaw({ q: query, sort: "recent" }),
+  });
+
+  return (
+    <div className="px-4 sm:px-6 py-6 max-w-[1100px] mx-auto">
+      <h1 className="text-sm text-muted-foreground mb-4">
+        Showing results for{" "}
+        <span className="text-foreground font-medium">&ldquo;{query}&rdquo;</span>
+        {data && (
+          <span className="ml-2">— {data.length} video{data.length === 1 ? "" : "s"}</span>
+        )}
+      </h1>
+      <div className="flex flex-col gap-4">
+        {isLoading
+          ? Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex gap-3">
+                <Skeleton className="w-[168px] sm:w-[280px] aspect-video rounded-lg shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+              </div>
+            ))
+          : data?.map((v) => <VideoCardHorizontal key={v.id} video={v} />)}
+        {!isLoading && data && data.length === 0 && (
+          <div className="py-16 text-center">
+            <p className="text-lg font-medium">No results found</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Try different keywords or remove search filters.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function TrendingView() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["videos", "trending"],
+    queryFn: () => fetchVideosRaw({ sort: "trending" }),
+  });
+
+  return (
+    <div className="px-4 sm:px-6 py-6 max-w-[1400px] mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Trending</h1>
+      <div className="flex flex-col gap-5">
+        {isLoading
+          ? Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="flex gap-3">
+                <Skeleton className="w-[280px] sm:w-[360px] aspect-video rounded-lg shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-3 w-1/3" />
+                  <Skeleton className="h-3 w-2/3" />
+                </div>
+              </div>
+            ))
+          : data?.map((v, i) => <TrendingCard key={v.id} video={v} rank={i + 1} />)}
+      </div>
+    </div>
+  );
+}
+
+function TrendingCard({ video, rank }: { video: Video; rank: number }) {
+  const { navigate } = useAppStore();
+  return (
+    <div
+      className="flex gap-4 cursor-pointer group"
+      onClick={() => navigate({ kind: "watch", videoId: video.id })}
+    >
+      <div className="relative w-[240px] sm:w-[360px] shrink-0 aspect-video overflow-hidden rounded-xl bg-muted">
+        <img
+          src={video.thumbnailUrl}
+          alt={video.title}
+          loading="lazy"
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+        />
+        <span className="absolute bottom-1.5 right-1.5 bg-black/85 text-white text-[11px] font-medium px-1.5 py-0.5 rounded leading-none tabular-nums">
+          {Math.floor(video.durationSec / 60)}:
+          {String(video.durationSec % 60).padStart(2, "0")}
+        </span>
+      </div>
+      <div className="hidden sm:flex items-start text-2xl font-bold text-muted-foreground/60 pt-1">
+        {rank}
+      </div>
+      <div className="min-w-0 flex-1">
+        <h3 className="text-base sm:text-lg font-medium leading-snug line-clamp-2">
+          {video.title}
+        </h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {video.channel.name} • {formatViewsShort(video.views)} views •{" "}
+          {timeAgoShort(video.createdAt)}
+        </p>
+        <p className="mt-2 text-sm text-muted-foreground line-clamp-2 hidden md:block">
+          {video.description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function formatViewsShort(n: number) {
+  if (n < 1000) return `${n}`;
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+  return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+}
+function timeAgoShort(d: string) {
+  const diff = Date.now() - new Date(d).getTime();
+  const day = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (day < 1) return "today";
+  if (day < 7) return `${day} day${day === 1 ? "" : "s"} ago`;
+  if (day < 30) return `${Math.floor(day / 7)} week${Math.floor(day / 7) === 1 ? "" : "s"} ago`;
+  if (day < 365) return `${Math.floor(day / 30)} month${Math.floor(day / 30) === 1 ? "" : "s"} ago`;
+  return `${Math.floor(day / 365)} year${Math.floor(day / 365) === 1 ? "" : "s"} ago`;
+}
+
+export function SubscriptionsView() {
+  const bid = useBrowserId();
+  const { data: state } = useQuery({
+    queryKey: ["user-state", bid],
+    queryFn: () => fetchUserState(bid),
+    enabled: !!bid,
+  });
+  const subIds = state?.subscribedChannelIds || [];
+
+  return (
+    <div className="px-4 sm:px-6 py-6 max-w-[1400px] mx-auto">
+      <h1 className="text-2xl font-bold mb-2">Subscriptions</h1>
+      <p className="text-sm text-muted-foreground mb-6">
+        Latest videos from channels you follow.
+      </p>
+      {subIds.length === 0 ? (
+        <EmptyState
+          title="No subscriptions yet"
+          body="Subscribe to channels to see their newest uploads here."
+        />
+      ) : (
+        <SubscriptionGrid subIds={subIds} />
+      )}
+    </div>
+  );
+}
+
+function SubscriptionGrid({ subIds }: { subIds: string[] }) {
+  // We fetch videos for all subscribed channels by passing channelId... but our
+  // API only accepts a single channelId. So we fan out — fine for demo size.
+  const queries = useQueriesForChannels(subIds);
+  const all = queries.flatMap((q) => q.data || []);
+  all.sort(
+    (a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  if (all.length === 0) {
+    return (
+      <EmptyState
+        title="No videos yet"
+        body="The channels you follow haven't posted anything recently."
+      />
+    );
+  }
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6">
+      {all.map((v) => (
+        <VideoCard key={v.id} video={v} />
+      ))}
+    </div>
+  );
+}
+
+// helper hook for fan-out fetches
+import { useQueries } from "@tanstack/react-query";
+function useQueriesForChannels(channelIds: string[]) {
+  return useQueries({
+    queries: channelIds.map((id) => ({
+      queryKey: ["videos", "channel", id],
+      queryFn: () => fetchVideosRaw({ channelId: id, sort: "recent" }),
+      enabled: !!id,
+    })),
+  });
+}
+
+export function HistoryView() {
+  const bid = useBrowserId();
+  const { data: state, isLoading } = useQuery({
+    queryKey: ["user-state", bid],
+    queryFn: () => fetchUserState(bid),
+    enabled: !!bid,
+  });
+  const ids = state?.watchedVideoIds || [];
+  const { data, isLoading: vLoading } = useQuery({
+    queryKey: ["videos", "history", ids.join("|")],
+    queryFn: () =>
+      fetchVideosRaw({ ids: ids.join("|"), sort: "recent" }),
+    enabled: ids.length > 0,
+  });
+
+  return (
+    <div className="px-4 sm:px-6 py-6 max-w-[1100px] mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Watch history</h1>
+      {isLoading || vLoading ? (
+        <div className="space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex gap-3">
+              <Skeleton className="w-[168px] sm:w-[280px] aspect-video rounded-lg shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : ids.length === 0 ? (
+        <EmptyState
+          title="No watch history yet"
+          body="Videos you watch will show up here, in the order you watched them."
+        />
+      ) : (
+        <div className="flex flex-col gap-4">
+          {data?.map((v) => <VideoCardHorizontal key={v.id} video={v} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function LikedView() {
+  const bid = useBrowserId();
+  const { data: state, isLoading } = useQuery({
+    queryKey: ["user-state", bid],
+    queryFn: () => fetchUserState(bid),
+    enabled: !!bid,
+  });
+  const ids = state?.likedVideoIds || [];
+  const { data, isLoading: vLoading } = useQuery({
+    queryKey: ["videos", "liked", ids.join("|")],
+    queryFn: () => fetchVideosRaw({ ids: ids.join("|") }),
+    enabled: ids.length > 0,
+  });
+
+  return (
+    <div className="px-4 sm:px-6 py-6 max-w-[1400px] mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Liked videos</h1>
+      {isLoading || vLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i}>
+              <Skeleton className="aspect-video w-full rounded-xl" />
+              <Skeleton className="h-4 w-3/4 mt-2" />
+            </div>
+          ))}
+        </div>
+      ) : ids.length === 0 ? (
+        <EmptyState
+          title="No liked videos yet"
+          body="Tap the thumbs-up on a video you enjoy and it'll be saved here."
+        />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6">
+          {data?.map((v) => (
+            <VideoCard key={v.id} video={v} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function LibraryView() {
+  const bid = useBrowserId();
+  const { data: state } = useQuery({
+    queryKey: ["user-state", bid],
+    queryFn: () => fetchUserState(bid),
+    enabled: !!bid,
+  });
+
+  const liked = state?.likedVideoIds?.length || 0;
+  const subs = state?.subscribedChannelIds?.length || 0;
+  const hist = state?.watchedVideoIds?.length || 0;
+
+  return (
+    <div className="px-4 sm:px-6 py-6 max-w-[1200px] mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Your library</h1>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <LibraryCard title="History" count={hist} view={{ kind: "history" }} />
+        <LibraryCard title="Liked videos" count={liked} view={{ kind: "liked" }} />
+        <LibraryCard title="Subscriptions" count={subs} view={{ kind: "subscriptions" }} />
+      </div>
+    </div>
+  );
+}
+
+function LibraryCard({
+  title,
+  count,
+  view,
+}: {
+  title: string;
+  count: number;
+  view: { kind: "history" | "liked" | "subscriptions" };
+}) {
+  const { navigate } = useAppStore();
+  return (
+    <button
+      onClick={() => navigate(view)}
+      className="text-left p-5 rounded-xl border border-border hover:bg-accent/40 transition-colors"
+    >
+      <p className="text-sm text-muted-foreground">{title}</p>
+      <p className="mt-2 text-2xl font-bold tabular-nums">{count}</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {count === 1 ? "1 item" : `${count} items`}
+      </p>
+    </button>
+  );
+}
+
+function EmptyState({ title, body }: { title: string; body: string }) {
+  const { navigate } = useAppStore();
+  return (
+    <div className="py-16 text-center max-w-md mx-auto">
+      <p className="text-lg font-medium">{title}</p>
+      <p className="text-sm text-muted-foreground mt-1">{body}</p>
+      <button
+        onClick={() => navigate({ kind: "home" })}
+        className="mt-4 inline-flex items-center justify-center rounded-full bg-foreground text-background hover:bg-foreground/90 h-9 px-5 text-sm font-medium"
+      >
+        Browse videos
+      </button>
+    </div>
+  );
+}
