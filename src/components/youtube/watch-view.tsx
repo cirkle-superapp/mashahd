@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ThumbsUp, ThumbsDown, Share2, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2 } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,6 +15,7 @@ import { VideoCardHorizontal } from "./video-card";
 import { AiRecap } from "./ai-recap";
 import { SmartChapters } from "./smart-chapters";
 import { CirclePulse } from "./circle-pulse";
+import { ShareButton } from "./header-overlays";
 import { toast } from "sonner";
 
 async function fetchVideo(id: string, bid: string) {
@@ -47,6 +48,8 @@ export function WatchView({ videoId }: { videoId: string }) {
   const qc = useQueryClient();
   const { navigate } = useAppStore();
   const [showFullDesc, setShowFullDesc] = useState(false);
+  const [theater, setTheater] = useState(false);
+  const [upNext, setUpNext] = useState(false);
   const viewsRecorded = useRef(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -164,12 +167,12 @@ export function WatchView({ videoId }: { videoId: string }) {
   const subscribed = data?.subscribed;
 
   return (
-    <div className="px-0 sm:px-6 py-0 sm:py-4">
-      <div className="flex flex-col xl:flex-row gap-6 max-w-[1800px] mx-auto">
+    <div className={cn("px-0 sm:px-6 py-0 sm:py-4", theater && "sm:py-0")}>
+      <div className={cn("flex flex-col xl:flex-row gap-6 mx-auto", theater ? "max-w-none" : "max-w-[1800px]")}>
         {/* Main column */}
-        <div className="flex-1 min-w-0">
-          {/* Player */}
-          <div className="w-full bg-black aspect-video">
+        <div className={cn("flex-1 min-w-0", theater && "xl:flex-none xl:w-full")}>
+          {/* Player + theater controls */}
+          <div className="relative w-full bg-black aspect-video">
             <video
               ref={videoRef}
               key={video.id}
@@ -179,7 +182,31 @@ export function WatchView({ videoId }: { videoId: string }) {
               playsInline
               poster={video.thumbnailUrl}
               src={video.videoUrl}
+              onEnded={() => {
+                setUpNext(true);
+                toast.info("Up next", {
+                  description: "Auto-advancing to the next video in 5s…",
+                  action: {
+                    label: "Play now",
+                    onClick: () => playNext(related, navigate),
+                  },
+                  cancel: { label: "Cancel", onClick: () => setUpNext(false) },
+                });
+                setTimeout(() => {
+                  if (!upNext) playNext(related, navigate);
+                }, 5000);
+              }}
             />
+            {/* Theater mode toggle — top-right of the player */}
+            <button
+              onClick={() => setTheater((t) => !t)}
+              className="absolute top-2 right-2 z-10 px-2.5 py-1 rounded-full bg-black/70 hover:bg-black/90 text-white text-xs font-medium backdrop-blur flex items-center gap-1.5"
+              aria-label={theater ? "Exit theater mode" : "Theater mode"}
+              title={theater ? "Exit theater mode" : "Theater mode"}
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+              {theater ? "Exit" : "Theater"}
+            </button>
           </div>
 
           {/* Title */}
@@ -261,9 +288,7 @@ export function WatchView({ videoId }: { videoId: string }) {
                   <ThumbsDown className="h-5 w-5" />
                 </button>
               </div>
-              <Button variant="secondary" size="sm" className="rounded-full h-9 px-4 bg-muted hover:bg-accent">
-                <Share2 className="h-4 w-4 mr-1.5" /> Share
-              </Button>
+              <ShareButton videoId={video.id} title={video.title} />
               <Button variant="secondary" size="sm" className="rounded-full h-9 px-4 bg-muted hover:bg-accent hidden sm:inline-flex">
                 <Download className="h-4 w-4 mr-1.5" /> Download
               </Button>
@@ -345,7 +370,8 @@ export function WatchView({ videoId }: { videoId: string }) {
           />
         </div>
 
-        {/* Related sidebar */}
+        {/* Related sidebar — hidden when theater mode is on */}
+        {!theater && (
         <aside className="xl:w-[400px] shrink-0 px-4 sm:px-0 pb-8">
           <h2 className="text-base font-semibold mb-3 hidden xl:block">Up next</h2>
           <div className="flex flex-col gap-3">
@@ -365,9 +391,20 @@ export function WatchView({ videoId }: { videoId: string }) {
                 ))}
           </div>
         </aside>
+        )}
       </div>
     </div>
   );
+}
+
+/** Auto-advance helper — jump to the first related video. */
+function playNext(
+  related: Video[] | undefined,
+  navigate: (v: { kind: "watch"; videoId: string }) => void
+) {
+  if (related && related.length > 0) {
+    navigate({ kind: "watch", videoId: related[0].id });
+  }
 }
 
 function CommentsSection({

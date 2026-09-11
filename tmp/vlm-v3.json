@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "(1) Y: A slim left-edge rail displays the four modules (Wasl, Mashahd, Lamahat, Midan), with Mashahd highlighted in gold.\n(2) Y: There is a 'Shorts' shelf containing vertical 9:16 video cards arranged in a horizontal carousel.\n(3) Y: The header includes both a Create (upload/video camera icon) button and a Notifications (bell) button.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789143927,
+  "id": "2026091200252436169c08b5114d82",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "2026091200252436169c08b5114d82",
+  "usage": {
+    "completion_tokens": 91,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1001,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1092
+  }
+}

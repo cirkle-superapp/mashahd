@@ -151,3 +151,33 @@ Stage Summary:
 - Favicon is the three-circle Mashahd mark, served as SVG + wired into a PWA manifest.
 - Super-app integration ready: window.mashahd bridge (v1.0.0) with navigate/getView/onNavigate/exit + INTEGRATION.md documenting the contract for the parent shell and sibling modules.
 - EVERY sidebar item and tab now routes to a real, working screen — no dead links. 14 category screens + 6 settings tabs added.
+
+---
+Task ID: 34-42 (Proceed implementing — super-app rail, notifications, create, share, theater, shorts, about, auto-advance) — COMPLETE
+Agent: main
+Task: Proceed implementing the remaining missing features for Mashahd as a super-app video pillar.
+
+Work Log:
+- Built SuperAppRail (src/components/youtube/super-app-rail.tsx): slim left-edge glass rail showing the 4 sibling modules (Wasl وصل / Mashahd مشاهِد / Lamahat لمحات / Midan ميدان) with the active module highlighted in gold. Clicking a sibling dispatches a `superapp:switch-module` CustomEvent + calls window.mashahd.exit(), and shows a toast explaining the handoff. Mounted in page.tsx between the header and sidebar.
+- Built NotificationsButton (header-overlays.tsx): bell icon opens a glass-strong popover with a feed of recent activity (new uploads, AI recap ready, comment replies), unread count badge in gold, mark-all-read, click-to-navigate. Replaces the dead bell icon.
+- Built CreateButton (header-overlays.tsx): video icon opens an upload modal with drag-&-drop zone (gold highlight on dragover), title input (required), description textarea, category dropdown, Publish button (disabled until title+file provided). Replaces the dead video icon.
+- Built ShareButton (header-overlays.tsx): opens a share modal with the real video URL, copy-to-clipboard (with Check confirmation), and Twitter/Facebook/Email social share links. Wired into the watch page replacing the dead Share button.
+- Added Theater mode to WatchView: a toggle button on the player (top-right) that expands the video to full width and hides the "Up next" sidebar. Button label switches between "Theater" and "Exit".
+- Added auto-advance: when the video ends, a toast with "Play now" / "Cancel" actions appears and the first related video auto-plays after 5s (via playNext helper).
+- Built ShortsShelf (src/components/youtube/shorts-shelf.tsx): horizontal carousel of 10 vertical 9:16 short-form video cards (most-viewed repurposed), with gradient overlay, play affordance on hover, views badge, gold flame header. Mounted on the home view (only when no mood/category filter is active). Adapted from CIRKLE's mosaic-stories overlay.
+- Added "About" tab to ChannelView: shows Description, channel details grid (Subscribers / Videos / Total views / Handle), a gold-bordered "Joined" date card, and a "Reach" card with total views across videos.
+
+Verification (Agent Browser + VLM):
+- Home (VLM): slim left-edge rail with 4 modules (Mashahd highlighted gold) ✓, Shorts shelf with vertical 9:16 cards in horizontal carousel ✓, Create + Notifications buttons in header ✓.
+- Super-app rail: clicking Wasl showed the "Switching to Wasl (وصل)" toast explaining the handoff to the sibling module ✓.
+- Notifications dropdown: opens with real content (Pixel Forge upload, AI Recap ready, Maya R. reply), mark-all-read, manage-settings link ✓.
+- Create modal: drag-&-drop zone, title input, category dropdown, Publish disabled until valid ✓.
+- Share dialog: real video URL, Copy button, Twitter/Facebook/Email social links ✓.
+- Theater mode: toggling hides the Up-next sidebar, button switches to "Exit theater mode" ✓.
+- Channel About tab: Description, Subscribers/Videos/Total views/Handle grid, Joined date card, Reach card ✓.
+- Lint: clean (0 errors, 0 warnings). Dev server healthy (200).
+
+Stage Summary:
+- 8 new features added: SuperAppRail, NotificationsButton, CreateButton, ShareButton, Theater mode, auto-advance, ShortsShelf, Channel About tab.
+- Every previously-dead header affordance (bell, video icon, Share) now opens a real working overlay.
+- Mashahd is visibly part of a super-app family — the left rail makes the 4-module architecture tangible and the bridge hands off to siblings via standard CustomEvents.

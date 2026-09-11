@@ -173,6 +173,9 @@ export function ChannelView({ channelId }: { channelId: string }) {
             <TabsTrigger value="popular" className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none">
               Popular
             </TabsTrigger>
+            <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+              About
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="home" className="mt-6">
@@ -194,6 +197,10 @@ export function ChannelView({ channelId }: { channelId: string }) {
 
           <TabsContent value="popular" className="mt-6">
             <VideoGrid videos={popular} />
+          </TabsContent>
+
+          <TabsContent value="about" className="mt-6">
+            <AboutPanel channel={channel} videoCount={videos?.length || 0} totalViews={totalViews(videos || [])} />
           </TabsContent>
         </Tabs>
       </div>
@@ -246,6 +253,84 @@ function ChannelSkeleton() {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function totalViews(videos: Video[]): number {
+  return videos.reduce((sum, v) => sum + (v.views || 0), 0);
+}
+
+function formatBig(n: number): string {
+  if (n < 1000) return `${n}`;
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+  if (n < 1_000_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  return `${(n / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}B`;
+}
+
+function AboutPanel({
+  channel,
+  videoCount,
+  totalViews,
+}: {
+  channel: ChannelWithFlags;
+  videoCount: number;
+  totalViews: number;
+}) {
+  const joined = new Date(channel.createdAt);
+  const joinedStr = joined.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const stats = [
+    { label: "Subscribers", value: formatBig(channel.subscribers) },
+    { label: "Videos", value: `${videoCount}` },
+    { label: "Total views", value: formatBig(totalViews) },
+    { label: "Handle", value: `@${channel.handle}` },
+  ];
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="md:col-span-2 space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+            Description
+          </h3>
+          <p className="text-sm leading-relaxed whitespace-pre-line">
+            {channel.description}
+          </p>
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+            Channel details
+          </h3>
+          <dl className="grid grid-cols-2 gap-3">
+            {stats.map((s) => (
+              <div key={s.label} className="rounded-xl border border-border bg-card p-3">
+                <dt className="text-xs text-muted-foreground">{s.label}</dt>
+                <dd className="text-sm font-medium mt-0.5 tabular-nums">{s.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </div>
+      <aside className="space-y-3">
+        <div className="rounded-xl border border-gold/20 bg-gradient-to-br from-[hsl(var(--gold)/0.08)] to-transparent p-4">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+            Joined
+          </h3>
+          <p className="text-sm font-medium">{joinedStr}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+            Reach
+          </h3>
+          <p className="text-sm">
+            <span className="font-medium tabular-nums">{formatBig(totalViews)}</span>{" "}
+            <span className="text-muted-foreground">total views across {videoCount} video{videoCount === 1 ? "" : "s"}.</span>
+          </p>
+        </div>
+      </aside>
     </div>
   );
 }

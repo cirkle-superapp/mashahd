@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Search, Mic, Video, Bell, Menu, Sun, Moon, Command } from "lucide-react";
+import { Search, Mic, Menu, Sun, Moon, Command } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { useAppStore, View } from "@/store/app-store";
 import { Sidebar } from "./sidebar";
 import { MashahdLogo } from "@/components/brand/mashahd-logo";
 import { useCommandPalette } from "@/store/command-palette-store";
+import { NotificationsButton, CreateButton } from "./header-overlays";
 import Link from "next/link";
 
 export function Header() {
@@ -172,25 +173,8 @@ export function Header() {
 
       {/* Right: actions */}
       <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="rounded-full hidden sm:inline-flex hover:bg-gold/10"
-          aria-label="Create"
-          title="Create"
-        >
-          <Video className="h-5 w-5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="rounded-full hidden sm:inline-flex relative hover:bg-gold/10"
-          aria-label="Notifications"
-          title="Notifications"
-        >
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-1 right-1.5 w-2 h-2 bg-gold rounded-full" />
-        </Button>
+        <CreateButton />
+        <NotificationsButton />
         {mounted && (
           <Button
             variant="ghost"

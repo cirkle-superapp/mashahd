@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { VideoCard } from "./video-card";
 import { CategoryChips } from "./category-chips";
 import { MoodFilter, moodToCategory, type MoodId } from "./mood-filter";
+import { ShortsShelf } from "./shorts-shelf";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Video } from "@/lib/types";
 
@@ -40,6 +41,9 @@ export function HomeView() {
       <div className="pt-2 pb-1">
         <MoodFilter active={mood} onSelect={setMood} />
       </div>
+      {/* Shorts shelf — only on the default home feed (not when a mood or
+          specific category is selected). */}
+      {!mood && category === "All" && <ShortsShelf />}
       <div className="px-4 sm:px-6 py-4">
         {mood && (
           <p className="text-xs text-muted-foreground mb-3">

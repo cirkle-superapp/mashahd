@@ -19,6 +19,7 @@ import {
 } from "@/components/youtube/list-views";
 import { Footer } from "@/components/youtube/footer";
 import { CommandPalette } from "@/components/youtube/command-palette";
+import { SuperAppRail } from "@/components/youtube/super-app-rail";
 import { useMashahdBridge } from "@/lib/mashahd-bridge";
 import { cn } from "@/lib/utils";
 
@@ -76,6 +77,8 @@ export default function Page() {
       <div className="relative flex flex-col min-h-screen">
         <Header />
         <div className="flex flex-1 min-h-0">
+          {/* Super-app module rail — switch to sibling modules (Wasl/Lamahat/Midan). */}
+          <SuperAppRail />
           {/* Desktop sidebar */}
           <aside
             className={cn(
