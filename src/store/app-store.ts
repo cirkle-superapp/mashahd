@@ -13,7 +13,8 @@ export type View =
   | { kind: "liked" }
   | { kind: "library" }
   | { kind: "category"; category: string }
-  | { kind: "settings"; tab?: string };
+  | { kind: "settings"; tab?: string }
+  | { kind: "profile" };
 
 type AppState = {
   view: View;
@@ -55,6 +56,8 @@ export function viewToQuery(v: View): string {
       return `?v=category&cat=${encodeURIComponent(v.category)}`;
     case "settings":
       return v.tab ? `?v=settings&tab=${encodeURIComponent(v.tab)}` : `?v=settings`;
+    case "profile":
+      return `?v=profile`;
   }
 }
 
@@ -83,6 +86,8 @@ export function queryToView(search: string): View {
       return { kind: "category", category: sp.get("cat") || "All" };
     case "settings":
       return { kind: "settings", tab: sp.get("tab") || undefined };
+    case "profile":
+      return { kind: "profile" };
     default:
       return { kind: "home" };
   }

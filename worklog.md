@@ -234,3 +234,29 @@ Work Log:
 Stage Summary:
 - Logo animation fixed to match CIRKLE exactly (thin strokes, 4 circles, rotation only).
 - 5 new features added: BulletComments (danmaku), AI Starters, Cirkle Oracle, AI Tone Adjuster, + the AiWatchPanel that hosts them.
+
+---
+Task ID: 58-62 (Fix profile + header opacity + unique nav architecture) — COMPLETE
+Agent: main
+Task: Make the profile tab clickable, fix the opaque header on scroll, and redesign the navigation architecture to be unique to Mashahd (not a YouTube clone) to avoid legal concerns.
+
+Work Log:
+- User reported 3 issues: (1) profile tab not clickable, (2) header too opaque when scrolling, (3) navigation architecture is too YouTube-like (legal risk).
+- Re-cloned CIRKLE to study its shell: it uses a floating glass TopBar PILL (not a full-width bar) + a bottom Dock (not a left sidebar) + a slim left module rail. This is CIRKLE's unique super-app navigation identity.
+- FIXED header opacity: replaced `glass-strong` (0.92 opacity, too opaque) with `glass` (0.55 opacity) in a floating pill shape (rounded-full, shadow-glass, margin). Content now scrolls visibly behind it. Also fixed a CSS bug: the `.glass` / `.glass-strong` / `.brand-chip` classes were inside `@layer components` which Tailwind v4 was tree-shaking — moved them OUTSIDE any @layer so they always emit. Verified via getComputedStyle: bg is now rgba(255,255,255,0.55) and VLM confirmed "frosted glass, content visible behind".
+- FIXED profile tab: the header avatar was a dead `<Link href="#">`. Now it's a real `<button onClick={() => navigate({ kind: "profile" })}>`. Added `profile` to the View union + viewToQuery/queryToView. Built ProfileView with: avatar header, "Your activity" stats (watch history / liked / subscriptions counts, clickable), account quick links (Settings/Notifications/Privacy), Mashahd AI callout, sign-out button. Verified: clicking the avatar navigates to /?v=profile and shows the full profile screen.
+- REDESIGNED navigation architecture (the big change): removed the YouTube-style left sidebar entirely. Replaced it with a floating bottom Dock (adapted from CIRKLE's dock.tsx): 5 primary tabs (Home/Trending/Subs/Liked/You) in a glass rounded-full bar fixed at the bottom with safe-area padding + a "More" button that opens a bottom Sheet with secondary destinations (Library/History/Settings/Help/Feedback) + Explore category chips. Kept the slim left-edge SuperAppRail (the 4 sibling-module icons). This is Mashahd's own navigation identity — distinct from YouTube.
+- Removed the unused Sidebar component import from the header and cleaned up all the hamburger/Sheet/mobileOpen state.
+- Added `pb-24` to the main content so it isn't hidden behind the floating dock.
+- Lint: clean (0 errors, 0 warnings). Dev server healthy (200).
+
+Verification (Agent Browser + VLM):
+- Header: VLM confirmed "floating rounded pill, frosted glass, content visible behind". getComputedStyle: bg rgba(255,255,255,0.55).
+- Profile: clicking the avatar navigates to /?v=profile. Profile screen shows "Your activity" stats, account links, sign-out.
+- Dock: 5 primary tabs present (Home/Trending/Subs/Liked/You + More), clicking Home navigates correctly, More sheet opens with Library/History/Settings/Help/Feedback + Explore categories.
+- Architecture: VLM confirmed floating pill header ✓, slim left module rail ✓, NO traditional left sidebar ✓, bottom dock rendered (verified via getBoundingClientRect: bottom=577px, visible=true).
+
+Stage Summary:
+- Profile tab is now clickable and opens a full Profile screen.
+- Header is now a floating semi-transparent glass pill (content visible behind on scroll).
+- Navigation architecture is now unique to Mashahd: floating TopBar pill + bottom Dock + left module Rail (NO YouTube-style sidebar). This gives Mashahd its own identity as a super-app module and avoids any YouTube layout similarity.

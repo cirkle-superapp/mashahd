@@ -1,28 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Search, Mic, Menu, Sun, Moon, Command } from "lucide-react";
+import { Search, Mic, Sun, Moon, Command } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { useAppStore, View } from "@/store/app-store";
-import { Sidebar } from "./sidebar";
 import { MashahdLogo } from "@/components/brand/mashahd-logo";
 import { useCommandPalette } from "@/store/command-palette-store";
 import { NotificationsButton, CreateButton } from "./header-overlays";
-import Link from "next/link";
 
 export function Header() {
-  const { navigate, toggleSidebar, searchDraft, setSearchDraft } = useAppStore();
+  const { navigate, searchDraft, setSearchDraft } = useAppStore();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [showSuggest, setShowSuggest] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const openPalette = useCommandPalette((s) => s.openPalette);
@@ -43,45 +35,18 @@ export function Header() {
   const [liveSearch] = useState(["next.js", "ramen recipe", "iceland travel", "elden ring", "workout", "lofi beats", "tesla"]);
 
   return (
-    <header className="sticky top-0 z-50 h-14 flex items-center gap-2 sm:gap-4 px-2 sm:px-4 glass-strong border-b border-gold/15">
-      {/* Left: hamburger + logo */}
-      <div className="flex items-center gap-2 shrink-0">
-        {/* Desktop hamburger */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="hidden md:flex rounded-full hover:bg-gold/10"
-          aria-label="Toggle menu"
-          onClick={toggleSidebar}
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
-        {/* Mobile: sidebar in a sheet */}
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden rounded-full hover:bg-gold/10"
-              aria-label="Open menu"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0">
-            <Sidebar onNavigate={() => setMobileOpen(false)} />
-          </SheetContent>
-        </Sheet>
-
-        {/* Logo */}
+    <header className="sticky top-0 z-50 px-3 pt-3">
+      {/* Floating glass pill — semi-transparent so content scrolls visibly
+          behind it (Mashahd identity, adapted from CIRKLE's TopBar). */}
+      <div className="glass rounded-full px-3 py-2 flex items-center gap-2 shadow-glass border border-gold/15">
+        {/* Left: logo (no hamburger — the bottom Dock replaces the sidebar) */}
         <button
-          className="flex items-center gap-1 px-1 group"
+          className="flex items-center gap-1 px-1 group shrink-0"
           onClick={() => navigate({ kind: "home" })}
           aria-label="Mashahd home"
         >
           <MashahdLogo size={28} />
         </button>
-      </div>
 
       {/* Center: search */}
       <div className="flex-1 flex items-center justify-center max-w-2xl mx-auto">
@@ -191,30 +156,30 @@ export function Header() {
             )}
           </Button>
         )}
-        <Link
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-          }}
-          className="ml-1"
-          aria-label="Account"
+        {/* Profile avatar — clickable, opens the profile screen */}
+        <button
+          onClick={() => navigate({ kind: "profile" })}
+          className="ml-1 shrink-0"
+          aria-label="Open your profile"
+          title="Profile"
         >
-          <Avatar className="h-9 w-9 rounded-full border border-border">
+          <Avatar className="h-9 w-9 rounded-full border border-gold/30 hover:ring-2 hover:ring-gold/40 transition-all">
             <AvatarImage src="https://api.dicebear.com/7.x/initials/svg?seed=You&backgroundColor=c2a060" alt="" />
             <AvatarFallback>Y</AvatarFallback>
           </Avatar>
-        </Link>
-        {/* Command palette (⌘K) trigger — Mashahd, adapted from CIRKLE. */}
+        </button>
+        {/* Command palette (⌘K) trigger */}
         <Button
           variant="ghost"
           size="icon"
-          className="rounded-full hidden lg:inline-flex"
+          className="rounded-full hidden lg:inline-flex hover:bg-gold/10"
           onClick={() => openPalette()}
           aria-label="Command palette"
           title="Command palette  (⌘K)"
         >
           <Command className="h-4 w-4" />
         </Button>
+        </div>
       </div>
     </header>
   );

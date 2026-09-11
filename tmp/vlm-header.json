@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the screenshot provided, here is the description of the header:\n\n*   **Shape:** The header is **not** a floating rounded pill. It is a **full-width horizontal bar** that spans the entire top of the interface.\n*   **Opacity & Background Content:** The header is **opaque (solid white)**. You **cannot** see video content scrolling behind it; it completely blocks whatever content would be underneath.\n\n**Visual Details:**\nThe header features a light gray background with a distinct, rounded search bar in the center (containing \"Mashhad\" and \"Search\"). It also displays a row of channel recommendations (e.g., Apex Gaming, Pixel Forge) above the main category filters (All, Music, Gaming, etc.). The bottom navigation bar (Home, Shorts, Subscriptions) appears to be a separate element at the very bottom of the screen.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789148690,
+  "id": "20260912014445148c160443bd4788",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912014445148c160443bd4788",
+  "usage": {
+    "completion_tokens": 179,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 937,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1116
+  }
+}

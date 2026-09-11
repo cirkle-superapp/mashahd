@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the visual evidence provided in the image:\n\n(1) **N** (The header is a full-width bar with rounded corners, not a floating pill)\n(2) **N** (There is no floating glass dock at the bottom; navigation links are located in the footer area as standard text)\n(3) **N** (There is a left sidebar present on the far left edge containing icons for \"Wasl\", \"Mashahd\", \"Lamahat\", and \"Midan\")\n(4) **N** (The layout uses solid bars and a traditional sidebar structure similar to YouTube, rather than distinct floating glass elements)",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789148855,
+  "id": "202609120147129edba65952e34825",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609120147129edba65952e34825",
+  "usage": {
+    "completion_tokens": 133,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 3636,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 3769
+  }
+}

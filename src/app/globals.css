@@ -224,52 +224,52 @@
   ::selection { background: hsl(var(--gold) / 0.25); }
 }
 
-@layer components {
-  /* Glass surfaces — the signature Mashahd chrome. */
-  .glass {
-    background: hsl(var(--glass-bg));
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border: 1px solid hsl(var(--glass-border));
-  }
-  .glass-strong {
-    background: hsl(var(--glass-strong-bg));
-    backdrop-filter: blur(40px) saturate(200%);
-    -webkit-backdrop-filter: blur(40px) saturate(200%);
-    border: 1px solid hsl(var(--glass-border));
-  }
-  .gradient-text-gold {
-    background: var(--gradient-gold);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  .gradient-text-hero {
-    background: var(--gradient-hero);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  .aurora-bg { background-image: var(--gradient-aurora); }
-  .bg-gradient-hero { background-image: var(--gradient-hero); }
-  .bg-gradient-gold { background-image: var(--gradient-gold); }
-  .bg-gradient-aurora { background-image: var(--gradient-aurora); }
-  .bg-gradient-mesh { background: var(--gradient-mesh); }
-  .bg-gradient-card { background-image: var(--gradient-card); }
-  .shadow-soft { box-shadow: var(--shadow-soft); }
-  .shadow-glass { box-shadow: var(--shadow-glass); }
-  .shadow-glow { box-shadow: var(--shadow-glow); }
-  .shadow-float { box-shadow: var(--shadow-float); }
+/* Glass surfaces — the signature Mashahd chrome.
+   Declared OUTSIDE @layer so Tailwind v4 always emits them (the
+   @layer components tree-shaking was dropping these rules). */
+.glass {
+  background: hsl(var(--glass-bg));
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid hsl(var(--glass-border));
+}
+.glass-strong {
+  background: hsl(var(--glass-strong-bg));
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid hsl(var(--glass-border));
+}
+.gradient-text-gold {
+  background: var(--gradient-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.gradient-text-hero {
+  background: var(--gradient-hero);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.aurora-bg { background-image: var(--gradient-aurora); }
+.bg-gradient-hero { background-image: var(--gradient-hero); }
+.bg-gradient-gold { background-image: var(--gradient-gold); }
+.bg-gradient-aurora { background-image: var(--gradient-aurora); }
+.bg-gradient-mesh { background: var(--gradient-mesh); }
+.bg-gradient-card { background-image: var(--gradient-card); }
+.shadow-soft { box-shadow: var(--shadow-soft); }
+.shadow-glass { box-shadow: var(--shadow-glass); }
+.shadow-glow { box-shadow: var(--shadow-glow); }
+.shadow-float { box-shadow: var(--shadow-float); }
 
-  /* Brand chip — pill used for category chips and AI affordances. */
-  .brand-chip {
-    background: hsl(var(--gold) / 0.1);
-    border: 1px solid hsl(var(--gold) / 0.25);
-    color: hsl(var(--foreground));
-  }
-  .brand-chip:hover {
-    background: hsl(var(--gold) / 0.18);
-  }
+/* Brand chip — pill used for category chips and AI affordances. */
+.brand-chip {
+  background: hsl(var(--gold) / 0.1);
+  border: 1px solid hsl(var(--gold) / 0.25);
+  color: hsl(var(--foreground));
+}
+.brand-chip:hover {
+  background: hsl(var(--gold) / 0.18);
 }
 
 @layer utilities {

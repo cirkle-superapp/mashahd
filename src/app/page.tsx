@@ -3,12 +3,13 @@
 import { useEffect } from "react";
 import { useAppStore } from "@/store/app-store";
 import { Header } from "@/components/youtube/header";
-import { Sidebar } from "@/components/youtube/sidebar";
+import { Dock } from "@/components/youtube/dock";
 import { HomeView } from "@/components/youtube/home-view";
 import { WatchView } from "@/components/youtube/watch-view";
 import { ChannelView } from "@/components/youtube/channel-view";
 import { CategoryView } from "@/components/youtube/category-view";
 import { SettingsView } from "@/components/youtube/settings-view";
+import { ProfileView } from "@/components/youtube/profile-view";
 import {
   SearchView,
   TrendingView,
@@ -50,11 +51,13 @@ function renderView(view: ReturnType<typeof useAppStore.getState>["view"]) {
       return <CategoryView category={view.category} />;
     case "settings":
       return <SettingsView initialTab={view.tab} />;
+    case "profile":
+      return <ProfileView />;
   }
 }
 
 export default function Page() {
-  const { view, sidebarOpen, syncFromUrl } = useAppStore();
+  const { view, syncFromUrl } = useAppStore();
 
   // Mount the super-app integration bridge onto window.mashahd.
   useMashahdBridge();
@@ -79,32 +82,22 @@ export default function Page() {
       <div className="pointer-events-none fixed inset-0 aurora-bg opacity-50" aria-hidden />
       <div className="relative flex flex-col min-h-screen">
         <Header />
+        {/* Super-app module rail — switch to sibling modules (Wasl/Lamahat/Midan).
+            Hidden on small screens; the bottom Dock handles nav there. */}
         <div className="flex flex-1 min-h-0">
-          {/* Super-app module rail — switch to sibling modules (Wasl/Lamahat/Midan). */}
           <SuperAppRail />
-          {/* Desktop sidebar */}
-          <aside
-            className={cn(
-              "hidden md:block shrink-0 border-r border-border overflow-hidden transition-all duration-200 sticky top-14 h-[calc(100vh-3.5rem)] glass",
-              sidebarOpen ? "w-60" : "w-0"
-            )}
-          >
-            <div className={cn("w-60 h-full", !sidebarOpen && "opacity-0")}>
-              <Sidebar />
-            </div>
-          </aside>
-
-          {/* Main content — flex column so Footer's `mt-auto` sticks it to
-              the bottom of the viewport on short pages, and it gets pushed
-              down naturally when content is taller than the screen. */}
-          <main className="flex-1 min-w-0 flex flex-col">
+          {/* Main content — no left sidebar (replaced by the bottom Dock,
+              Mashahd's unique navigation identity). */}
+          <main className="flex-1 min-w-0 flex flex-col pb-24">
             <div className="flex-1">{renderView(view)}</div>
             <Footer />
           </main>
         </div>
-        {/* ⌘K Command Palette — Mashahd (adapted from CIRKLE) */}
+        {/* Bottom Dock — floating glass navigation (replaces the YouTube-style sidebar) */}
+        <Dock />
+        {/* ⌘K Command Palette */}
         <CommandPalette />
-        {/* One-time animated splash on first visit (adapted from CIRKLE) */}
+        {/* One-time animated splash on first visit */}
         <Splash />
         {/* Global keyboard shortcuts + Shift+? help overlay */}
         <KeyboardShortcuts />
