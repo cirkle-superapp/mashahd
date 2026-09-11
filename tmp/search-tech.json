@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://fastocloud.com",
+    "name": "Best Live Video Streaming Hosting Platforms in 2026: Self-",
+    "snippet": "May 13, 2026 — Self-hosted $25-$100/mo . HLS/DASH delivery PRO ($50/month) - everything in Community plus WebRTC streaming, internal CDN and load balancer,  ...",
+    "host_name": "fastocloud.com",
+    "rank": 0,
+    "date": "May 13, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://selfhostedworld.com",
+    "name": "Self-hostable software: Video Streaming (60)",
+    "snippet": "Jellyfin is a free software media server for managing and streaming personal media. WebRTC, HLS, free and open source media player. A free, decentralized, ...",
+    "host_name": "selfhostedworld.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://news.ycombinator.com",
+    "name": "Owncast – An open-source, self-hosted live streaming server",
+    "snippet": "Dec 20, 2020 — With HLS /DASH, your clients are just downloading tiny video files over HTTP, and they can be live or be served up by anywhere -- nginx, S3, ... Read more",
+    "host_name": "news.ycombinator.com",
+    "rank": 2,
+    "date": "Dec 20, 2020",
+    "favicon": ""
+  },
+  {
+    "url": "https://swarmify.com",
+    "name": "Best Video CDN Providers (2026): 9 Options Compared",
+    "snippet": "Apr 2, 2026 — Compare 9 video CDN providers by pricing , performance, WordPress support, and ease of use. Includes a real 50K view cost breakdown.",
+    "host_name": "swarmify.com",
+    "rank": 3,
+    "date": "Apr 2, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "Ant Media Server — Ultra-Low Latency, HLS, SRT, RTMP",
+    "snippet": "Ant Media Server is a scalable, open-source media server designed for ultra-low latency live streaming with WebRTC (~0.5s), plus support for SRT, RTMP, RTSP,  ...",
+    "host_name": "github.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.netactuate.com",
+    "name": "Deploy Media & Streaming Infrastructure at the Global Edge",
+    "snippet": "Deploy media, streaming , transcode, WebRTC and edge appliances one click across NetActuate's global anycast edge. Browse 114 appliances from open - source ...",
+    "host_name": "www.netactuate.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  }
+]
