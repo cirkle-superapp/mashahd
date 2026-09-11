@@ -327,3 +327,37 @@ Stage Summary:
 - Video scene is now unique to Mashahd — custom glass control bar, not YouTube's native player.
 - Favorites + Watch Later fully implemented (backend + UI + views + Dock integration).
 - Other features added: PiP toggle, playback speed control (0.5x-2x), volume slider, keyboard shortcuts (f/space/k/m), auto-hiding controls, buffered indicator.
+
+---
+Task ID: 73-79 (Profile picture + UI audit + COO recommendations + watch-page redesign + AI FAB) — COMPLETE
+Agent: main
+Task: Add profile picture change, audit all UI with screenshots, give COO recommendations, implement the high-priority gaps.
+
+Work Log:
+- Built profile picture feature:
+  * useAvatar hook (src/hooks/use-avatar.ts): manages avatar + display name in localStorage, 12 presets (DiceBear), upload (data URL, max 500KB), reset, mashahd:avatar-changed event for cross-component sync.
+  * UserAvatar component (src/components/youtube/user-avatar.tsx): reads from localStorage + re-renders on change; used in header + comment composer so all stay in sync.
+  * AvatarPicker dialog (src/components/youtube/avatar-picker.tsx): preview, display-name editor, preset grid, upload zone, save/reset.
+  * Wired into Profile screen: clickable avatar + "Change picture" button + "Change profile picture" camera badge.
+- Full UI audit: captured 11 screenshots (home, watch, watch-comments, channel, profile, avatar-picker, trending, search, more-sheet, favorites, settings) + VLM audit. Key findings:
+  * Bottom content cut off by dock (fixed — pb-24 was already there, but Shorts shelf needed pb-2).
+  * Search had no sort/filter chips (fixed — added sort chips: Most recent / Most viewed).
+  * Trending rank numbers too dominant (fixed — smaller, gold, w-6).
+  * Watch page layout too similar to YouTube (player + vertical sidebar) — the biggest legal risk.
+  * Channel page layout too similar to YouTube (banner + tabs).
+- Wrote COO_RECOMMENDATIONS.md: strategic risks (legal/layout, no real video storage, anonymous-only state), growth opportunities (lean into AI identity, community/circles, creator monetization, mobile, onboarding), prioritized 10-item backlog, KPIs to track, immediate next steps.
+- Implemented top-priority recommendations:
+  * Watch page: replaced the YouTube-style vertical "Up next" sidebar with a horizontal "Continue watching" carousel below the comments. Changed the layout from xl:flex-row (player + sidebar) to a single-column stack. VLM confirmed: "single column with player, metadata, and comments stacked vertically" — no longer YouTube's two-column split.
+  * Floating "Ask Mashahd AI" button: a fixed-position gold FAB (bottom-right, above the dock) with a sparkle icon + pulsing rose dot, visible on every watch page. Clicking it opens the AI Watch Panel on the Oracle tab. VLM confirmed: "floating gold circular button with sparkle icon in bottom-right".
+- Verification (Agent Browser + VLM):
+  * Profile picture: picked preset 2 (notionists/Mashahd/teal), header avatar src changed to seed=Mashahd&backgroundColor=1a4a5a, profile reflected the new avatar + name.
+  * Watch page: "Continue watching" heading present (horizontal carousel), floating "Ask Mashahd AI" button present and opens the Oracle tab on click.
+  * Search: sort chips (Most recent / Most viewed) present and toggle.
+  * Lint: clean (0 errors, 0 warnings). Dev server healthy (200).
+
+Stage Summary:
+- Profile picture change fully implemented (presets + upload + sync across header/profile/comments).
+- Full UI audit completed with 11 screenshots + VLM analysis.
+- COO recommendations document written (COO_RECOMMENDATIONS.md).
+- Watch page redesigned: single-column + horizontal "Continue watching" carousel (no more YouTube-style vertical sidebar) + floating "Ask Mashahd AI" FAB.
+- Search sort chips + trending rank styling fixed.

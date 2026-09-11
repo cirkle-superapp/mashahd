@@ -12,6 +12,7 @@ import { useCommandPalette } from "@/store/command-palette-store";
 import { NotificationsButton, CreateButton } from "./header-overlays";
 import { GoLive } from "./go-live";
 import { CreateChannel } from "./create-channel";
+import { UserAvatar } from "./user-avatar";
 
 export function Header() {
   const { navigate, searchDraft, setSearchDraft } = useAppStore();
@@ -186,14 +187,11 @@ export function Header() {
         {/* Profile avatar — clickable, opens the profile screen */}
         <button
           onClick={() => navigate({ kind: "profile" })}
-          className="ml-1 shrink-0"
+          className="ml-1 shrink-0 rounded-full"
           aria-label="Open your profile"
           title="Profile"
         >
-          <Avatar className="h-9 w-9 rounded-full border border-gold/30 hover:ring-2 hover:ring-gold/40 transition-all">
-            <AvatarImage src="https://api.dicebear.com/7.x/initials/svg?seed=You&backgroundColor=c2a060" alt="" />
-            <AvatarFallback>Y</AvatarFallback>
-          </Avatar>
+          <UserAvatar className="h-9 w-9 rounded-full border border-gold/30 hover:ring-2 hover:ring-gold/40 transition-all" />
         </button>
         <Button
           variant="ghost"

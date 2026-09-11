@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Heart, Bookmark } from "lucide-react";
 import { VideoCardHorizontal, VideoCard } from "./video-card";
@@ -7,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Video } from "@/lib/types";
 import { useAppStore } from "@/store/app-store";
 import { useBrowserId } from "@/hooks/use-browser-id";
+import { cn } from "@/lib/utils";
 
 async function fetchVideosRaw(params: Record<string, string>) {
   const sp = new URLSearchParams(params);
@@ -24,20 +26,42 @@ async function fetchUserState(bid: string) {
 }
 
 export function SearchView({ query }: { query: string }) {
+  const [sort, setSort] = useState<"recent" | "popular">("recent");
   const { data, isLoading } = useQuery({
-    queryKey: ["videos", "search", query],
-    queryFn: () => fetchVideosRaw({ q: query, sort: "recent" }),
+    queryKey: ["videos", "search", query, sort],
+    queryFn: () => fetchVideosRaw({ q: query, sort }),
   });
+
+  const FILTERS: { id: "recent" | "popular"; label: string }[] = [
+    { id: "recent", label: "Most recent" },
+    { id: "popular", label: "Most viewed" },
+  ];
 
   return (
     <div className="px-4 sm:px-6 py-6 max-w-[1100px] mx-auto">
-      <h1 className="text-sm text-muted-foreground mb-4">
+      <h1 className="text-sm text-muted-foreground mb-3">
         Showing results for{" "}
         <span className="text-foreground font-medium">&ldquo;{query}&rdquo;</span>
         {data && (
           <span className="ml-2">— {data.length} video{data.length === 1 ? "" : "s"}</span>
         )}
       </h1>
+      {/* Filter chips — unique to Mashahd, not YouTube's filter row */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-xs text-muted-foreground">Sort:</span>
+        {FILTERS.map((f) => (
+          <button
+            key={f.id}
+            onClick={() => setSort(f.id)}
+            className={cn(
+              "px-3 py-1 rounded-full text-xs font-medium transition-colors",
+              sort === f.id ? "bg-gradient-gold text-charcoal" : "brand-chip"
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
       <div className="flex flex-col gap-4">
         {isLoading
           ? Array.from({ length: 8 }).map((_, i) => (
@@ -111,7 +135,7 @@ function TrendingCard({ video, rank }: { video: Video; rank: number }) {
           {String(video.durationSec % 60).padStart(2, "0")}
         </span>
       </div>
-      <div className="hidden sm:flex items-start text-2xl font-bold text-muted-foreground/60 pt-1">
+      <div className="hidden sm:flex items-start text-sm font-bold text-[hsl(var(--gold))] pt-1 shrink-0 w-6">
         {rank}
       </div>
       <div className="min-w-0 flex-1">

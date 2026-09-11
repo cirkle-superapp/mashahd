@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "(1) Y, there is a floating gold circular button with a sparkle icon in the bottom-right corner. (2) Y, the layout is a single column with the player, metadata, and comments stacked vertically. (3) N, there is no horizontal 'Continue watching' carousel visible; the space below the video is occupied by metadata and comments.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789152377,
+  "id": "202609120246149b9e05e0d08d4e40",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609120246149b9e05e0d08d4e40",
+  "usage": {
+    "completion_tokens": 73,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1866,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1939
+  }
+}

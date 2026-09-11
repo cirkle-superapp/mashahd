@@ -12,13 +12,14 @@ import { useBrowserId } from "@/hooks/use-browser-id";
 import { formatViews, formatSubs, formatCount, timeAgo } from "@/lib/format";
 import type { VideoWithFlags, Comment, Video } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { VideoCardHorizontal } from "./video-card";
+import { VideoCard } from "./video-card";
 import { AiRecap } from "./ai-recap";
 import { SmartChapters } from "./smart-chapters";
 import { CirclePulse } from "./circle-pulse";
 import { BulletComments } from "./bullet-comments";
 import { AiWatchPanel } from "./ai-watch-panel";
 import { MashahdPlayer } from "./mashahd-player";
+import { UserAvatar } from "./user-avatar";
 import { ShareButton } from "./header-overlays";
 import { toast } from "sonner";
 
@@ -216,9 +217,10 @@ export function WatchView({ videoId }: { videoId: string }) {
 
   return (
     <div className={cn("px-0 sm:px-6 py-0 sm:py-4", theater && "sm:py-0")}>
-      <div className={cn("flex flex-col xl:flex-row gap-6 mx-auto", theater ? "max-w-none" : "max-w-[1800px]")}>
-        {/* Main column */}
-        <div className={cn("flex-1 min-w-0", theater && "xl:flex-none xl:w-full")}>
+      <div className={cn("flex flex-col gap-6 mx-auto", theater ? "max-w-none" : "max-w-[1400px]")}>
+        {/* Main column — single-column layout (Mashahd identity, not
+            YouTube's player + vertical sidebar split) */}
+        <div className="w-full min-w-0">
           {/* MashahdPlayer — custom player with fullscreen, PiP, speed, etc. */}
           <MashahdPlayer
             src={video.videoUrl}
@@ -494,31 +496,48 @@ export function WatchView({ videoId }: { videoId: string }) {
             starterText={starterText}
             onStarterUsed={() => setStarterText("")}
           />
-        </div>
 
-        {/* Related sidebar — hidden when theater mode is on */}
-        {!theater && (
-        <aside className="xl:w-[400px] shrink-0 px-4 sm:px-0 pb-8">
-          <h2 className="text-base font-semibold mb-3 hidden xl:block">Up next</h2>
-          <div className="flex flex-col gap-3">
-            {!related
-              ? Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="flex gap-2">
-                    <Skeleton className="w-40 h-[90px] rounded-lg" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-2/3" />
-                      <Skeleton className="h-3 w-1/2" />
-                    </div>
-                  </div>
-                ))
-              : related.map((v) => (
-                  <VideoCardHorizontal key={v.id} video={v} />
-                ))}
-          </div>
-        </aside>
-        )}
+          {/* "Continue watching" — horizontal carousel (replaces the
+              YouTube-style vertical sidebar). Mashahd's own layout: the
+              related videos appear below the comments as a swipeable row. */}
+          {!theater && (
+            <section className="mt-8 px-4 sm:px-0">
+              <h2 className="text-base font-semibold mb-3 font-display">Continue watching</h2>
+              <div className="flex gap-4 overflow-x-auto pb-2 custom-scroll-x">
+                {!related
+                  ? Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="shrink-0 w-64">
+                        <Skeleton className="aspect-video w-full rounded-xl" />
+                        <Skeleton className="h-4 w-3/4 mt-2" />
+                        <Skeleton className="h-3 w-1/2 mt-1" />
+                      </div>
+                    ))
+                  : related.map((v) => (
+                      <div key={v.id} className="shrink-0 w-56 sm:w-64">
+                        <VideoCard video={v} />
+                      </div>
+                    ))}
+              </div>
+            </section>
+          )}
+        </div>
       </div>
+
+      {/* Floating "Ask Mashahd AI" button — the signature AI affordance.
+          Appears on every watch page so AI is always one tap away. */}
+      <button
+        onClick={() =>
+          window.dispatchEvent(
+            new CustomEvent("mashahd:ai-watch", { detail: { tab: "oracle" } })
+          )
+        }
+        className="fixed bottom-24 right-4 z-30 grid place-items-center h-14 w-14 rounded-full bg-gradient-gold text-charcoal shadow-float hover:scale-110 transition-transform"
+        aria-label="Ask Mashahd AI"
+        title="Ask Mashahd AI anything about this video"
+      >
+        <Sparkles className="h-6 w-6" />
+        <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-rose animate-pulse" />
+      </button>
     </div>
   );
 }
@@ -659,10 +678,7 @@ function CommentsSection({
 
       {/* New comment */}
       <div className="flex gap-3 mb-6">
-        <Avatar className="h-9 w-9 rounded-full shrink-0">
-          <AvatarImage src="https://api.dicebear.com/7.x/initials/svg?seed=You&backgroundColor=1a4a5a" alt="" />
-          <AvatarFallback>Y</AvatarFallback>
-        </Avatar>
+        <UserAvatar className="h-9 w-9 rounded-full shrink-0" />
         <div className="flex-1">
           <input
             value={text}

@@ -1,14 +1,17 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Clock, ThumbsUp, ListVideo, Settings, Bell, Shield, LogOut, ChevronRight, Sparkles, Radio, UserPlus } from "lucide-react";
+import { Clock, ThumbsUp, ListVideo, Settings, Bell, Shield, LogOut, ChevronRight, Sparkles, Radio, UserPlus, Camera } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppStore } from "@/store/app-store";
 import { useBrowserId } from "@/hooks/use-browser-id";
+import { useAvatar } from "@/hooks/use-avatar";
 import { MashahdMark } from "@/components/brand/mashahd-logo";
+import { AvatarPicker } from "./avatar-picker";
 import { toast } from "sonner";
+import { useState } from "react";
 
 async function fetchUserState(bid: string) {
   if (!bid) return { likedVideoIds: [], subscribedChannelIds: [], watchedVideoIds: [] };
@@ -27,6 +30,8 @@ async function fetchUserState(bid: string) {
 export function ProfileView() {
   const bid = useBrowserId();
   const { navigate } = useAppStore();
+  const { avatar, name } = useAvatar();
+  const [pickerOpen, setPickerOpen] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["user-state", bid],
     queryFn: () => fetchUserState(bid),
@@ -55,13 +60,30 @@ export function ProfileView() {
       <div className="relative rounded-2xl overflow-hidden border border-gold/20 bg-gradient-to-br from-[hsl(var(--gold)/0.08)] to-transparent p-6 sm:p-8">
         <div className="absolute inset-0 aurora-bg opacity-30" aria-hidden />
         <div className="relative flex flex-col sm:flex-row items-center sm:items-start gap-4">
-          <Avatar className="h-20 w-20 sm:h-24 sm:w-24 rounded-full border-4 border-background shadow-float">
-            <AvatarImage src="https://api.dicebear.com/7.x/initials/svg?seed=You&backgroundColor=c2a060" alt="" />
-            <AvatarFallback className="text-2xl">Y</AvatarFallback>
-          </Avatar>
+          <button
+            onClick={() => setPickerOpen(true)}
+            className="relative group shrink-0"
+            aria-label="Change profile picture"
+            title="Change profile picture"
+          >
+            <img
+              src={avatar}
+              alt={name}
+              className="h-20 w-20 sm:h-24 sm:w-24 rounded-full object-cover border-4 border-background shadow-float"
+            />
+            <span className="absolute bottom-1 right-1 grid place-items-center h-8 w-8 rounded-full bg-gradient-gold text-charcoal shadow-glass border-2 border-background group-hover:scale-110 transition-transform">
+              <Camera className="h-4 w-4" />
+            </span>
+          </button>
           <div className="flex-1 text-center sm:text-left">
-            <h1 className="text-2xl font-bold font-display">You</h1>
+            <h1 className="text-2xl font-bold font-display">{name}</h1>
             <p className="text-sm text-muted-foreground mt-1">@you · Mashahd member</p>
+            <button
+              onClick={() => setPickerOpen(true)}
+              className="mt-2 text-xs text-[hsl(var(--gold))] hover:underline font-medium"
+            >
+              Change picture
+            </button>
             <p className="text-xs text-muted-foreground mt-2">
               Watching since today — your history, likes and subscriptions are
               saved locally to this browser.
@@ -70,6 +92,9 @@ export function ProfileView() {
           <MashahdMark size={36} className="opacity-40 hidden sm:block" />
         </div>
       </div>
+
+      {/* Avatar picker dialog */}
+      <AvatarPicker open={pickerOpen} onOpenChange={setPickerOpen} />
 
       {/* Creator actions — Go Live + Create Channel */}
       <section className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
