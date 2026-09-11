@@ -76,6 +76,17 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Mashahe brand palette — adapted from CIRKLE (دواير).
+     Sand-gold accent + deep teal secondary, used by the animated logo,
+     verified badges, and AI feature affordances. */
+  --gold: 39 55% 60%;          /* #C2A060 — middle sand-gold stop */
+  --gold-light: 39 55% 72%;    /* #E5C98A — highlight stop */
+  --gold-dark: 39 45% 42%;     /* #9A7A3E — shadow stop */
+  --teal: 195 56% 22%;         /* #1A4A5A — deep teal */
+  --teal-light: 195 56% 33%;   /* #2A6A7A */
+  --rose: 351 51% 56%;         /* accent rose */
+  --cream: 60 20% 98%;         /* #FDFCF9 */
 }
 
 .dark {
@@ -171,6 +182,66 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  /* ── Mashahe brand utilities (adapted from CIRKLE) ── */
+
+  /* Gold gradient text — used for the wordmark + AI affordances. */
+  .gradient-text-gold {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--gold-light)) 0%,
+      hsl(var(--gold)) 50%,
+      hsl(var(--gold-dark)) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Soft floating animation for the logo mark. */
+  @keyframes orb-float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-1px) rotate(2deg); }
+  }
+  .animate-orb-float {
+    animation: orb-float 4s ease-in-out infinite;
+  }
+
+  /* Pulsing live-dot (Circle Pulse — "watching now"). */
+  @keyframes pulse-ring {
+    0% { transform: scale(0.85); opacity: 0.7; }
+    70% { transform: scale(1.6); opacity: 0; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+  .pulse-ring::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: currentColor;
+    animation: pulse-ring 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Verified badge gold ring. */
+  .ring-gold {
+    box-shadow: 0 0 0 2px hsl(var(--gold) / 0.9), 0 0 0 4px var(--background);
+  }
+
+  /* Shimmer for AI loading states. */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .shimmer-gold {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--gold) / 0.08) 0%,
+      hsl(var(--gold) / 0.18) 50%,
+      hsl(var(--gold) / 0.08) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
   }
 }
 

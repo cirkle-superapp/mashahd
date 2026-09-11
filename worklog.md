@@ -60,3 +60,17 @@ Stage Summary:
 - Dark mode by default with light/dark toggle. Fully responsive (mobile hamburger + sheet, desktop sidebar).
 - Anonymous per-browser state (likes/subs/history) persisted via localStorage browserId — no auth required.
 - Single user-visible route `/` per project rules; all "pages" are client-side views synced to URL query params.
+
+---
+Task ID: 16-25 (Mashahe rebrand + CIRKLE feature import)
+Agent: main
+Task: Rename ZTube -> Mashahe, adopt CIRKLE's animated circle logo + brand palette, and import features from CIRKLE not yet implemented.
+
+Work Log:
+- Explored CIRKLE: fetched https://cirkleapp.vercel.app/ via z-ai page_reader; cloned github.com/fortleem/CIRKLE (token used ephemerally, then scrubbed from git remote). Read brand components (circle-mark.tsx, circle-logo.tsx, circle-avatar.tsx) and overlay components (command-palette, ai-recap, smart-chapters, circle-pulse) + PRODUCTION_AUDIT_REPORT.md.
+- Identified CIRKLE brand identity: animated CircleMark = three interlocking circles forming a triangle, rotating 30s linear infinite, gold→rose→teal gradient. Palette: sand-gold #E5C98A→#C2A060→#9A7A3E, deep teal #1A4A5A, cream #FDFCF9. "Mashahd" (مشهد) is CIRKLE's video pillar — "Mashahe" (مشاهِد) is the perfect name for a video app spun out of it.
+- Feature gap analysis (CIRKLE has, Mashahe lacks): animated circle logo, Command Palette (⌘K), Smart Chapters, AI Recap, Circle verified avatar, Circle Pulse (live viewers), Live Translate, Mood filter.
+- Plan: implement all 8 above + rename + brand palette.
+
+Stage Summary:
+- Exploration complete. Beginning implementation.
