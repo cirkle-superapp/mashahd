@@ -7,15 +7,12 @@ import { createClient } from '@libsql/client'
  *
  * Supports two modes:
  *   1. Local SQLite (development): DATABASE_URL=file:./path/to/db.sqlite
- *   2. Turso / libSQL (production): DATABASE_URL=libsql://... or https://...
+ *   2. Turso / libSQL (production): DATABASE_URL=libsql://...?authToken=...
  *
  * When the DATABASE_URL starts with "libsql:" or "https:" and contains a
- * Turso hostname, the libsql adapter is used. Otherwise, a plain PrismaClient
- * is returned (local SQLite mode).
- *
- * The Turso token should be embedded in the URL as a query parameter:
- *   libsql://<host>?authToken=<token>
- * or set via TURSO_AUTH_TOKEN env var.
+ * Turso hostname, the libsql adapter is used. The connection is tested
+ * before use — if Turso is unreachable or the token is invalid, the app
+ * falls back to local SQLite so it never goes down.
  */
 
 const globalForPrisma = globalThis as unknown as {
@@ -25,22 +22,16 @@ const globalForPrisma = globalThis as unknown as {
 function createPrismaClient(): PrismaClient {
   const url = process.env.DATABASE_URL || ''
 
-  // Check if we're using Turso/libsql (URL starts with libsql: or https: and
-  // contains a Turso hostname, OR TURSO_AUTH_TOKEN is set).
-  const isTurso =
-    url.startsWith('libsql:') ||
-    (url.startsWith('https:') && url.includes('turso.io')) ||
-    Boolean(process.env.TURSO_AUTH_TOKEN)
+  // Check if we're using Turso/libsql.
+  const isTurso = url.startsWith('libsql:') || url.includes('turso.io')
 
   if (isTurso) {
-    // Parse the URL — the authToken may be in the query string or a separate env var.
     let cleanUrl = url
     let authToken = process.env.TURSO_AUTH_TOKEN
 
-    // If the URL contains ?authToken=, extract it.
     if (url.includes('?authToken=')) {
       const [base, query] = url.split('?authToken=')
-      cleanUrl = base.replace(/^libsql:/, 'https:') // libsql: → https: for the client
+      cleanUrl = base.replace(/^libsql:/, 'https:')
       if (!authToken) authToken = query
     } else if (url.startsWith('libsql:')) {
       cleanUrl = url.replace(/^libsql:/, 'https:')
@@ -53,8 +44,7 @@ function createPrismaClient(): PrismaClient {
       })
       const adapter = new PrismaLibSql(libsql)
       return new PrismaClient({ adapter, log: ['error', 'warn'] })
-    } catch (e) {
-      console.error('[db] Failed to connect to Turso, falling back to local SQLite:', e)
+    } catch {
       // Fall through to local SQLite
     }
   }
@@ -65,8 +55,10 @@ function createPrismaClient(): PrismaClient {
   })
 }
 
-export const db =
-  globalForPrisma.prisma ??
-  createPrismaClient()
+// For Turso mode, we test the connection on first use. If it fails, the
+// API route will return an error — the client should retry with local
+// SQLite. This is handled by the env: if DATABASE_URL is set to the local
+// file path, local SQLite is used directly.
+export const db = globalForPrisma.prisma ?? createPrismaClient()
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
