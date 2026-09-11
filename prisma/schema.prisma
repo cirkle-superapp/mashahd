@@ -79,6 +79,42 @@ model UserState {
   updatedAt DateTime @updatedAt
 }
 
+// ── CIRKLE Authentication ──
+// Users can register/sign in with email, phone number, or username.
+// On registration they choose a unique CIRKLE username (live availability
+// check). The system also auto-suggests an available handle if the chosen
+// one is taken.
+
+model User {
+  id            String   @id @default(cuid())
+  email         String?  @unique
+  phone         String?  @unique
+  username      String   @unique // the CIRKLE username, chosen on signup
+  displayName   String
+  avatarUrl     String   @default("")
+  bio           String   @default("")
+  passwordHash  String   @default("") // bcrypt hash; empty for passkey-only
+  verified      Boolean  @default(false) // email/phone verified
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions      Session[]
+}
+
+model Session {
+  id            String   @id @default(cuid())
+  userId        String
+  token         String   @unique // random session token
+  browserId     String?  // links to the anonymous UserState if upgraded
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
 // ── Streaming-platform models (hybrid CDN + WebRTC P2P) ──
 // These extend the existing Video model with ingestion-pipeline state,
 // renditions, manifests, swarms, and playback telemetry. The existing

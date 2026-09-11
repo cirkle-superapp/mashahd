@@ -419,3 +419,47 @@ Stage Summary:
 - ORIGIN/CDN is authoritative; P2P is delivery optimization. HTTP fallback always works.
 - No paid cloud dependencies. Runs on a single self-hosted machine.
 - 8 new Prisma models, 7 new API routes, 1 WebSocket mini-service, 4 lib modules, 1 upgraded React player with P2P + HUD, 5 documentation files, .env.example.
+
+---
+Task ID: 96-101 (CIRKLE authentication with live username verification) — COMPLETE
+Agent: main
+Task: Implement authentication using CIRKLE email/phone/username with live verification that auto-suggests an available username.
+
+Work Log:
+- Added User + Session models to Prisma: User has email (nullable unique), phone (nullable unique), username (unique CIRKLE username), displayName, avatarUrl, passwordHash (bcrypt), verified flag. Session has token, userId, expiresAt. Pushed to SQLite.
+- Installed bcryptjs for password hashing.
+- Built 5 auth API routes:
+  * POST /api/auth/check-username — live availability check (debounced on client). Returns available=true/false + auto-suggested alternatives when taken (e.g., testuser_753, testuser2026, the_testuser). Verified: "test" → available; "testuser" (after registering) → taken with 3 suggestions.
+  * POST /api/auth/register — accepts identifier (email OR phone), password, username, displayName. Validates inputs, checks for duplicate identifier + username, hashes password (bcrypt 10 rounds), creates User + Session (30-day expiry). Returns user profile + session token.
+  * POST /api/auth/login — accepts identifier (email, phone, OR CIRKLE username) + password. Matches against all three columns. Returns user + session token.
+  * GET/POST /api/auth/session — validates a session token and returns the user if still valid (used to restore session on page reload).
+  * POST /api/auth/logout — deletes the session.
+- Built useAuth hook (src/hooks/use-auth.ts): session management with localStorage persistence (mashahd-auth-token + mashahd-auth-user). On mount, verifies the token with the backend. Exposes register, login, logout. Dispatches mashahd:auth-changed event so the header, profile, and other components re-render when auth state changes.
+- Built AuthScreen component (src/components/youtube/auth-screen.tsx): a full authentication modal with:
+  * Toggle between "Sign in" (login) and "Create account" (register)
+  * Login: identifier field accepts email, phone, or username (auto-detects type and shows the appropriate icon)
+  * Register: email/phone + CIRKLE username + display name + password
+  * Live username availability checking (debounced 350ms): shows a spinner while checking, a green check when available, a red X when taken, plus clickable auto-suggested alternatives
+  * The submit button is disabled until the username is confirmed available (on register mode)
+  * Logo + branding at the top
+- Wired auth into the header:
+  * When NOT logged in: shows a "Sign in" button (teal pill) that opens the AuthScreen
+  * When logged in: shows the user's avatar (clickable → profile)
+- Wired auth into the Profile screen:
+  * When NOT logged in: shows a welcome card with a "Sign in or create account" CTA
+  * When logged in: shows the user's displayName, @username, email/phone, verified badge, avatar, and a real "Sign out" button (calls logout)
+- Lint: clean (0 errors, 0 warnings).
+- API verification (via curl):
+  * check-username "test" → available
+  * register testuser → created (returns user + session token)
+  * check-username "testuser" → taken, suggestions: testuser_753, testuser2026, the_testuser
+  * login with email/username → returns user + token
+  * wrong password → 401
+- Agent Browser: "Sign in" button present in header when logged out, clicking opens the auth dialog with the login form, switching to register shows the CIRKLE username field with live checking.
+
+Stage Summary:
+- Full CIRKLE-style authentication implemented: email/phone/username login + registration.
+- Live username availability checking with auto-suggested alternatives (real-time, debounced 350ms).
+- The system auto-gives the user a CIRKLE username on registration, with availability enforced server-side (no duplicates).
+- Session persistence (30-day tokens), auto-restore on page reload, and cross-component sync via mashahd:auth-changed event.
+- Header shows "Sign in" when logged out, avatar when logged in. Profile shows real user data when authenticated.

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Search, Mic, Sun, Moon, Command, Radio } from "lucide-react";
+import { Search, Mic, Sun, Moon, Command, Radio, LogIn } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,14 +13,18 @@ import { NotificationsButton, CreateButton } from "./header-overlays";
 import { GoLive } from "./go-live";
 import { CreateChannel } from "./create-channel";
 import { UserAvatar } from "./user-avatar";
+import { AuthScreen } from "./auth-screen";
+import { useAuth } from "@/hooks/use-auth";
 
 export function Header() {
   const { navigate, searchDraft, setSearchDraft } = useAppStore();
   const { theme, setTheme } = useTheme();
+  const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [showSuggest, setShowSuggest] = useState(false);
   const [goLiveOpen, setGoLiveOpen] = useState(false);
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const openPalette = useCommandPalette((s) => s.openPalette);
 
@@ -184,15 +188,36 @@ export function Header() {
             )}
           </Button>
         )}
-        {/* Profile avatar — clickable, opens the profile screen */}
-        <button
-          onClick={() => navigate({ kind: "profile" })}
-          className="ml-1 shrink-0 rounded-full"
-          aria-label="Open your profile"
-          title="Profile"
-        >
-          <UserAvatar className="h-9 w-9 rounded-full border border-gold/30 hover:ring-2 hover:ring-gold/40 transition-all" />
-        </button>
+        {/* Profile avatar / Sign-in button — shows the auth screen if
+            the user isn't logged in, or the profile if they are. */}
+        {user ? (
+          <button
+            onClick={() => navigate({ kind: "profile" })}
+            className="ml-1 shrink-0 rounded-full"
+            aria-label="Open your profile"
+            title="Profile"
+          >
+            {user.avatarUrl ? (
+              <Avatar className="h-9 w-9 rounded-full border border-gold/30 hover:ring-2 hover:ring-gold/40 transition-all">
+                <AvatarImage src={user.avatarUrl} alt={user.displayName} />
+                <AvatarFallback>{user.displayName.slice(0, 1)}</AvatarFallback>
+              </Avatar>
+            ) : (
+              <UserAvatar className="h-9 w-9 rounded-full border border-gold/30 hover:ring-2 hover:ring-gold/40 transition-all" />
+            )}
+          </button>
+        ) : (
+          <Button
+            onClick={() => setAuthOpen(true)}
+            size="sm"
+            className="ml-1 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 font-medium"
+            aria-label="Sign in"
+            title="Sign in or create an account"
+          >
+            <LogIn className="h-4 w-4 mr-1.5" />
+            Sign in
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
@@ -205,7 +230,8 @@ export function Header() {
         </Button>
         </div>
       </div>
-      {/* Go Live + Create Channel dialogs */}
+      {/* Auth + Go Live + Create Channel dialogs */}
+      <AuthScreen open={authOpen} onOpenChange={setAuthOpen} />
       <GoLive open={goLiveOpen} onOpenChange={setGoLiveOpen} />
       <CreateChannel open={createChannelOpen} onOpenChange={setCreateChannelOpen} />
     </header>

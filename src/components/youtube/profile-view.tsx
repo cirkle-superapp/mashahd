@@ -1,15 +1,17 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Clock, ThumbsUp, ListVideo, Settings, Bell, Shield, LogOut, ChevronRight, Sparkles, Radio, UserPlus, Camera } from "lucide-react";
+import { Clock, ThumbsUp, ListVideo, Settings, Bell, Shield, LogOut, ChevronRight, Sparkles, Radio, UserPlus, Camera, LogIn, CheckCircle2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppStore } from "@/store/app-store";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { useAvatar } from "@/hooks/use-avatar";
+import { useAuth } from "@/hooks/use-auth";
 import { MashahdMark } from "@/components/brand/mashahd-logo";
 import { AvatarPicker } from "./avatar-picker";
+import { AuthScreen } from "./auth-screen";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -31,13 +33,44 @@ export function ProfileView() {
   const bid = useBrowserId();
   const { navigate } = useAppStore();
   const { avatar, name } = useAvatar();
+  const { user, logout } = useAuth();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["user-state", bid],
     queryFn: () => fetchUserState(bid),
     enabled: !!bid,
   });
 
+  // If not authenticated, show a sign-in prompt.
+  if (!user) {
+    return (
+      <div className="px-4 sm:px-6 py-6 max-w-3xl mx-auto">
+        <div className="relative rounded-2xl overflow-hidden border border-gold/20 bg-gradient-to-br from-[hsl(var(--gold)/0.08)] to-transparent p-8 text-center">
+          <div className="absolute inset-0 aurora-bg opacity-30" aria-hidden />
+          <div className="relative">
+            <MashahdMark size={48} className="mx-auto mb-4" />
+            <h1 className="text-2xl font-bold font-display mb-2">Welcome to Mashahd</h1>
+            <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+              Sign in or create an account to sync your favorites, history,
+              and subscriptions across devices, and to start creating.
+            </p>
+            <Button
+              onClick={() => setAuthOpen(true)}
+              className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-6"
+            >
+              <LogIn className="h-4 w-4 mr-1.5" />
+              Sign in or create account
+            </Button>
+          </div>
+        </div>
+        <AuthScreen open={authOpen} onOpenChange={setAuthOpen} />
+      </div>
+    );
+  }
+
+  const displayName = user.displayName || name;
+  const displayAvatar = user.avatarUrl || avatar;
   const liked = data?.likedVideoIds?.length || 0;
   const subs = data?.subscribedChannelIds?.length || 0;
   const history = data?.watchedVideoIds?.length || 0;
@@ -67,8 +100,8 @@ export function ProfileView() {
             title="Change profile picture"
           >
             <img
-              src={avatar}
-              alt={name}
+              src={displayAvatar}
+              alt={displayName}
               className="h-20 w-20 sm:h-24 sm:w-24 rounded-full object-cover border-4 border-background shadow-float"
             />
             <span className="absolute bottom-1 right-1 grid place-items-center h-8 w-8 rounded-full bg-gradient-gold text-charcoal shadow-glass border-2 border-background group-hover:scale-110 transition-transform">
@@ -76,8 +109,16 @@ export function ProfileView() {
             </span>
           </button>
           <div className="flex-1 text-center sm:text-left">
-            <h1 className="text-2xl font-bold font-display">{name}</h1>
-            <p className="text-sm text-muted-foreground mt-1">@you · Mashahd member</p>
+            <h1 className="text-2xl font-bold font-display flex items-center gap-2 justify-center sm:justify-start">
+              {displayName}
+              {user.verified && <CheckCircle2 className="h-5 w-5 text-[hsl(var(--gold))]" />}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              @{user.username} · Mashahd member
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {user.email || user.phone}
+            </p>
             <button
               onClick={() => setPickerOpen(true)}
               className="mt-2 text-xs text-[hsl(var(--gold))] hover:underline font-medium"
@@ -85,8 +126,7 @@ export function ProfileView() {
               Change picture
             </button>
             <p className="text-xs text-muted-foreground mt-2">
-              Watching since today — your history, likes and subscriptions are
-              saved locally to this browser.
+              Your history, likes, subscriptions, and favorites are synced to your account.
             </p>
           </div>
           <MashahdMark size={36} className="opacity-40 hidden sm:block" />
@@ -201,16 +241,15 @@ export function ProfileView() {
         </button>
       </section>
 
-      {/* Sign out (demo — clears local state) */}
+      {/* Sign out */}
       <section className="mt-6">
         <Button
           variant="outline"
           className="w-full rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10"
-          onClick={() => {
-            localStorage.removeItem("yt-clone-browser-id");
-            localStorage.removeItem("mashahd-splash-seen");
-            toast.success("Signed out (local state cleared)");
-            setTimeout(() => window.location.reload(), 800);
+          onClick={async () => {
+            await logout();
+            toast.success("Signed out");
+            navigate({ kind: "home" });
           }}
         >
           <LogOut className="h-4 w-4 mr-2" />
