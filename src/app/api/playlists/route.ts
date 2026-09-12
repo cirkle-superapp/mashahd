@@ -17,7 +17,7 @@ import { rateLimit, getClientIP } from "@/lib/rate-limiter";
  */
 export async function GET(req: NextRequest) {
   const ip = getClientIP(req);
-  const rl = rateLimit(`playlists-r:${ip}`, 20, 60_000);
+  const rl = await rateLimit(`playlists-r:${ip}`, 20, 60_000);
   if (rl.limited) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const ip = getClientIP(req);
-  const rl = rateLimit(`playlists-c:${ip}`, 5, 60_000);
+  const rl = await rateLimit(`playlists-c:${ip}`, 5, 60_000);
   if (rl.limited) {
     return NextResponse.json({ error: "Too many playlists created" }, { status: 429 });
   }

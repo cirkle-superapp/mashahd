@@ -125,7 +125,30 @@ export function MashahdPlayer({
     let hls: Hls;
     let engine: HlsJsP2PEngine | null = null;
 
-    if (Hls.isSupported()) {
+    // ── Detect source type ──
+    // HLS manifests end in .m3u8 (or are served as application/vnd.apple.mpegurl).
+    // Anything else (e.g. .mp4, .webm) is a direct video file — use the native
+    // <video> element, which handles MP4/WebM natively across all browsers.
+    // hls.js CANNOT parse direct MP4 URLs (it expects HLS manifests).
+    const isHlsSource = /\.m3u8(\?|$)/i.test(src) || src.includes("manifest/master");
+
+    if (!isHlsSource) {
+      // Direct video file (MP4/WebM) — native playback, no hls.js needed.
+      video.src = src;
+      video.load();
+      if (autoPlay) {
+        video.play().catch(() => {});
+      }
+      // Mark startup complete once metadata loads.
+      const onMeta = () => {
+        setStartupTime((performance.now() - startTimeRef.current) / 1000);
+        if (video.buffered.length > 0) {
+          setBuffered(video.buffered.end(video.buffered.length - 1));
+        }
+      };
+      video.addEventListener("loadedmetadata", onMeta);
+      setP2pPolicy({ ...policy, enabled: false }); // P2P only applies to HLS
+    } else if (Hls.isSupported()) {
       hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,

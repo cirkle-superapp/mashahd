@@ -20,19 +20,24 @@ export async function POST(req: NextRequest) {
   }
   const video = await db.video.findUnique({
     where: { id: videoId },
-    select: { title: true, description: true, category: true, tags: true, channel: { select: { name: true } } },
   });
   if (!video) {
     return NextResponse.json({ error: "video not found" }, { status: 404 });
   }
+  // Fetch the channel separately (the turso-db wrapper doesn't populate
+  // nested includes reliably across all code paths).
+  const channel = video.channelId
+    ? await db.channel.findUnique({ where: { id: video.channelId } })
+    : null;
+  const channelName = (channel as any)?.name || "Unknown";
 
   const prompt = `You are the Mashahd Oracle — a knowledgeable assistant that answers questions about a video the viewer is watching. Ground your answer in the video's metadata below; if the question can't be answered from that, say so honestly and offer a related tangent.
 
 Title: ${video.title}
-Channel: ${video.channel.name}
+Channel: ${channelName}
 Category: ${video.category}
-Tags: ${video.tags.split("|").filter(Boolean).join(", ") || "none"}
-Description: ${video.description.slice(0, 700)}
+Tags: ${(video.tags || "").split("|").filter(Boolean).join(", ") || "none"}
+Description: ${(video.description || "").slice(0, 700)}
 
 Viewer question: ${question}
 

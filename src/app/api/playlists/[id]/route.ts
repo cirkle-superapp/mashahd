@@ -88,7 +88,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const ip = getClientIP(req);
-  const rl = rateLimit(`playlists-u:${ip}`, 10, 60_000);
+  const rl = await rateLimit(`playlists-u:${ip}`, 10, 60_000);
   if (rl.limited) {
     return NextResponse.json({ error: "Too many updates" }, { status: 429 });
   }
@@ -124,7 +124,7 @@ export async function DELETE(
 ) {
   const { id } = await params;
   const ip = getClientIP(req);
-  const rl = rateLimit(`playlists-d:${ip}`, 10, 60_000);
+  const rl = await rateLimit(`playlists-d:${ip}`, 10, 60_000);
   if (rl.limited) {
     return NextResponse.json({ error: "Too many deletes" }, { status: 429 });
   }

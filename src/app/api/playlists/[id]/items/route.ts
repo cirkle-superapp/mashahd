@@ -20,7 +20,7 @@ export async function POST(
 ) {
   const { id } = await params;
   const ip = getClientIP(req);
-  const rl = rateLimit(`playlist-add:${ip}`, 30, 60_000);
+  const rl = await rateLimit(`playlist-add:${ip}`, 30, 60_000);
   if (rl.limited) {
     return NextResponse.json({ error: "Too many adds" }, { status: 429 });
   }
@@ -80,7 +80,7 @@ export async function DELETE(
 ) {
   const { id } = await params;
   const ip = getClientIP(req);
-  const rl = rateLimit(`playlist-rm:${ip}`, 30, 60_000);
+  const rl = await rateLimit(`playlist-rm:${ip}`, 30, 60_000);
   if (rl.limited) {
     return NextResponse.json({ error: "Too many removes" }, { status: 429 });
   }

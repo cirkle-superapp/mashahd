@@ -18,20 +18,23 @@ export async function POST(req: NextRequest) {
   }
   const video = await db.video.findUnique({
     where: { id: videoId },
-    include: { channel: true },
   });
   if (!video) {
     return NextResponse.json({ error: "video not found" }, { status: 404 });
   }
+  const channel = video.channelId
+    ? await db.channel.findUnique({ where: { id: video.channelId } })
+    : null;
+  const channelName = (channel as any)?.name || "Unknown";
 
   const prompt = `You are an expert video editor's assistant. A viewer wants a quick recap of a video they're about to watch.
 
 Title: ${video.title}
-Channel: ${video.channel.name}
+Channel: ${channelName}
 Category: ${video.category}
 Duration: ${Math.floor(video.durationSec / 60)}m ${video.durationSec % 60}s
 Views: ${video.views.toLocaleString()}
-Description: ${video.description.slice(0, 800)}
+Description: ${(video.description || "").slice(0, 800)}
 
 Respond in EXACTLY this JSON shape (no markdown fences, no extra text):
 {
@@ -55,13 +58,13 @@ Respond in EXACTLY this JSON shape (no markdown fences, no extra text):
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     const recap = jsonMatch
       ? JSON.parse(jsonMatch[0])
-      : fallbackRecap(video.title, video.channel.name, video.category);
+      : fallbackRecap(video.title, channelName, video.category);
     return NextResponse.json({ ok: true, recap, source: "ai" });
   } catch (e) {
     console.error("[ai/summarize] LLM failed, using fallback:", e);
     return NextResponse.json({
       ok: true,
-      recap: fallbackRecap(video.title, video.channel.name, video.category),
+      recap: fallbackRecap(video.title, channelName, video.category),
       source: "fallback",
     });
   }

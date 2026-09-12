@@ -18,7 +18,7 @@ import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 export async function POST(req: NextRequest) {
   // Rate limit: 3 registrations per minute per IP.
   const ip = getClientIP(req);
-  const rl = rateLimit(`register:${ip}`, 3, 60_000);
+  const rl = await rateLimit(`register:${ip}`, 3, 60_000);
   if (rl.limited) {
     return NextResponse.json(
       { error: "Too many registration attempts. Please try again in a minute." },

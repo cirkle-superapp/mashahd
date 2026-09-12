@@ -57,7 +57,7 @@ export async function POST(
 ) {
   const { id } = await params;
   const ip = getClientIP(req);
-  const rl = rateLimit(`comment-c:${ip}`, 10, 60_000);
+  const rl = await rateLimit(`comment-c:${ip}`, 10, 60_000);
   if (rl.limited) {
     return NextResponse.json({ error: "Too many comments" }, { status: 429 });
   }

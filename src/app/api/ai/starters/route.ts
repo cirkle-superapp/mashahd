@@ -18,18 +18,21 @@ export async function POST(req: NextRequest) {
   }
   const video = await db.video.findUnique({
     where: { id: videoId },
-    select: { title: true, description: true, category: true, tags: true, channel: { select: { name: true } } },
   });
   if (!video) {
     return NextResponse.json({ error: "video not found" }, { status: 404 });
   }
+  const channel = video.channelId
+    ? await db.channel.findUnique({ where: { id: video.channelId } })
+    : null;
+  const channelName = (channel as any)?.name || "Unknown";
 
   const prompt = `You write conversation-starting comments for a video platform. A viewer is watching this video and wants something to say.
 
 Title: ${video.title}
-Channel: ${video.channel.name}
+Channel: ${channelName}
 Category: ${video.category}
-Description: ${video.description.slice(0, 500)}
+Description: ${(video.description || "").slice(0, 500)}
 
 Generate exactly 4 short comment-style conversation starters (each <= 120 chars). They should range in tone: one curious question, one genuine compliment, one hot take, one relatable observation. No emojis, no quotes, no numbering — just the raw text, one per line.
 

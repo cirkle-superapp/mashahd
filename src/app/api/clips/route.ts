@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const ip = getClientIP(req);
-  const rl = rateLimit(`clips-c:${ip}`, 10, 60_000);
+  const rl = await rateLimit(`clips-c:${ip}`, 10, 60_000);
   if (rl.limited) {
     return NextResponse.json({ error: "Too many clips created" }, { status: 429 });
   }

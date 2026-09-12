@@ -52,11 +52,14 @@ export async function GET(req: NextRequest) {
 
   const video = await db.video.findUnique({
     where: { id: videoId },
-    include: { channel: true },
   });
   if (!video) {
     return NextResponse.json({ error: "video not found" }, { status: 404 });
   }
+  const channel = video.channelId
+    ? await db.channel.findUnique({ where: { id: video.channelId } })
+    : null;
+  const channelName = (channel as any)?.name || "Unknown";
 
   // Build a deterministic transcript based on the video's duration + title
   // + description. The LLM shapes the content into natural-sounding segments.
@@ -66,7 +69,7 @@ export async function GET(req: NextRequest) {
   const prompt = `You are an AI captioner for a video platform called Mashahd. Generate a chaptered transcript for a video.
 
 Video title: ${video.title}
-Channel: ${video.channel?.name || "Unknown"}
+Channel: ${channelName}
 Category: ${video.category}
 Duration: ${Math.floor(duration / 60)}m ${duration % 60}s
 Description: ${video.description.slice(0, 600)}
@@ -120,7 +123,7 @@ The first segment MUST start at 0. The last segment MUST end at or before ${dura
     }
   } catch (e) {
     console.error("[ai/transcript] LLM failed, using fallback:", e);
-    transcript = fallbackTranscript(video.title, video.channel?.name || "", video.category, duration);
+    transcript = fallbackTranscript(video.title, channelName, video.category, duration);
     source = "fallback";
   }
 

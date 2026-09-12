@@ -13,7 +13,7 @@ export async function GET(
 ) {
   const { id } = await params;
   const ip = getClientIP(req);
-  const rl = rateLimit(`clips-v:${ip}`, 30, 60_000);
+  const rl = await rateLimit(`clips-v:${ip}`, 30, 60_000);
   if (rl.limited) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }

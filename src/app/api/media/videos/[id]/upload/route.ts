@@ -23,7 +23,7 @@ export async function POST(
 
   // Rate limit
   const ip = getClientIP(req);
-  const rl = rateLimit(`upload:${ip}`, 3, 60_000);
+  const rl = await rateLimit(`upload:${ip}`, 3, 60_000);
   if (rl.limited) {
     return NextResponse.json(
       { error: "Too many uploads. Please wait a minute." },

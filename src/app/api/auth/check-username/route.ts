@@ -17,7 +17,7 @@ import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 export async function POST(req: NextRequest) {
   // Rate limit: 20 checks per minute per IP.
   const ip = getClientIP(req);
-  const rl = rateLimit(`check-username:${ip}`, 20, 60_000);
+  const rl = await rateLimit(`check-username:${ip}`, 20, 60_000);
   if (rl.limited) {
     return NextResponse.json(
       { error: "Too many requests. Please slow down." },
