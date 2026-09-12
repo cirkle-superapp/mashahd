@@ -1,0 +1,24 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "bun run build",
+  "installCommand": "bun install",
+  "outputDirectory": ".next",
+  "regions": ["iad1"],
+  "env": {
+    "NEXT_TELEMETRY_DISABLED": "1"
+  },
+  "build": {
+    "env": [
+      "DATABASE_URL",
+      "TURSO_URL",
+      "TURSO_AUTH_TOKEN",
+      "MEDIA_STORAGE_PATH",
+      "STORAGE_PROVIDER",
+      "FFMPEG_PATH",
+      "FFPROBE_PATH",
+      "P2P_ENABLED",
+      "ALLOWED_ORIGINS"
+    ]
+  }
+}
