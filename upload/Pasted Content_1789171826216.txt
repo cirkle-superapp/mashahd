@@ -1,0 +1,3424 @@
+# AUTONOMOUS DISTRIBUTED MEDIA FABRIC v3
+
+## Self-Hosted, Near-Zero-Cost, Algorithmically Optimized Video Delivery Infrastructure
+
+You are the Principal Video Streaming Architect, Distributed Systems Architect, Algorithms Engineer, WebRTC Engineer, WebTransport Engineer, Media Infrastructure Architect, Full-Stack Architect, Security Architect, Performance Engineer, DevOps/SRE Engineer, QA Lead, and Production Readiness Engineer for this project.
+
+You are extending the existing application.
+
+Your task is to implement a **production-oriented Autonomous Distributed Media Fabric** for high-throughput VOD/video streaming, designed to minimize operator infrastructure consumption through intelligent reuse of media objects, peer-assisted delivery, self-hosted caching, demand-driven transcoding, predictive distribution, and adaptive source selection.
+
+This is NOT merely:
+
+```text
+HLS + P2P
+```
+
+This is a:
+
+```text
+SELF-OPTIMIZING DISTRIBUTED MEDIA DELIVERY FABRIC
+```
+
+The core objective is:
+
+> Deliver every viewer's requested media from the cheapest reliable source available, while minimizing origin bytes, duplicated downloads, unnecessary transcoding, unnecessary storage, unnecessary peer connections, and unnecessary infrastructure utilization.
+
+The platform must remain a normal, reliable video platform even when all optimization mechanisms are unavailable.
+
+---
+
+# 1. NON-NEGOTIABLE SYSTEM PRIORITIES
+
+The system must optimize in this order:
+
+```text
+1. Correct media
+2. Playback continuity
+3. Security/privacy
+4. Mobile/data/battery safety
+5. Low startup latency
+6. Low rebuffering
+7. Transport efficiency
+8. Origin-cost reduction
+9. Storage efficiency
+10. Compute efficiency
+11. Maximum safe P2P utilization
+```
+
+Never sacrifice:
+
+```text
+playback
+security
+privacy
+mobile safety
+```
+
+merely to increase:
+
+```text
+P2P percentage
+cache usage
+origin savings
+```
+
+---
+
+# 2. ECONOMIC OBJECTIVE
+
+Do NOT optimize for "maximum P2P."
+
+Optimize for:
+
+```text
+MINIMUM OPERATOR RESOURCE CONSUMPTION
+PER SUCCESSFUL VIEWER-HOUR
+```
+
+Primary optimization metric:
+
+```text
+OriginBytes / TotalMediaBytes
+```
+
+Secondary metrics:
+
+```text
+TranscodeCPU / viewer-hour
+StorageBytes / active-content-hour
+DuplicateOriginRequests / media-object
+P2PContribution / eligible viewer-hour
+CacheHitRatio
+StartupLatency
+RebufferRatio
+```
+
+The system should continuously seek to lower:
+
+```text
+origin traffic
+duplicate retrieval
+duplicate storage
+wasted transcoding
+unnecessary prefetch
+```
+
+while maintaining excellent QoE.
+
+---
+
+# 3. COST DEFINITION
+
+The implementation MUST describe "zero cost" accurately.
+
+Target:
+
+```text
+ZERO MANDATORY RECURRING THIRD-PARTY SOFTWARE/SERVICE FEES
+```
+
+The architecture must be capable of operating entirely on:
+
+```text
+self-controlled hardware
+self-hosted software
+existing Internet connectivity
+local storage
+open-source software
+```
+
+Do not require:
+
+```text
+paid CDN
+paid P2P provider
+paid signaling provider
+paid managed database
+paid Redis
+paid transcoding
+paid TURN
+paid video platform
+```
+
+The system must remain functional without any paid cloud dependency.
+
+Do not falsely claim that electricity, hardware, ISP bandwidth, domains, or physical infrastructure are inherently zero-cost.
+
+---
+
+# 4. FIRST ACTION — INSPECT THE EXISTING PROJECT
+
+Before touching code:
+
+1. Inspect the complete repository.
+2. Determine the existing frontend architecture.
+3. Determine the existing backend architecture.
+4. Determine package manager.
+5. Determine database and ORM.
+6. Determine authentication and authorization.
+7. Determine existing media/video functionality.
+8. Determine storage.
+9. Determine worker/job framework.
+10. Determine Redis/message/event architecture.
+11. Determine WebSocket infrastructure.
+12. Determine reverse proxy/deployment.
+13. Determine existing monitoring/telemetry.
+14. Search for equivalent functionality already implemented.
+15. Reuse existing abstractions where technically sound.
+16. Do not create duplicate services.
+17. Do not create duplicate tables.
+18. Do not create duplicate APIs.
+19. Do not rewrite functioning architecture just to use a different framework.
+20. Preserve all existing working functionality.
+
+This prompt contains conceptual names.
+
+Adapt file placement and module names to the actual repository.
+
+---
+
+# 5. CORE ARCHITECTURE
+
+Implement this logical architecture:
+
+```text
+                         ┌─────────────────────┐
+                         │   AUTHORITATIVE     │
+                         │      ORIGIN         │
+                         │                     │
+                         │ Source + CMAF media │
+                         └──────────┬──────────┘
+                                    │
+                              media objects
+                                    │
+              ┌─────────────────────┼─────────────────────┐
+              │                     │                     │
+              ▼                     ▼                     ▼
+         HLS / HTTP           WebTransport             P2P
+              │                     │                     │
+              │                     │              ┌──────┴──────┐
+              │                     │              │             │
+              │                     │           browser       browser
+              │                     │              │             │
+              └─────────────────────┼──────────────┴─────────────┘
+                                    │
+                       ┌────────────▼────────────┐
+                       │ INTELLIGENT DELIVERY    │
+                       │        BRAIN            │
+                       ├─────────────────────────┤
+                       │ cost                    │
+                       │ latency                 │
+                       │ buffer                  │
+                       │ peer health             │
+                       │ cache availability      │
+                       │ rarity                  │
+                       │ content heat            │
+                       │ network                 │
+                       │ battery                 │
+                       │ storage                 │
+                       │ source reliability      │
+                       └────────────┬────────────┘
+                                    │
+                         source selection
+                                    │
+          ┌─────────────────────────┼─────────────────────────┐
+          │                         │                         │
+          ▼                         ▼                         ▼
+     LOCAL CACHE                P2P PEER                  EDGE
+          │                         │                         │
+          └─────────────────────────┼─────────────────────────┘
+                                    │
+                                    ▼
+                                  PLAYER
+```
+
+---
+
+# 6. FIVE-TIER MEDIA DISTRIBUTION FABRIC
+
+Treat media availability as:
+
+```text
+TIER 0
+Authoritative Origin
+
+TIER 1
+Self-Hosted Edge / Cache
+
+TIER 2
+Trusted Self-Hosted Seed
+
+TIER 3
+Browser Local Cache
+
+TIER 4
+Browser-to-Browser P2P
+```
+
+The authoritative source always remains Tier 0.
+
+Peers are never authoritative.
+
+---
+
+# 7. DYNAMIC NODE ROLES
+
+Dynamically classify participating nodes:
+
+```text
+ORIGIN
+TRUSTED_SEED
+EDGE_CACHE
+SUPER_PEER
+NORMAL_PEER
+CLIENT_ONLY
+```
+
+A node may change role dynamically.
+
+Example:
+
+```text
+Excellent Wi-Fi
+High throughput
+Stable WebRTC
+Good battery state
+Large remaining P2P budget
+
+→ SUPER_PEER candidate
+```
+
+Poor conditions:
+
+```text
+Low battery
+Unstable network
+Repeated failures
+
+→ CLIENT_ONLY
+```
+
+Cellular:
+
+```text
+→ CLIENT_ONLY
+```
+
+Never expose users to permanent server-like participation.
+
+---
+
+# 8. CANONICAL MEDIA OBJECT MODEL
+
+Use:
+
+```text
+CMAF
+fragmented MP4 / fMP4
+```
+
+as the canonical media representation.
+
+Preferred:
+
+```text
+init.mp4
+segment-000001.m4s
+segment-000002.m4s
+segment-000003.m4s
+...
+```
+
+Default segment duration:
+
+```text
+6 seconds
+```
+
+Traditional MPEG-TS may be supported for compatibility, but must not be the fundamental storage abstraction.
+
+---
+
+# 9. MEDIA TRANSPORT ABSTRACTION
+
+Create a transport-neutral abstraction.
+
+Conceptually:
+
+```ts
+interface MediaTransport {
+  canUse(context: TransportContext): boolean;
+
+  open(
+    request: MediaObjectRequest
+  ): Promise<MediaObjectHandle>;
+
+  cancel(requestId: string): void;
+
+  getStats(): TransportStats;
+}
+```
+
+Production transports:
+
+```text
+HTTP/HLS
+WebRTC P2P
+WebTransport
+```
+
+Future transport:
+
+```text
+MoQ
+```
+
+Do not make MoQ mandatory for the first production deployment.
+
+---
+
+# 10. HLS
+
+HLS remains the compatibility baseline.
+
+Implement:
+
+```text
+master.m3u8
+rendition/index.m3u8
+```
+
+for supported renditions.
+
+Use CMAF/fMP4 media segments where compatible.
+
+---
+
+# 11. ABR
+
+Support:
+
+```text
+360p
+480p
+720p
+1080p
+```
+
+where source resolution permits.
+
+Do not create a rendition higher than source capability.
+
+The player must support adaptive bitrate switching.
+
+P2P availability may inform scheduling but must NOT force a higher bitrate.
+
+---
+
+# 12. DEMAND-DRIVEN TRANSCODING
+
+This is mandatory.
+
+Do not automatically spend CPU encoding every conceivable rendition for every video.
+
+Pipeline:
+
+```text
+upload
+ ↓
+inspect
+ ↓
+generate baseline useful rendition(s)
+ ↓
+publish
+ ↓
+measure demand
+ ↓
+generate additional rendition when demand justifies it
+```
+
+Use demand thresholds/configuration.
+
+Examples:
+
+```text
+high demand for 1080p
+→ generate 1080p
+
+nobody requests 1080p
+→ don't waste CPU/storage unnecessarily
+```
+
+---
+
+# 13. TRANSCODING ECONOMICS
+
+Calculate an internal value for an encoding job:
+
+```text
+EncodingValue =
+ExpectedViewerDemand
+× PlaybackValue
+× StorageReuse
+− CPUCost
+− StorageCost
+```
+
+Do not literally assign financial value unless configured.
+
+Use normalized internal scores.
+
+Queue expensive work according to demand.
+
+---
+
+# 14. ASYNCHRONOUS MEDIA PIPELINE
+
+Never synchronously perform large transcoding jobs inside the upload request.
+
+Architecture:
+
+```text
+UPLOAD
+ ↓
+VALIDATE
+ ↓
+STORE SOURCE
+ ↓
+CREATE JOB
+ ↓
+QUEUE
+ ↓
+FFMPEG WORKER
+ ↓
+PACKAGE
+ ↓
+VALIDATE
+ ↓
+PUBLISH
+ ↓
+READY
+```
+
+States:
+
+```text
+UPLOADING
+UPLOADED
+QUEUED
+PROCESSING
+PACKAGING
+VALIDATING
+READY
+FAILED
+RETRYING
+```
+
+Workers must be idempotent.
+
+---
+
+# 15. FFmpeg
+
+Use FFmpeg/ffprobe.
+
+Requirements:
+
+```text
+CMAF/fMP4
+HLS
+6-second segments
+ABR
+safe invocation
+```
+
+Detect:
+
+```text
+ffmpeg
+ffprobe
+```
+
+at startup.
+
+Support CPU-only operation.
+
+Hardware acceleration may be used only where actually available.
+
+---
+
+# 16. CPU-AWARE WORKER CONCURRENCY
+
+Dynamically adapt transcoding concurrency based on:
+
+```text
+CPU
+RAM
+disk
+queue size
+active jobs
+```
+
+Example:
+
+```text
+CPU heavily loaded
+→ reduce concurrent transcodes
+
+CPU underutilized
+→ increase concurrency within safe bounds
+```
+
+Do not overrun self-hosted hardware.
+
+---
+
+# 17. CONTENT HASHING
+
+Compute a source/content hash where feasible.
+
+Use it for:
+
+```text
+deduplication
+identity
+integrity
+cacheability
+```
+
+Avoid duplicating byte-identical media.
+
+---
+
+# 18. CONTENT-ADDRESSED MEDIA
+
+Internally identify objects with:
+
+```text
+contentId
+renditionId
+manifestVersion
+segmentIndex
+objectHash
+```
+
+If two objects are identical:
+
+```text
+store once
+reference many
+```
+
+This applies to storage and internal cache management.
+
+---
+
+# 19. REQUEST COALESCING
+
+Implement single-flight request coalescing.
+
+When multiple consumers request the same media object simultaneously:
+
+```text
+100 identical requests
+```
+
+should become, where practical:
+
+```text
+1 actual upstream retrieval
++
+shared result
+```
+
+This applies to:
+
+```text
+browser client
+edge cache
+origin
+```
+
+where architecture permits.
+
+---
+
+# 20. MULTI-SOURCE DELIVERY SCHEDULER
+
+Implement:
+
+```text
+IntelligentDeliveryScheduler
+```
+
+It must inspect:
+
+```text
+local cache
+P2P availability
+edge availability
+WebTransport availability
+HTTP availability
+buffer health
+network quality
+peer history
+content heat
+segment scarcity
+```
+
+and determine the best source.
+
+---
+
+# 21. SOURCE SCORE
+
+Conceptually:
+
+```text
+SourceScore =
+Reliability
++ Throughput
++ LowLatency
++ Availability
++ CostAvoidance
++ BufferSafety
+− FailurePenalty
+− DataRisk
+− BatteryRisk
+```
+
+Make this modular/configurable.
+
+Do not hard-code routing logic into the player.
+
+---
+
+# 22. ADAPTIVE HEDGING
+
+Do not always rely on one source.
+
+For important requests, use hedged requests.
+
+Example:
+
+```text
+P2P
++
+HTTP fallback
+```
+
+The first sufficiently reliable source wins.
+
+The hedge strategy must vary according to:
+
+```text
+buffer depth
+estimated completion time
+historical peer reliability
+segment size
+network
+```
+
+Example:
+
+```text
+buffer > 20 sec
+→ strongly favor P2P
+
+buffer 10–20 sec
+→ normal hedge
+
+buffer 5–10 sec
+→ aggressive HTTP fallback
+
+buffer < 5 sec
+→ prioritize reliable HTTP/edge
+```
+
+The exact thresholds must be configurable.
+
+---
+
+# 23. PLAYBACK-AWARE SOURCE SELECTION
+
+The scheduler must understand that:
+
+```text
+not all segments are equally urgent.
+```
+
+For current playback:
+
+```text
+critical
+```
+
+Far-future prefetch:
+
+```text
+low priority
+```
+
+When playback buffer is low:
+
+```text
+favor fastest reliable source
+```
+
+When buffer is healthy:
+
+```text
+favor cheaper source
+```
+
+---
+
+# 24. LOCAL BROWSER CACHE
+
+Use appropriate browser storage mechanisms:
+
+```text
+Cache Storage
+IndexedDB
+```
+
+where technically suitable.
+
+Store only legitimate media objects.
+
+Never expose source files or application secrets.
+
+---
+
+# 25. BROWSER CACHE BUDGET
+
+Use a configurable cache budget.
+
+Example:
+
+```text
+healthy Wi-Fi:
+up to 250 MB
+
+limited device/storage:
+smaller budget
+
+cellular:
+distributed media caching disabled
+```
+
+Respect browser storage quotas.
+
+Use storage estimation APIs where available.
+
+---
+
+# 26. CACHE POLICY
+
+Use:
+
+```text
+LRU
+TTL
+heat
+peer demand
+future reuse probability
+storage quota
+playback proximity
+```
+
+Classify objects:
+
+```text
+HOT
+WARM
+COLD
+```
+
+Evict COLD objects first.
+
+---
+
+# 27. CACHE VALUE ALGORITHM
+
+Conceptually:
+
+```text
+CacheValue =
+FutureRequestProbability
+× PeerDemand
+× OriginCostAvoidance
+× ReuseProbability
+− StorageCost
+```
+
+Use it to prioritize retention.
+
+---
+
+# 28. P2P NETWORK
+
+Use:
+
+```text
+WebRTC DataChannel
+```
+
+for browser-to-browser media-object transfer.
+
+Do not build a full mesh.
+
+Use a bounded peer-assisted topology.
+
+Default:
+
+```text
+maxPeers = 6
+```
+
+Make it configurable.
+
+---
+
+# 29. P2P CELLULAR HARD BLOCK
+
+When network is reported as:
+
+```text
+2g
+3g
+4g
+5g
+```
+
+set:
+
+```text
+P2P RECEIVE = OFF
+P2P UPLOAD = OFF
+PEER CONNECTIONS = 0
+DISTRIBUTED CACHE CONTRIBUTION = OFF
+```
+
+Playback continues normally through HTTP/HLS/WebTransport where appropriate.
+
+This is a hard policy.
+
+---
+
+# 30. DATA SAVER HARD BLOCK
+
+If:
+
+```ts
+navigator.connection?.saveData === true
+```
+
+then:
+
+```text
+P2P = OFF
+P2P upload = OFF
+```
+
+---
+
+# 31. UNKNOWN NETWORK
+
+If network information is unavailable:
+
+```text
+P2P upload = OFF
+```
+
+Use conservative receive behavior only if the implementation can establish that it will not cause unsafe user costs.
+
+Never treat unknown as unrestricted Wi-Fi.
+
+---
+
+# 32. BATTERY POLICY
+
+Where browser/platform battery information is available:
+
+```text
+healthy
+→ normal P2P
+
+low
+→ receive-only preference
+
+critical
+→ P2P off
+```
+
+No battery API may be a hard dependency.
+
+---
+
+# 33. BACKGROUND POLICY
+
+When:
+
+```text
+document.visibilityState === "hidden"
+```
+
+disable or heavily restrict P2P upload.
+
+Do not let hidden tabs become uncontrolled seed nodes.
+
+---
+
+# 34. P2P UPLOAD BUDGET
+
+Every browser must enforce:
+
+```text
+maxUploadMbps
+maxUploadBytesPerSession
+maxConcurrentUploads
+maxPeers
+```
+
+Example defaults:
+
+```text
+2 Mbps
+250 MB/session
+2 concurrent uploads
+6 peers
+```
+
+Make configurable.
+
+---
+
+# 35. P2P PEER QUALITY SCORE
+
+Score peers using:
+
+```text
+throughput
+RTT
+success rate
+stability
+segment coverage
+recent failures
+remaining upload budget
+connection age
+```
+
+Conceptually:
+
+```text
+PeerScore =
+Throughput
+× Stability
+× SegmentCoverage
+× LowRTT
+× RemainingBudget
+```
+
+Use rolling scores.
+
+Decay stale information.
+
+---
+
+# 36. PEER QUARANTINE
+
+Peers with repeated:
+
+```text
+timeouts
+invalid data
+protocol violations
+failed transfers
+```
+
+must be:
+
+```text
+penalized
+quarantined
+removed
+```
+
+as appropriate.
+
+Do not repeatedly use unreliable peers.
+
+---
+
+# 37. SWARM IDENTITY
+
+Generate deterministic swarm IDs:
+
+```text
+SHA-256(
+  videoId +
+  renditionId +
+  manifestVersion
+)
+```
+
+Same representation:
+
+```text
+same swarm
+```
+
+Different representation:
+
+```text
+different swarm
+```
+
+Different manifest:
+
+```text
+different swarm
+```
+
+---
+
+# 38. SWARM GENERATIONS
+
+For live/long-lived systems, partition swarms into generations.
+
+Example:
+
+```text
+generation 101
+segments 1000–1099
+
+generation 102
+segments 1100–1199
+```
+
+Expire old swarm metadata.
+
+Prevent unlimited growth.
+
+---
+
+# 39. PIECE AVAILABILITY INDEX
+
+Maintain lightweight availability metadata.
+
+Example:
+
+```text
+segment 100 → 10 peers
+segment 101 → 8 peers
+segment 102 → 2 peers
+segment 103 → origin only
+```
+
+Do NOT store media bytes in the tracker.
+
+---
+
+# 40. SCARCITY ENGINE
+
+Calculate:
+
+```text
+Scarcity =
+1 / ReliablePeerAvailability
+```
+
+Combine with:
+
+```text
+playback proximity
+future demand
+peer stability
+```
+
+Prioritize scarce objects for:
+
+```text
+origin acquisition
+replication
+trusted seeding
+prefetch
+cache retention
+```
+
+Do not waste resources on objects that are already highly replicated.
+
+---
+
+# 41. RAREST-PIECE SCHEDULING
+
+When choosing peer acquisition:
+
+Prefer scarce pieces that are likely to be consumed.
+
+Conceptually:
+
+```text
+PiecePriority =
+Scarcity
+× PlaybackProbability
+× OriginCostAvoidance
+```
+
+This must be bounded by playback safety.
+
+---
+
+# 42. DISTRIBUTED COOPERATIVE PREFETCH
+
+When several peers follow the same playback window:
+
+```text
+Peer A → segment 201
+Peer B → segment 202
+Peer C → segment 203
+Peer D → segment 204
+```
+
+Peers redistribute those objects.
+
+Do not make every peer independently download the same future objects.
+
+---
+
+# 43. PREFETCH SCORE
+
+Use:
+
+```text
+PrefetchScore =
+PlaybackProbability
+× PeerAvailability
+× OriginCostAvoidance
+× BufferSafety
+− DataRisk
+− BatteryRisk
+− StorageCost
+```
+
+Do not prefetch aggressively unless the score warrants it.
+
+---
+
+# 44. PLAYBACK FRONTIER
+
+Model the swarm around a moving playback frontier:
+
+```text
+                    playback →
+LEADING PEERS     █████████████
+MIDDLE PEERS         █████████
+TRAILING PEERS          ██████
+```
+
+Leading peers may acquire upcoming objects.
+
+Middle peers redistribute.
+
+Trailing peers consume cached objects.
+
+This creates a moving distributed cache window.
+
+---
+
+# 45. SWARM HEAT
+
+Calculate:
+
+```text
+HeatScore =
+viewerCount
+× watchVelocity
+× retention
+× peerDensity
+```
+
+Classify:
+
+```text
+COLD
+WARM
+HOT
+SUPERHOT
+```
+
+---
+
+# 46. DYNAMIC RESOURCE ALLOCATION BY HEAT
+
+COLD:
+
+```text
+minimum cache
+minimum prefetch
+minimum seeding
+normal origin fallback
+```
+
+WARM:
+
+```text
+normal P2P
+moderate cache
+normal prefetch
+```
+
+HOT:
+
+```text
+aggressive cache
+trusted seeding
+cooperative prefetch
+increased peer availability
+```
+
+SUPERHOT:
+
+```text
+multiple trusted seed strategies
+additional self-hosted edge cache
+aggressive object replication
+```
+
+---
+
+# 47. TRUSTED SELF-HOSTED SEEDS
+
+Allow self-controlled infrastructure to join swarms as trusted seeds.
+
+The seed can provide:
+
+```text
+guaranteed initial peer availability
+```
+
+This avoids relying entirely on random viewer participation.
+
+The seed must still use bandwidth limits.
+
+---
+
+# 48. SERVER ROLE AUTOSCALING LOGIC
+
+On self-hosted infrastructure, dynamically prioritize:
+
+```text
+origin
+cache
+seed
+transcoding
+```
+
+according to:
+
+```text
+CPU
+RAM
+bandwidth
+disk
+viewer demand
+transcoding queue
+```
+
+Example:
+
+```text
+CPU high
+→ reduce encoding
+
+P2P demand high
+→ prioritize seed/cache
+
+disk pressure high
+→ reduce disposable caching
+```
+
+Do not implement uncontrolled autoscaling.
+
+---
+
+# 49. WEBTRANSPORT
+
+Implement WebTransport as a production-capable optional transport:
+
+```text
+browser ↔ self-hosted edge
+```
+
+Use it when:
+
+```text
+supported
+configured
+beneficial
+```
+
+Do not use WebTransport to replace WebRTC browser-to-browser P2P.
+
+WebTransport failure must fall back automatically.
+
+---
+
+# 50. HTTP/3
+
+Where supported by the deployment, allow:
+
+```text
+HTTP/3 / QUIC
+```
+
+for appropriate traffic.
+
+Maintain:
+
+```text
+HTTP/2
+HTTP/1.1
+```
+
+fallback.
+
+---
+
+# 51. MoQ
+
+Architect an internal MoQ adapter:
+
+```text
+MoQTransport
+```
+
+but keep it:
+
+```text
+OPTIONAL
+EXPERIMENTAL
+DISABLED BY DEFAULT
+```
+
+Do not make initial production operation depend on MoQ.
+
+The application must operate normally when:
+
+```text
+MOQ_ENABLED=false
+```
+
+---
+
+# 52. TURN
+
+Do NOT require TURN.
+
+Default:
+
+```text
+TURN_ENABLED=false
+```
+
+Prefer:
+
+```text
+direct WebRTC
+```
+
+If direct P2P fails:
+
+```text
+HTTP/WebTransport fallback
+```
+
+Do not silently route large media volumes through a relay that defeats the zero-cost goal.
+
+---
+
+# 53. SELF-HOSTED SIGNALING
+
+Implement or reuse:
+
+```text
+WebSocket signaling
+```
+
+for:
+
+```text
+swarm discovery
+peer join
+offer/answer
+ICE candidates
+heartbeat
+expiration
+```
+
+The signaling server must never act as the normal media relay.
+
+---
+
+# 54. SIGNALING SECURITY
+
+Implement:
+
+```text
+WSS
+origin validation
+authentication where appropriate
+message-size limits
+rate limiting
+connection limits
+swarm-join limits
+session expiry
+```
+
+Reject malformed messages.
+
+---
+
+# 55. EPHEMERAL PEER IDENTITY
+
+Generate temporary:
+
+```text
+peerId
+sessionId
+```
+
+Do not expose permanent account identity to peers.
+
+---
+
+# 56. P2P DATA VALIDATION
+
+Every received media object must be validated.
+
+Validate:
+
+```text
+swarm compatibility
+manifest version
+object identity
+length
+integrity/hash where available
+media validity
+```
+
+Never trust peer-provided media metadata blindly.
+
+---
+
+# 57. PRIVACY
+
+Do not expose to peers:
+
+```text
+user name
+email
+account ID
+exact location
+private metadata
+credentials
+application secrets
+```
+
+Expose only minimum swarm/transport information.
+
+---
+
+# 58. DELIVERY DECISION LOOP
+
+The scheduler must continuously execute:
+
+```text
+OBSERVE
+   ↓
+MEASURE
+   ↓
+SCORE
+   ↓
+SELECT
+   ↓
+DELIVER
+   ↓
+CACHE
+   ↓
+REDISTRIBUTE
+   ↓
+MEASURE RESULT
+   ↓
+UPDATE SCORES
+   ↓
+NEXT REQUEST
+```
+
+This loop is the core of the architecture.
+
+---
+
+# 59. COST-AWARE ROUTING
+
+Each source receives a relative internal cost:
+
+```text
+LOCAL_CACHE
+≈ minimal network cost
+
+P2P
+≈ low operator cost
+
+SELF-HOSTED EDGE
+≈ low/medium operator cost
+
+WEBTRANSPORT EDGE
+≈ medium operator cost
+
+ORIGIN
+≈ highest operator resource consumption
+```
+
+Do not hard-code actual currency values unless configured.
+
+Use relative resource-cost scores.
+
+---
+
+# 60. RELIABILITY-AWARE ROUTING
+
+A cheap source is useless if it cannot deliver in time.
+
+Therefore:
+
+```text
+EffectiveSourceValue =
+CostEfficiency
++
+Reliability
++
+Latency
++
+BufferSafety
+```
+
+The system must select:
+
+```text
+cheapest reliable source
+```
+
+not merely:
+
+```text
+cheapest source
+```
+
+---
+
+# 61. ADAPTIVE HEDGING — ADVANCED
+
+Use different hedging strategies based on:
+
+```text
+buffer
+source confidence
+peer quality
+history
+segment urgency
+```
+
+Examples:
+
+```text
+healthy buffer:
+P2P-first
+
+moderate buffer:
+P2P + delayed HTTP hedge
+
+low buffer:
+P2P + immediate HTTP hedge
+
+critical buffer:
+reliability-first
+```
+
+Do not let hedging itself generate excessive duplicate traffic.
+
+Cancel losing requests whenever possible.
+
+---
+
+# 62. DUPLICATE DOWNLOAD CONTROL
+
+Monitor simultaneous downloads of the same object.
+
+Use:
+
+```text
+request coalescing
+cache locks
+single-flight
+```
+
+to reduce duplicate origin traffic.
+
+---
+
+# 63. CACHE PROMOTION
+
+When a segment becomes heavily requested:
+
+```text
+increase cache priority
+```
+
+When demand declines:
+
+```text
+reduce cache priority
+```
+
+When peer availability becomes dangerously low:
+
+```text
+promote to trusted seed
+```
+
+when infrastructure permits.
+
+---
+
+# 64. CACHE DEMOTION
+
+When:
+
+```text
+disk pressure high
+```
+
+evict:
+
+```text
+cold objects
+low-demand objects
+objects with many replicas
+```
+
+Preserve:
+
+```text
+hot objects
+scarce objects
+high-value objects
+```
+
+---
+
+# 65. STORAGE OPTIMIZATION
+
+Separate:
+
+```text
+authoritative source
+published media
+temporary work
+cache
+```
+
+Never confuse cache deletion with source deletion.
+
+---
+
+# 66. SOURCE RETENTION
+
+Do not delete the only authoritative source before successful processing/publication unless the deployment explicitly chooses a source-discard policy and has validated output.
+
+---
+
+# 67. REQUESTED VIDEO PLAYBACK FLOW
+
+Playback should follow:
+
+```text
+player
+ ↓
+playback API
+ ↓
+manifest
+ ↓
+delivery fabric
+ ↓
+check local cache
+ ↓
+check P2P
+ ↓
+check edge
+ ↓
+check WebTransport
+ ↓
+HTTP/HLS fallback
+ ↓
+validate object
+ ↓
+cache object
+ ↓
+deliver to player
+```
+
+Actual implementation should use parallel/hedged retrieval when appropriate rather than blindly serial execution.
+
+---
+
+# 68. SEEK HANDLING
+
+On seek:
+
+```text
+cancel obsolete prefetch
+cancel low-priority old requests
+prioritize target object
+prefer reliable source
+rebuild local/P2P opportunity
+```
+
+Never continue downloading large abandoned playback windows.
+
+---
+
+# 69. STARTUP OPTIMIZATION
+
+At startup:
+
+```text
+time-to-first-frame is highest priority
+```
+
+Do not wait for:
+
+```text
+swarm formation
+P2P discovery
+large prefetch
+```
+
+Start playback through the fastest reliable path.
+
+---
+
+# 70. ABR + P2P
+
+P2P availability may be considered as a throughput-confidence signal.
+
+It must NOT override:
+
+```text
+measured throughput
+buffer health
+device capability
+codec compatibility
+```
+
+---
+
+# 71. CLIENT P2P POLICY ENGINE
+
+Implement a dedicated:
+
+```text
+P2PPolicyEngine
+```
+
+Inputs:
+
+```text
+network
+effectiveType
+saveData
+downlink
+rtt
+battery information where available
+visibility
+browser capability
+peer history
+buffer
+user preference
+```
+
+Output:
+
+```text
+enabled
+receiveAllowed
+uploadAllowed
+maxPeers
+maxUploadMbps
+maxUploadBytes
+cacheAllowed
+prefetchAllowed
+```
+
+---
+
+# 72. FEATURE FLAGS
+
+Support:
+
+```text
+DISTRIBUTED_MEDIA_ENABLED
+P2P_ENABLED
+P2P_UPLOAD_ENABLED
+P2P_MAX_PEERS
+P2P_MAX_UPLOAD_MBPS
+P2P_MAX_UPLOAD_BYTES
+P2P_BACKGROUND_ENABLED
+P2P_LOW_BATTERY_MODE
+LOCAL_MEDIA_CACHE_ENABLED
+WEBTRANSPORT_ENABLED
+MOQ_ENABLED
+TRUSTED_SEED_ENABLED
+DEMAND_DRIVEN_TRANSCODING
+DYNAMIC_PREFETCH
+HEDGED_REQUESTS
+REQUEST_COALESCING
+SCARCITY_SCHEDULING
+```
+
+Recommended initial defaults:
+
+```text
+DISTRIBUTED_MEDIA_ENABLED=true
+
+P2P_ENABLED=true
+P2P_UPLOAD_ENABLED=true
+
+P2P_MAX_PEERS=6
+P2P_MAX_UPLOAD_MBPS=2
+P2P_MAX_UPLOAD_BYTES=262144000
+
+LOCAL_MEDIA_CACHE_ENABLED=true
+
+WEBTRANSPORT_ENABLED=true
+
+MOQ_ENABLED=false
+
+TRUSTED_SEED_ENABLED=true
+
+DEMAND_DRIVEN_TRANSCODING=true
+
+DYNAMIC_PREFETCH=true
+
+HEDGED_REQUESTS=true
+
+REQUEST_COALESCING=true
+
+SCARCITY_SCHEDULING=true
+```
+
+Change only when repository/deployment constraints require it.
+
+---
+
+# 73. MEDIA STORAGE ABSTRACTION
+
+Implement:
+
+```text
+StorageProvider
+```
+
+with:
+
+```text
+LocalFilesystemStorage
+```
+
+as the zero-cost default.
+
+Optionally support:
+
+```text
+S3CompatibleStorage
+```
+
+without making cloud storage mandatory.
+
+---
+
+# 74. LOCAL STORAGE STRUCTURE
+
+Conceptually:
+
+```text
+storage/
+  originals/
+  media/
+    {videoId}/
+      {manifestVersion}/
+        master.m3u8
+        1080p/
+        720p/
+        480p/
+        360p/
+  temp/
+  cache/
+```
+
+Never expose raw filesystem paths.
+
+---
+
+# 75. IMMUTABLE PUBLISHED MEDIA
+
+Use immutable versioned paths:
+
+```text
+/videos/{videoId}/{manifestVersion}/...
+```
+
+Published segments must not unexpectedly mutate.
+
+---
+
+# 76. HTTP CACHE HEADERS
+
+For immutable media objects:
+
+```http
+Cache-Control: public, max-age=31536000, immutable
+```
+
+Use shorter/appropriate caching for mutable manifests.
+
+Never make a mutable live manifest immutable.
+
+---
+
+# 77. CORS
+
+Use explicit allowed origins.
+
+Support:
+
+```text
+ALLOWED_ORIGINS
+```
+
+Do not default private/authenticated media to unrestricted `*`.
+
+---
+
+# 78. OPTIONAL OBJECT STORAGE CORS
+
+For S3-compatible storage, support a least-privilege policy equivalent to:
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "https://YOUR-FRONTEND-DOMAIN"
+    ],
+    "AllowedMethods": [
+      "GET",
+      "HEAD"
+    ],
+    "AllowedHeaders": [
+      "*"
+    ],
+    "ExposeHeaders": [
+      "Content-Length",
+      "Content-Range",
+      "ETag"
+    ],
+    "MaxAgeSeconds": 86400
+  }
+]
+```
+
+Never invent a production domain.
+
+---
+
+# 79. DIRECT / RESUMABLE UPLOAD
+
+Where practical:
+
+```text
+browser → storage
+```
+
+instead of:
+
+```text
+browser → Node → storage
+```
+
+The backend should manage:
+
+```text
+authorization
+metadata
+job creation
+state
+```
+
+rather than acting as a permanent upload proxy.
+
+---
+
+# 80. SECURITY
+
+Audit for:
+
+```text
+path traversal
+arbitrary file access
+command injection
+FFmpeg injection
+oversized uploads
+resource exhaustion
+WebSocket abuse
+P2P swarm abuse
+CORS misconfiguration
+private-media leakage
+secret leakage
+```
+
+Use secure process invocation.
+
+---
+
+# 81. RATE LIMITING
+
+Protect:
+
+```text
+uploads
+playback session creation
+signaling
+swarm joins
+analytics
+admin endpoints
+```
+
+Reuse existing infrastructure.
+
+---
+
+# 82. OBSERVABILITY
+
+Track:
+
+```text
+originBytes
+edgeBytes
+webTransportBytes
+p2pBytes
+localCacheBytes
+
+cacheHitRatio
+p2pRatio
+originReduction
+
+startupTime
+timeToFirstFrame
+rebufferCount
+rebufferDuration
+bufferDepth
+
+peerCount
+peerFailures
+peerSuccessRate
+
+transcodeJobs
+transcodeDuration
+transcodeFailures
+
+diskUsage
+CPU
+RAM
+```
+
+---
+
+# 83. COST METRICS
+
+Calculate:
+
+```text
+P2PRatio =
+p2pBytes /
+(p2pBytes + edgeBytes + webTransportBytes + originBytes)
+```
+
+And:
+
+```text
+OriginReduction =
+1 -
+originBytes /
+totalMediaBytes
+```
+
+Use real telemetry.
+
+Never fake savings.
+
+---
+
+# 84. PLAYER DIAGNOSTICS
+
+Build a modern dark diagnostic overlay available through developer mode.
+
+Show:
+
+```text
+NETWORK
+Wi-Fi / Ethernet / Mobile / Unknown
+
+DELIVERY
+Local Cache
+P2P
+WebTransport
+HTTP
+
+P2P
+Peers
+P2P Mbps
+P2P MB
+P2P Ratio
+
+PLAYER
+Buffer
+Startup
+Rebuffers
+Rendition
+
+ECONOMICS
+Origin MB
+Origin Reduction
+```
+
+Normal users should not see this by default.
+
+---
+
+# 85. API
+
+Adapt to existing conventions.
+
+Provide equivalent capabilities for:
+
+```text
+create video
+upload video
+get video
+get processing status
+get playback metadata
+get manifest
+create playback session
+get playback analytics
+```
+
+Do not duplicate existing APIs.
+
+---
+
+# 86. PLAYBACK API RESPONSE
+
+Return a transport-neutral structure similar to:
+
+```json
+{
+  "videoId": "...",
+  "manifestVersion": "...",
+  "masterManifestUrl": "...",
+  "renditions": [],
+  "delivery": {
+    "p2pEnabled": true,
+    "webTransportEnabled": true,
+    "httpEnabled": true,
+    "swarmId": "...",
+    "signalingUrl": "..."
+  }
+}
+```
+
+Actual fields must follow existing project conventions.
+
+---
+
+# 87. DATABASE MODEL
+
+Adapt the existing database architecture.
+
+At minimum represent:
+
+```text
+Video
+VideoSource
+VideoRendition
+VideoManifest
+MediaProcessingJob
+MediaObject
+Swarm
+SwarmGeneration
+PlaybackSession
+PeerSession
+CacheMetadata
+PlaybackTelemetry
+```
+
+Avoid excessive high-frequency writes.
+
+---
+
+# 88. REDIS
+
+If Redis exists, use it for ephemeral data such as:
+
+```text
+peer presence
+swarm membership
+heartbeats
+rate limiting
+queues
+short-lived state
+```
+
+Do not use Redis as authoritative media storage.
+
+---
+
+# 89. TRACKER DATA
+
+Store lightweight metadata:
+
+```text
+swarmId
+generation
+peerId
+sessionId
+rendition
+manifestVersion
+capabilities
+lastHeartbeat
+availability hints
+```
+
+Expire dead peers quickly.
+
+---
+
+# 90. NO FULL-MESH
+
+Do NOT connect every peer to every other peer.
+
+Use:
+
+```text
+bounded peer-assisted graph
+```
+
+Continuously replace bad peers with better candidates.
+
+---
+
+# 91. SERVER-SIDE REQUEST SHARING
+
+When many requests for the same media object arrive simultaneously:
+
+```text
+single upstream fetch
+shared result
+```
+
+where possible.
+
+Use locking/single-flight techniques.
+
+---
+
+# 92. OBJECT AVAILABILITY AWARENESS
+
+The delivery scheduler should know:
+
+```text
+is this object in local cache?
+is it on peers?
+how many peers?
+is it on edge?
+is it on origin?
+```
+
+This is more important than blindly selecting protocols.
+
+---
+
+# 93. MICRO-SWARMS
+
+Prefer logically focused swarm windows rather than unlimited persistent swarms.
+
+A swarm should be scoped by:
+
+```text
+video
+rendition
+manifest version
+generation
+```
+
+and optionally active playback window.
+
+---
+
+# 94. COLD VIDEO ECONOMICS
+
+For cold content:
+
+```text
+do not aggressively maintain P2P
+do not aggressively prefetch
+do not preserve excessive browser cache
+do not waste encoding resources
+```
+
+Let the authoritative origin remain available.
+
+---
+
+# 95. HOT VIDEO ECONOMICS
+
+For hot content:
+
+```text
+increase caching
+increase seeding
+increase safe P2P
+increase peer availability
+increase cooperative prefetch
+prioritize scarce pieces
+```
+
+The platform should spend resources only where they create meaningful reuse.
+
+---
+
+# 96. SELF-HOSTED EDGE
+
+If multiple self-controlled machines exist:
+
+```text
+Origin
+ ↓
+Edge A
+Edge B
+Edge C
+```
+
+The scheduler may use them as lower-cost sources before origin.
+
+Do not require multiple servers initially.
+
+---
+
+# 97. SINGLE-SERVER MODE
+
+The complete system must run on one self-controlled server:
+
+```text
+Nginx/Caddy
+Node
+PostgreSQL
+Redis
+FFmpeg
+WebSocket signaling
+WebTransport
+local storage
+trusted seed
+```
+
+No cloud account is mandatory.
+
+---
+
+# 98. SCALE-OUT
+
+Later allow independent scaling of:
+
+```text
+API
+workers
+edges
+signaling
+storage
+seeds
+database
+```
+
+Do not make the first deployment unnecessarily distributed.
+
+---
+
+# 99. CRASH RECOVERY
+
+On restart:
+
+```text
+reconcile incomplete jobs
+retry safe jobs
+clean orphan temp files
+expire stale peers
+restore scheduler state from authoritative metadata
+```
+
+No persistent job may become permanently stuck.
+
+---
+
+# 100. DISK PRESSURE
+
+Monitor disk.
+
+At warning:
+
+```text
+reduce disposable cache
+```
+
+At critical:
+
+```text
+pause new expensive media processing
+```
+
+Never blindly delete authoritative content.
+
+---
+
+# 101. FAILURE FALLBACK MATRIX
+
+Implement:
+
+```text
+local cache fails
+→ P2P / edge / HTTP
+
+P2P unavailable
+→ edge / WebTransport / HTTP
+
+WebTransport fails
+→ HTTP
+
+signaling fails
+→ HTTP
+
+peer disappears
+→ alternate peer / HTTP
+
+trusted seed unavailable
+→ normal P2P / HTTP
+
+MoQ unavailable
+→ existing transports
+
+Redis unavailable
+→ safe degraded behavior where technically possible
+
+FFmpeg unavailable
+→ fail media job cleanly
+
+storage unavailable
+→ fail safely
+```
+
+---
+
+# 102. NO OPTIONAL COMPONENT MAY BREAK PLAYBACK
+
+The following are optimization layers:
+
+```text
+P2P
+WebTransport
+MoQ
+local distributed cache
+cooperative prefetch
+trusted seed
+```
+
+Their failure must NEVER break normal HLS/HTTP playback.
+
+---
+
+# 103. ALGORITHMIC SELF-OPTIMIZATION
+
+Start with explainable deterministic algorithms.
+
+Do NOT immediately introduce opaque machine learning.
+
+Maintain structured telemetry so later ML experiments can learn:
+
+```text
+peer selection
+hedge delay
+prefetch window
+cache value
+heat prediction
+encoding demand
+```
+
+Any future ML model must be benchmarked against the deterministic baseline.
+
+---
+
+# 104. OPTIONAL ERASURE-CODING ABSTRACTION
+
+Architect:
+
+```text
+PieceRecoveryStrategy
+```
+
+Initial production implementation:
+
+```text
+DirectPieceStrategy
+```
+
+Future optional:
+
+```text
+ErasureCodingStrategy
+```
+
+Do not put erasure coding into the critical path until proven through extensive benchmarks.
+
+---
+
+# 105. ADVANCED SOURCE SELECTION
+
+Implement the delivery decision as:
+
+```text
+for each media object:
+
+  inspect availability
+
+  estimate:
+    latency
+    throughput
+    reliability
+    cost
+    buffer impact
+
+  rank sources
+
+  choose cheapest source
+  subject to playback deadline
+
+  hedge when risk requires it
+
+  cancel losing sources
+
+  cache successful result
+
+  update source confidence
+```
+
+This is the core algorithmic behavior.
+
+---
+
+# 106. PLAYBACK DEADLINE
+
+Calculate an approximate object deadline from:
+
+```text
+current playback position
+buffer duration
+segment duration
+```
+
+The closer the deadline:
+
+```text
+the less tolerant the scheduler becomes of slow/uncertain P2P.
+```
+
+This prevents cost optimization from causing stalls.
+
+---
+
+# 107. PEER UTILITY
+
+A peer should not simply be judged by speed.
+
+Calculate:
+
+```text
+PeerUtility =
+Reliability
+× Throughput
+× Availability
+× ScarcityContribution
+× RemainingBudget
+× PlaybackValue
+```
+
+Select peers that provide useful pieces.
+
+---
+
+# 108. SWARM-LEVEL OPTIMIZATION
+
+Do not optimize only individual viewers.
+
+Optimize:
+
+```text
+TOTAL SWARM DELIVERY
+```
+
+Example:
+
+```text
+Peer A → bulk pieces
+Peer B → rare pieces
+Peer C → upcoming pieces
+Peer D → no upload because unstable
+```
+
+This reduces duplicate work.
+
+---
+
+# 109. RESOURCE ECONOMICS
+
+At all times, the system should ask:
+
+```text
+Should I:
+
+encode this?
+cache this?
+prefetch this?
+replicate this?
+seed this?
+ask a peer for this?
+fetch from HTTP?
+keep this peer?
+replace this peer?
+```
+
+based on measurable expected utility.
+
+This is the central design philosophy.
+
+---
+
+# 110. FRONTEND TECHNOLOGY
+
+Use the project's existing UI architecture when appropriate.
+
+For a React frontend, support:
+
+```text
+React
+TypeScript
+hls.js
+HLS-aware P2P engine
+WebRTC
+WebTransport
+```
+
+Do not tightly couple visual UI components to specific transports.
+
+---
+
+# 111. FRONTEND COMPONENT BOUNDARIES
+
+Create modular components/services analogous to:
+
+```text
+VideoPlayer
+DeliveryClient
+DeliveryScheduler
+P2PPolicyEngine
+PeerManager
+LocalMediaCache
+TransportRegistry
+PlaybackTelemetry
+```
+
+Adapt naming to the repository.
+
+---
+
+# 112. NETWORK INFORMATION API
+
+Use where available:
+
+```text
+navigator.connection
+```
+
+Read:
+
+```text
+type
+effectiveType
+saveData
+downlink
+rtt
+```
+
+Never assume universal support.
+
+---
+
+# 113. MOBILE USER PROTECTION
+
+For mobile/cellular:
+
+```text
+P2P download = 0
+P2P upload = 0
+```
+
+For Save Data:
+
+```text
+P2P = 0
+```
+
+For low battery:
+
+```text
+prefer receive-only
+```
+
+For background:
+
+```text
+restrict upload
+```
+
+---
+
+# 114. ANALYTICS EVENTS
+
+Track:
+
+```text
+playback_start
+first_frame
+quality_change
+buffer_low
+rebuffer_start
+rebuffer_end
+p2p_enabled
+p2p_disabled
+peer_join
+peer_leave
+p2p_success
+p2p_failure
+http_fallback
+webtransport_success
+webtransport_failure
+cache_hit
+cache_miss
+```
+
+Batch telemetry.
+
+Do not write to the database once per segment.
+
+---
+
+# 115. HEALTH ENDPOINTS
+
+Provide equivalent to:
+
+```text
+/health/live
+/health/ready
+```
+
+Readiness should check the dependencies required for that deployment profile.
+
+---
+
+# 116. STRUCTURED LOGGING
+
+Log:
+
+```text
+timestamp
+level
+service
+requestId
+sessionId
+videoId
+swarmId
+event
+duration
+errorCode
+```
+
+Never log:
+
+```text
+password
+token
+cookie
+private key
+storage secret
+authorization header
+```
+
+---
+
+# 117. TESTING — NETWORK
+
+Test:
+
+```text
+2g → P2P OFF
+3g → P2P OFF
+4g → P2P OFF
+5g → P2P OFF
+
+saveData=true → P2P OFF
+
+Wi-Fi → eligible
+Ethernet → eligible
+
+unknown → conservative
+```
+
+---
+
+# 118. TESTING — P2P
+
+Test:
+
+```text
+peer join
+peer leave
+peer timeout
+peer scoring
+peer replacement
+piece availability
+scarcity
+piece validation
+upload budget
+peer budget
+swarm isolation
+```
+
+---
+
+# 119. TESTING — CACHE
+
+Test:
+
+```text
+cache hit
+cache miss
+LRU
+TTL
+storage quota
+corrupt object
+hot promotion
+cold eviction
+```
+
+---
+
+# 120. TESTING — SCHEDULER
+
+Test:
+
+```text
+local cache wins
+P2P wins
+edge wins
+WebTransport wins
+HTTP wins
+P2P timeout → HTTP
+peer disappears → alternate source
+low buffer → reliability-first
+healthy buffer → cost-first
+```
+
+---
+
+# 121. TESTING — COOPERATIVE PREFETCH
+
+Simulate multiple peers and verify:
+
+```text
+duplicate requests decrease
+rare pieces receive priority
+future pieces distribute across peers
+peers do not exceed budgets
+```
+
+---
+
+# 122. TESTING — REQUEST COALESCING
+
+Test:
+
+```text
+100 simultaneous requests for same object
+```
+
+and verify only the minimum necessary upstream retrievals occur.
+
+---
+
+# 123. TESTING — MEDIA
+
+Verify:
+
+```text
+real MP4 upload
+source validation
+FFmpeg
+6-second packaging
+CMAF
+HLS
+ABR
+manifest correctness
+segment correctness
+cleanup
+```
+
+---
+
+# 124. TESTING — WEBTRANSPORT
+
+Test:
+
+```text
+supported → used when beneficial
+unsupported → ignored
+failure → fallback
+connection loss → fallback
+```
+
+---
+
+# 125. TESTING — TURN
+
+Verify the platform functions with:
+
+```text
+TURN disabled
+```
+
+This is mandatory.
+
+---
+
+# 126. TESTING — MoQ
+
+Verify:
+
+```text
+MOQ_ENABLED=false
+```
+
+does not affect normal operation.
+
+---
+
+# 127. TESTING — FAILURE RECOVERY
+
+Simulate:
+
+```text
+FFmpeg crash
+worker restart
+disk shortage
+origin failure
+storage failure
+Redis failure
+signaling failure
+peer failure
+WebTransport failure
+```
+
+Verify graceful degradation.
+
+---
+
+# 128. PERFORMANCE BENCHMARKING
+
+Measure actual:
+
+```text
+time to first frame
+startup time
+rebuffer ratio
+buffer depth
+P2P throughput
+HTTP throughput
+WebTransport throughput
+peer discovery
+cache hit ratio
+origin bytes
+CPU
+RAM
+disk
+transcode speed
+```
+
+---
+
+# 129. ECONOMIC BENCHMARK
+
+Compare:
+
+```text
+MODE A
+Origin-only delivery
+
+MODE B
+Distributed Media Fabric
+```
+
+Measure:
+
+```text
+OriginBytes
+P2PBytes
+EdgeBytes
+WebTransportBytes
+CacheBytes
+OriginReduction
+```
+
+Use actual benchmark traffic.
+
+Never fabricate performance numbers.
+
+---
+
+# 130. SECURITY AUDIT
+
+Check:
+
+```text
+upload security
+FFmpeg safety
+path traversal
+storage isolation
+WebSocket abuse
+P2P abuse
+swarm poisoning
+CORS
+authentication
+authorization
+private media
+rate limiting
+resource exhaustion
+```
+
+---
+
+# 131. DOCUMENTATION
+
+Create/update appropriate project documentation equivalent to:
+
+```text
+DISTRIBUTED_MEDIA_ARCHITECTURE.md
+DELIVERY_SCHEDULER.md
+P2P_NETWORKING.md
+MEDIA_PIPELINE.md
+WEBTRANSPORT.md
+STORAGE.md
+COST_OPTIMIZATION.md
+SECURITY.md
+DEPLOYMENT.md
+TROUBLESHOOTING.md
+```
+
+Adapt names to repository conventions.
+
+---
+
+# 132. DOCUMENT ZERO-COST DEPLOYMENT
+
+Document how to run the entire platform with:
+
+```text
+one self-controlled server
+Node.js
+PostgreSQL
+Redis
+FFmpeg
+Nginx/Caddy
+local media storage
+self-hosted signaling
+WebRTC
+WebTransport
+trusted seed
+```
+
+No paid service should be required.
+
+---
+
+# 133. FUTURE SCALE
+
+Ensure architecture can later support:
+
+```text
+multiple API servers
+multiple FFmpeg workers
+multiple edge caches
+multiple signaling nodes
+multiple trusted seed nodes
+distributed storage
+```
+
+without redesigning the client media model.
+
+---
+
+# 134. FINAL UX PRINCIPLE
+
+The viewer experience should be:
+
+```text
+Press Play
+ ↓
+video starts quickly
+ ↓
+video plays smoothly
+```
+
+The viewer should not need to understand:
+
+```text
+P2P
+WebTransport
+MoQ
+cache
+swarm
+scheduler
+```
+
+unless developer diagnostics are deliberately enabled.
+
+---
+
+# 135. FINAL INTERNAL LOOP
+
+The finished system should behave conceptually like:
+
+```text
+                    ┌──────────────────┐
+                    │ OBSERVE DEMAND   │
+                    └────────┬─────────┘
+                             ↓
+                    ┌──────────────────┐
+                    │ SCORE SOURCES    │
+                    └────────┬─────────┘
+                             ↓
+                    ┌──────────────────┐
+                    │ CHOOSE DELIVERY  │
+                    └────────┬─────────┘
+                             ↓
+                    ┌──────────────────┐
+                    │ DELIVER MEDIA    │
+                    └────────┬─────────┘
+                             ↓
+                    ┌──────────────────┐
+                    │ CACHE / SHARE    │
+                    └────────┬─────────┘
+                             ↓
+                    ┌──────────────────┐
+                    │ MEASURE RESULT   │
+                    └────────┬─────────┘
+                             ↓
+                    ┌──────────────────┐
+                    │ UPDATE SCORES    │
+                    └────────┬─────────┘
+                             │
+                             └──────→ REPEAT
+```
+
+---
+
+# 136. FINAL ACCEPTANCE CRITERIA
+
+Do not declare completion until:
+
+```text
+✓ Existing application preserved
+✓ Build passes
+✓ Type checks pass
+✓ Lint passes
+✓ Tests pass
+✓ Upload works
+✓ FFmpeg works
+✓ CMAF works
+✓ HLS works
+✓ ABR works
+✓ 6-second segmentation works
+✓ Demand-driven encoding works
+✓ Browser cache works
+✓ P2P works
+✓ Wi-Fi P2P works
+✓ Ethernet P2P works
+✓ Cellular P2P blocked
+✓ Save Data blocks P2P
+✓ Upload budgets work
+✓ Peer scoring works
+✓ Swarm generations work
+✓ Scarcity scheduling works
+✓ Cooperative prefetch works
+✓ Request coalescing works
+✓ Hedged requests work
+✓ HTTP fallback works
+✓ WebTransport works where supported
+✓ WebTransport failure falls back
+✓ TURN not required
+✓ MoQ optional
+✓ Trusted seed works
+✓ Metrics are real
+✓ Cost metrics are real
+✓ Security audit completed
+✓ Recovery tested
+✓ Deployment documented
+```
+
+---
+
+# 137. REQUIRED FINAL REPORT
+
+When implementation is complete, report:
+
+```text
+1. Existing architecture discovered
+2. Architecture changes
+3. Files created
+4. Files modified
+5. Dependencies added
+6. Database changes
+7. Storage architecture
+8. Media pipeline
+9. CMAF/HLS implementation
+10. P2P implementation
+11. Swarm implementation
+12. Peer scoring
+13. Scarcity engine
+14. Cooperative prefetch
+15. Cache engine
+16. Delivery scheduler
+17. Adaptive hedging
+18. WebTransport
+19. MoQ readiness
+20. Trusted seed
+21. Security controls
+22. Telemetry
+23. Tests
+24. Benchmark results
+25. Origin reduction
+26. P2P ratio
+27. Cache hit ratio
+28. CPU/storage characteristics
+29. Known limitations
+30. Remaining risks
+31. Next highest-value optimizations
+```
+
+For every experimental component, clearly state:
+
+```text
+PRODUCTION READY
+OPTIONAL
+EXPERIMENTAL
+NOT ENABLED BY DEFAULT
+```
+
+---
+
+# 138. FINAL DIRECTIVE
+
+Do not implement this as a collection of disconnected features.
+
+Implement one coherent system:
+
+```text
+MEDIA OBJECTS
+      ↓
+INTELLIGENT AVAILABILITY
+      ↓
+DELIVERY SCHEDULER
+      ↓
+LOCAL CACHE
+      ↓
+P2P
+      ↓
+EDGE
+      ↓
+WEBTRANSPORT
+      ↓
+HTTP/HLS
+      ↓
+PLAYER
+```
+
+while continuously performing:
+
+```text
+DEMAND ANALYSIS
+CACHE ANALYSIS
+PEER ANALYSIS
+SCARCITY ANALYSIS
+HEAT ANALYSIS
+COST ANALYSIS
+PLAYBACK RISK ANALYSIS
+```
+
+The system must automatically determine:
+
+```text
+what to encode
+what to cache
+what to replicate
+what to prefetch
+which peer to use
+which peer to replace
+when to seed
+when to stop seeding
+when to use P2P
+when to abandon P2P
+when to hedge
+when to use HTTP
+```
+
+The ultimate objective is:
+
+# MINIMUM ORIGIN DEPENDENCE WITH MAXIMUM PLAYBACK PERFORMANCE
+
+while maintaining:
+
+```text
+ZERO CELLULAR P2P
+ZERO MANDATORY PAID INFRASTRUCTURE
+ZERO MANDATORY TURN
+ZERO FAKE METRICS
+ZERO OPTIONAL-COMPONENT PLAYBACK FAILURE
+```
+
+The finished implementation should function as an **autonomous, self-optimizing distributed media delivery fabric**, not merely as a video player with P2P attached.

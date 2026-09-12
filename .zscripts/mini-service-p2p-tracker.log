@@ -1,7 +1,7 @@
 [p2p-tracker] Installing dependencies...
 bun install v1.3.14 (0d9b296a)
 
-Checked 1 install across 2 packages (no changes) [2.00ms]
+Checked 1 install across 2 packages (no changes) [1.00ms]
 [p2p-tracker] Running bun run dev...
 $ bun --hot index.ts
 [p2p-tracker] listening on ws://localhost:3003
@@ -14,6 +14,4 @@ $ bun --hot index.ts
                  ^
 error: Failed to start server. Is port 3003 in use?
       at emitError (node:events:51:13)
-      at emitError (node:events:43:23)
-or (node:events:51:13)
       at emitError (node:events:43:23)
