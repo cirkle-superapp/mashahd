@@ -49,10 +49,19 @@ export async function GET(
       ? "video/iso.segment"
       : ext === ".ts"
       ? "video/mp2t"
+      : ext === ".jpg" || ext === ".jpeg"
+      ? "image/jpeg"
+      : ext === ".png"
+      ? "image/png"
+      : ext === ".webp"
+      ? "image/webp"
       : "application/octet-stream";
 
   const isSegment = ext === ".m4s" || ext === ".mp4" || ext === ".ts";
-  const cacheControl = isSegment
+  const isPoster = ext === ".jpg" || ext === ".jpeg" || ext === ".png" || ext === ".webp";
+  // Segments and poster images are immutable — cache forever.
+  // Manifests are mutable — never cache.
+  const cacheControl = isSegment || isPoster
     ? "public, max-age=31536000, immutable"
     : "no-cache";
   const corsOrigin = getCorsOrigin(req);

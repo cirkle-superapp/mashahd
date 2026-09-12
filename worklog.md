@@ -495,3 +495,43 @@ Stage Summary:
 - Code is live on GitHub at https://github.com/cirkle-superapp/mashahd
 - Turso adapter is ready (needs a fresh token — the provided one returns 401)
 - All 4 critical audit gaps fixed: P2P auto-start, rate limiting, p2p-media-loader API, dead code
+
+---
+Task ID: 109-113 (v4 media pipeline bug fixes — restored upload route, fixed HLS playback) — COMPLETE
+Agent: main
+Task: Continue implementing — verify the running site end-to-end and fix any remaining gaps in the Autonomous Media Mesh v4 pipeline.
+
+Work Log:
+- Restored the dev server stack (Next.js on 3000, P2P tracker on 3003) after a context-window restart.
+- Verified home/watch/auth/profile flows render and respond 200 via Agent Browser.
+- Discovered the v3 commit (bfb12e0) had ACCIDENTALLY DELETED the /api/media/videos/[id]/upload route (it was restored in 6bfd094, then deleted again in bfb12e0). Restored from git history.
+- Tested upload pipeline: created video → uploaded MP4 → ffmpeg transcoded → HLS/CMAF assets generated → READY. But the player couldn't load the stream.
+- Diagnosed 4 distinct bugs in src/lib/media-worker.ts and the upload route:
+  * BUG 1: fluent-ffmpeg's multi-output mode was producing an invalid segment filename template (`segment-$00001.m4s` — fluent-ffmpeg syntax, not raw ffmpeg syntax). Raw ffmpeg expects `segment-%05d.m4s`. Refactored the entire transcode() function to spawn ffmpeg directly per-rendition (sequential, isolated processes, safe argv array — no shell, no multi-output weirdness). This also gives proper per-rendition error messages.
+  * BUG 2: The HLS master manifest's first line was `#EXTM3` (missing the trailing `U`). HLS spec requires `#EXTM3U` — hls.js was silently failing to parse it (no console error, just no rendition loaded). Fixed to `#EXTM3U`.
+  * BUG 3: The upload route set `videoUrl: /api/media/videos/{id}/manifest` (the prefix, not the actual .m3u8 file). hls.js got 404 on the manifest. Fixed to `/api/media/videos/{id}/manifest/master.m3u8`.
+  * BUG 4: The upload route set `thumbnailUrl` to the master.m3u8 (a manifest, not an image) → broken poster. Added a real `extractThumbnail()` step that runs ffmpeg to grab a single JPEG frame at ~1s, stores it as `poster.jpg` next to the manifest, and sets `thumbnailUrl` to that. Also extended the manifest route to serve `.jpg/.png/.webp` with correct MIME + immutable cache headers.
+- Cleaned test videos from the database (via a Prisma cleanup script) and the storage dir, then re-ran the full pipeline end-to-end:
+  * POST /api/media/videos → returns videoId + jobId + uploadUrl
+  * POST /api/media/videos/{id}/upload (multipart/form-data) → probes source → stores → queues async pipeline
+  * Pipeline: QUEUED → PROCESSING (transcode 360p) → PACKAGING → VALIDATING → READY (~1 second total for a 6s test clip)
+  * GET /api/media/videos/{id}/manifest/master.m3u8 → returns valid HLS with #EXTM3U header
+  * GET /api/media/videos/{id}/manifest/360p/index.m3u8 → returns valid rendition playlist
+  * GET /api/media/videos/{id}/manifest/360p/init.mp4 → 829 bytes, video/mp4
+  * GET /api/media/videos/{id}/manifest/360p/segment-00000.m4s → 44KB, video/iso.segment
+  * GET /api/media/videos/{id}/manifest/poster.jpg → 21KB JPEG, image/jpeg
+  * GET /api/media/videos/{id}/playback → returns swarmId + renditions
+- Verified live in the browser via Agent Browser:
+  * Opened /?v=watch&id={uploaded video id}
+  * hls.js attached (blob: URL on video.src), readyState=4 (HAVE_ENOUGH_DATA), duration=6.07s
+  * Clicked Play → video played through to the end (currentTime reached 6.1, ended=true)
+  * Auto-advanced to next video (Up Next toast fired)
+- VLM verification of the watch-page screenshot: confirmed the video player is visible, displaying the SMPTE color bars test pattern (from the generated test source), all controls present, layout "characteristic of modern streaming platforms like YouTube".
+- Lint: clean (0 errors, 0 warnings). All APIs return 200. Health endpoint: status=ready, database=ok, storage=ok, ffmpeg+ffprobe detected.
+
+Stage Summary:
+- The Autonomous Media Mesh v4 is now FULLY operational end-to-end. Upload → transcode → HLS/CMAF → serve → hls.js playback → P2P acceleration (policy-permitting) → telemetry → autoplay → auto-advance.
+- 4 production bugs fixed in the v4 pipeline: segment filename template, #EXTM3U header, videoUrl path, thumbnail extraction.
+- The upload route (accidentally deleted in v3) is restored.
+- The transcode function is now safer (per-rendition isolated spawn, no shell, no fluent-ffmpeg multi-output), more observable (per-rendition error messages), and produces a real JPEG thumbnail.
+- All 208 v4 spec sections remain addressed (per MEDIA_MESH_V4_CHECKLIST.md), and the pipeline is now verified live end-to-end.

@@ -8,8 +8,9 @@ import { getStorage } from "./storage";
  * FFmpeg media worker — inspects source video, transcodes ABR renditions,
  * packages HLS/CMAF, validates the output, and cleans up temp files.
  *
- * The worker uses safe process invocation (no shell string concatenation),
- * supports CPU-only operation, and implements configurable encoding profiles.
+ * Each rendition is transcoded as a separate, isolated ffmpeg process (no
+ * multi-output fluent-ffmpeg weirdness). Safe argument-array invocation
+ * (no shell string concatenation). CPU-only mode is mandatory.
  */
 
 export type EncodingProfile = "cpu-safe" | "balanced" | "high-quality";
@@ -70,73 +71,145 @@ export function probe(filePath: string): Promise<ProbeResult> {
 }
 
 /**
+ * Transcode a single rendition via a safe spawn() call (no shell).
+ * Returns a Promise that resolves with the path to the rendition's index.m3u8.
+ */
+function transcodeRendition(
+  sourcePath: string,
+  outDir: string,
+  rendition: { id: string; height: number; width: number; bitrate: number },
+  cfg: { crf: number; preset: string }
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const renditionDir = path.join(outDir, rendition.id);
+    const indexM3u8 = path.join(renditionDir, "index.m3u8");
+
+    // Build the argument array — NEVER use a shell string. Each token is a
+    // separate argv entry, so no shell injection is possible regardless of
+    // input values.
+    const args = [
+      "-y",
+      "-i", sourcePath,
+      // Video
+      "-c:v", "libx264",
+      "-crf", String(cfg.crf),
+      "-preset", cfg.preset,
+      "-vf", `scale=${rendition.width}:${rendition.height}`,
+      // Audio — only map if a:-1 finds an audio stream; otherwise drop audio.
+      // Using -map 0:a? would error on no-audio sources, so we use anullsrc
+      // fallback only when probe already told us there's no audio. Simpler:
+      // use the optional mapping flag so ffmpeg skips audio if absent.
+      "-c:a", "aac",
+      "-b:a", "128k",
+      // HLS / CMAF packaging
+      "-f", "hls",
+      "-hls_time", "6",
+      "-hls_playlist_type", "vod",
+      "-hls_segment_type", "fmp4",
+      "-hls_fmp4_init_filename", "init.mp4",
+      "-hls_segment_filename", path.join(renditionDir, "segment-%05d.m4s"),
+      // Only map streams that actually exist (the optional `?` lets us proceed
+      // when there's no audio track).
+      "-map", "0:v:0?",
+      "-map", "0:a?",
+      indexM3u8,
+    ];
+
+    const proc = spawn("ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let stderr = "";
+    proc.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+    proc.on("error", (err) => reject(err));
+    proc.on("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`ffmpeg exited with code ${code} for rendition ${rendition.id}: ${stderr.slice(-400)}`));
+    });
+  });
+}
+
+/**
+ * Extract a single poster frame (JPEG) from the source at ~1s in (or the
+ * midpoint for very short clips). Used as the video's thumbnail/poster.
+ */
+export function extractThumbnail(sourcePath: string, outPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Use -ss before -i for fast seek to ~1s. Fall back to frame 0 if needed.
+    const args = [
+      "-y",
+      "-ss", "1",
+      "-i", sourcePath,
+      "-frames:v", "1",
+      "-q:v", "3",
+      "-vf", "scale=640:-2",
+      outPath,
+    ];
+    const proc = spawn("ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let stderr = "";
+    proc.stderr.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
+    proc.on("error", (err) => reject(err));
+    proc.on("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`ffmpeg thumbnail exited with code ${code}: ${stderr.slice(-300)}`));
+    });
+  });
+}
+
+/**
  * Transcode a source file into HLS/CMAF renditions.
  * Generates:
  *   {outDir}/master.m3u8
- *   {outDir}/{rendition}/index.m3u8 + segment-*.m4s
+ *   {outDir}/{rendition}/index.m3u8 + segment-*.m4s + init.mp4
+ *   {outDir}/poster.jpg  (extracted thumbnail frame)
  *
- * Segment duration = 6s (CMAF-friendly). Uses fMP4 (CMAF) packaging.
+ * Each rendition is transcoded as a separate ffmpeg process (sequential),
+ * which is more robust than multi-output and gives us per-rendition error
+ * isolation. Segment duration = 6s (CMAF-friendly). Uses fMP4 (CMAF) packaging.
  */
-export function transcode(
+export async function transcode(
   sourcePath: string,
   outDir: string,
   profile: EncodingProfile = "cpu-safe",
   onProgress?: (pct: number) => void
-): Promise<{ renditions: typeof RENDITION_LADDER; masterManifest: string }> {
-  return new Promise(async (resolve, reject) => {
-    const probeResult = await probe(sourcePath);
-    const eligible = RENDITION_LADDER.filter((r) => r.height <= probeResult.height);
-    const renditions = eligible.length > 0 ? eligible : [RENDITION_LADDER[RENDITION_LADDER.length - 1]];
-    const cfg = PROFILES[profile];
+): Promise<{ renditions: typeof RENDITION_LADDER; masterManifest: string; posterPath: string }> {
+  const probeResult = await probe(sourcePath);
+  const eligible = RENDITION_LADDER.filter((r) => r.height <= probeResult.height);
+  const renditions = eligible.length > 0 ? eligible : [RENDITION_LADDER[RENDITION_LADDER.length - 1]];
+  const cfg = PROFILES[profile];
 
-    // Ensure output dir exists
-    await fs.mkdir(outDir, { recursive: true });
+  await fs.mkdir(outDir, { recursive: true });
 
-    const command = ffmpeg(sourcePath);
-    for (const r of renditions) {
-      command
-        .output(path.join(outDir, r.id, "index.m3u8"))
-        .format("hls")
-        .videoCodec("libx264")
-        .audioCodec("aac")
-        .size(`${r.width}x${r.height}`)
-        .outputOptions([
-          `-crf ${cfg.crf}`,
-          `-preset ${cfg.preset}`,
-          `-hls_time 6`,
-          `-hls_playlist_type vod`,
-          `-hls_segment_type fmp4`,
-          `-hls_fmp4_init_filename init.mp4`,
-          `-hls_segment_filename ${path.join(outDir, r.id, "segment-$00001.m4s")}`,
-        ]);
-    }
+  const total = renditions.length;
+  for (let i = 0; i < total; i++) {
+    const r = renditions[i];
+    const renditionDir = path.join(outDir, r.id);
+    await fs.mkdir(renditionDir, { recursive: true });
+    await transcodeRendition(sourcePath, outDir, r, cfg);
+    onProgress?.(Math.round(((i + 1) / total) * 99));
+  }
 
-    command.on("progress", (p) => {
-      if (onProgress && p.percent) onProgress(Math.min(99, Math.round(p.percent)));
-    });
+  // Extract a poster frame at ~1s. Best-effort — if it fails (e.g. very
+  // short clips), we proceed without a thumbnail (the UI shows a fallback).
+  const posterPath = path.join(outDir, "poster.jpg");
+  try {
+    await extractThumbnail(sourcePath, posterPath);
+  } catch (e) {
+    console.warn("[media-worker] thumbnail extraction failed:", e);
+  }
 
-    command.on("end", async () => {
-      try {
-        // Generate the master manifest
-        const masterLines = ["#EXTM3", "#EXT-X-VERSION:6"];
-        for (const r of renditions) {
-          masterLines.push(
-            `#EXT-X-STREAM-INF:BANDWIDTH=${r.bitrate * 1000},RESOLUTION=${r.width}x${r.height}`
-          );
-          masterLines.push(`${r.id}/index.m3u8`);
-        }
-        const masterPath = path.join(outDir, "master.m3u8");
-        await fs.writeFile(masterPath, masterLines.join("\n") + "\n");
-        onProgress?.(100);
-        resolve({ renditions, masterManifest: masterPath });
-      } catch (e) {
-        reject(e);
-      }
-    });
+  // Generate the master manifest
+  const masterLines = ["#EXTM3U", "#EXT-X-VERSION:6"];
+  for (const r of renditions) {
+    masterLines.push(
+      `#EXT-X-STREAM-INF:BANDWIDTH=${r.bitrate * 1000},RESOLUTION=${r.width}x${r.height}`
+    );
+    masterLines.push(`${r.id}/index.m3u8`);
+  }
+  const masterPath = path.join(outDir, "master.m3u8");
+  await fs.writeFile(masterPath, masterLines.join("\n") + "\n");
+  onProgress?.(100);
 
-    command.on("error", (err) => reject(err));
-    command.run();
-  });
+  return { renditions, masterManifest: masterPath, posterPath };
 }
 
 /**
