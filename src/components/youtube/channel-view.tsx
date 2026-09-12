@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, Share2, MoreHorizontal, Heart, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { formatSubs, formatViews } from "@/lib/format";
 import type { ChannelWithFlags, Video } from "@/lib/types";
+import { SupportCreator } from "./support-creator";
 import { VideoCard } from "./video-card";
 import { useAppStore } from "@/store/app-store";
 import { toast } from "sonner";
@@ -46,6 +48,7 @@ export function ChannelView({ channelId }: { channelId: string }) {
   });
 
   const channel = data?.channel;
+  const [supportOpen, setSupportOpen] = useState(false);
 
   const subMutation = useMutation({
     mutationFn: async (action: "subscribe" | "unsubscribe") => {
@@ -121,12 +124,18 @@ export function ChannelView({ channelId }: { channelId: string }) {
               onClick={() => subMutation.mutate(subscribed ? "unsubscribe" : "subscribe")} disabled={subMutation.isPending}>
               {subscribed ? (<><Bell className="h-4 w-4 mr-1.5" /> Subscribed</>) : ("Subscribe")}
             </Button>
-            {/* Creator Support button — Cirkle's creator economy (0% fees) */}
+            {/* Creator Support button — Mashahd's creator economy (0% fees) */}
             <Button variant="secondary" size="sm"
               className="rounded-full h-9 px-4 bg-gradient-to-r from-[hsl(var(--gold)/0.15)] to-transparent border border-gold/30 hover:border-gold/50"
-              onClick={() => toast.info("Support feature coming soon — CirkleMint integration", { description: "Tip creators directly with 0% fees." })}>
+              onClick={() => setSupportOpen(true)}>
               <Heart className="h-4 w-4 mr-1.5 text-rose" /> Support
             </Button>
+            <SupportCreator
+              open={supportOpen}
+              onClose={() => setSupportOpen(false)}
+              channelName={channel.name}
+              channelId={channel.id}
+            />
             <Button variant="secondary" size="sm" className="rounded-full h-9 px-4 bg-muted hover:bg-accent">
               <Share2 className="h-4 w-4 mr-1.5" /> Share
             </Button>

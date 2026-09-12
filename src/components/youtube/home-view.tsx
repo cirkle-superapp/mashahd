@@ -6,6 +6,7 @@ import { VideoCard } from "./video-card";
 import { CategoryChips } from "./category-chips";
 import { MoodFilter, moodToCategory, type MoodId } from "./mood-filter";
 import { ShortsShelf } from "./shorts-shelf";
+import { TrendingDigest } from "./trending-digest";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Video } from "@/lib/types";
 
@@ -41,6 +42,10 @@ export function HomeView() {
       <div className="pt-2 pb-1">
         <MoodFilter active={mood} onSelect={setMood} />
       </div>
+      {/* AI Trending Digest — only on the default home feed, where it
+          reinforces Mashahd's AI-native identity with a curated editorial
+          wrap-up of today's trending videos. */}
+      {!mood && category === "All" && <TrendingDigest />}
       {/* Shorts shelf — only on the default home feed (not when a mood or
           specific category is selected). */}
       {!mood && category === "All" && <ShortsShelf />}

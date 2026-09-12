@@ -172,6 +172,12 @@ function createModel(client: Client, table: string) {
             jobs: { table: "MediaProcessingJob", fk: "videoId", isCollection: true },
             user: { table: "User", fk: "userId", isCollection: false },
             sessions: { table: "Session", fk: "userId", isCollection: true },
+            // Playlist relations
+            playlists: { table: "Playlist", fk: "userStateId", isCollection: true },
+            items: { table: "PlaylistItem", fk: "playlistId", isCollection: true },
+            userState: { table: "UserState", fk: "userStateId", isCollection: false },
+            playlist: { table: "Playlist", fk: "playlistId", isCollection: false },
+            video: { table: "Video", fk: "videoId", isCollection: false },
           };
           const rel = relMap[relName];
           if (!rel) continue;
@@ -241,6 +247,12 @@ function createModel(client: Client, table: string) {
             channel: { table: "Channel", fk: "channelId", isCollection: false },
             comments: { table: "Comment", fk: "videoId", isCollection: true },
             user: { table: "User", fk: "userId", isCollection: false },
+            // Playlist relations
+            playlists: { table: "Playlist", fk: "userStateId", isCollection: true },
+            items: { table: "PlaylistItem", fk: "playlistId", isCollection: true },
+            userState: { table: "UserState", fk: "userStateId", isCollection: false },
+            playlist: { table: "Playlist", fk: "playlistId", isCollection: false },
+            video: { table: "Video", fk: "videoId", isCollection: false },
           };
           const rel = relMap[relName];
           if (!rel) continue;
@@ -295,13 +307,17 @@ function createModel(client: Client, table: string) {
       }
       // Auto-set timestamps only for tables that have them
       const now = new Date().toISOString();
-      const tablesWithTimestamps = new Set(["Channel", "Video", "Comment", "UserState", "User", "Session", "VideoSource", "VideoRendition", "VideoManifest", "MediaProcessingJob", "Swarm", "PlaybackSession", "PlaybackTelemetry"]);
+      const tablesWithTimestamps = new Set(["Channel", "Video", "Comment", "UserState", "User", "Session", "VideoSource", "VideoRendition", "VideoManifest", "MediaProcessingJob", "Swarm", "PlaybackSession", "PlaybackTelemetry", "Playlist"]);
       if (tablesWithTimestamps.has(table)) {
         if (!data.createdAt) data.createdAt = now;
       }
-      const tablesWithUpdatedAt = new Set(["UserState", "User", "MediaProcessingJob", "Swarm"]);
+      const tablesWithUpdatedAt = new Set(["UserState", "User", "MediaProcessingJob", "Swarm", "Playlist"]);
       if (tablesWithUpdatedAt.has(table)) {
-        if (!data.updatedAt) data.updatedAt = now;
+        data.updatedAt = now;
+      }
+      // PlaylistItem uses `addedAt` instead of `createdAt`.
+      if (table === "PlaylistItem" && !data.addedAt) {
+        data.addedAt = now;
       }
       // Convert Date objects to ISO strings for SQLite
       for (const [k, v] of Object.entries(data)) {
@@ -435,6 +451,9 @@ export function createTursoDB() {
     swarm: createModel(client, "Swarm"),
     playbackSession: createModel(client, "PlaybackSession"),
     playbackTelemetry: createModel(client, "PlaybackTelemetry"),
+    // Playlists
+    playlist: createModel(client, "Playlist"),
+    playlistItem: createModel(client, "PlaylistItem"),
     $queryRaw: async (sql: string) => {
       const result = await client.execute(sql);
       return result.rows;

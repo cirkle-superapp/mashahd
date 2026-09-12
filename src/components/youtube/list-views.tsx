@@ -327,20 +327,121 @@ export function LibraryView() {
     queryFn: () => fetchUserState(bid),
     enabled: !!bid,
   });
+  const { data: playlists } = useQuery({
+    queryKey: ["playlists", bid],
+    queryFn: async () => {
+      const r = await fetch(`/api/playlists?bid=${bid}`);
+      if (!r.ok) return [];
+      return (await r.json()).playlists as {
+        id: string; title: string; itemCount: number; coverUrl: string;
+      }[];
+    },
+    enabled: !!bid,
+  });
 
   const liked = state?.likedVideoIds?.length || 0;
   const subs = state?.subscribedChannelIds?.length || 0;
   const hist = state?.watchedVideoIds?.length || 0;
+  const favs = state?.favoriteVideoIds?.length || 0;
+  const wl = state?.watchLaterIds?.length || 0;
+  const plCount = playlists?.length || 0;
 
   return (
-    <div className="px-4 sm:px-6 py-6 max-w-[1200px] mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Your library</h1>
+    <div className="px-4 sm:px-6 py-6 max-w-[1200px] mx-auto space-y-8">
+      <h1 className="text-2xl font-bold">Your library</h1>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <LibraryCard title="History" count={hist} view={{ kind: "history" }} />
         <LibraryCard title="Liked videos" count={liked} view={{ kind: "liked" }} />
         <LibraryCard title="Subscriptions" count={subs} view={{ kind: "subscriptions" }} />
+        <LibraryCard title="Favorites" count={favs} view={{ kind: "favorites" }} />
+        <LibraryCard title="Watch Later" count={wl} view={{ kind: "watchLater" }} />
+      </div>
+
+      {/* Playlists — Mashahd's user-created video collections */}
+      <div className="space-y-4">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-semibold">Your playlists</h2>
+          <span className="text-xs text-muted-foreground">
+            {plCount === 1 ? "1 playlist" : `${plCount} playlists`}
+          </span>
+        </div>
+        {plCount === 0 ? (
+          <div className="rounded-xl border border-dashed border-border p-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              You haven&apos;t created any playlists yet.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Open any video and tap <span className="font-medium text-foreground">Save</span> to start one.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {playlists!.map((p) => (
+              <PlaylistRow key={p.id} playlist={p} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function PlaylistRow({
+  playlist,
+}: {
+  playlist: { id: string; title: string; itemCount: number; coverUrl: string };
+}) {
+  const { navigate } = useAppStore();
+  return (
+    <button
+      onClick={() => navigate({ kind: "playlist", playlistId: playlist.id })}
+      className="text-left group"
+    >
+      <div className="relative aspect-video rounded-xl overflow-hidden bg-muted">
+        {playlist.coverUrl ? (
+          <img
+            src={playlist.coverUrl}
+            alt={playlist.title}
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform"
+          />
+        ) : (
+          <div className="absolute inset-0 grid place-items-center text-muted-foreground">
+            <ListMusicIcon />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent" />
+        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-white text-xs">
+          <span className="px-1.5 py-0.5 rounded bg-black/60 backdrop-blur">
+            {playlist.itemCount} video{playlist.itemCount === 1 ? "" : "s"}
+          </span>
+        </div>
+      </div>
+      <p className="mt-1.5 text-sm font-medium truncate">{playlist.title}</p>
+      <p className="text-xs text-muted-foreground">View full playlist</p>
+    </button>
+  );
+}
+
+function ListMusicIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="28"
+      height="28"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M13 22a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v17a1 1 0 0 1-1 1Z" />
+      <path d="M2 21v-2" />
+      <path d="M2 17v-2" />
+      <path d="M2 13v-2" />
+      <path d="M2 9V7" />
+      <path d="M2 5V3" />
+    </svg>
   );
 }
 
@@ -351,7 +452,7 @@ function LibraryCard({
 }: {
   title: string;
   count: number;
-  view: { kind: "history" | "liked" | "subscriptions" };
+  view: { kind: "history" | "liked" | "subscriptions" | "favorites" | "watchLater" };
 }) {
   const { navigate } = useAppStore();
   return (

@@ -181,6 +181,29 @@ const tables: string[] = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_playbacktelemetry_sessionId ON PlaybackTelemetry(sessionId)`,
   `CREATE INDEX IF NOT EXISTS idx_playbacktelemetry_videoId ON PlaybackTelemetry(videoId)`,
+  // Playlists
+  `CREATE TABLE IF NOT EXISTS Playlist (
+    id TEXT PRIMARY KEY NOT NULL,
+    userStateId TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    visibility TEXT NOT NULL DEFAULT 'public',
+    coverUrl TEXT NOT NULL DEFAULT '',
+    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME NOT NULL,
+    FOREIGN KEY (userStateId) REFERENCES UserState(id) ON DELETE CASCADE
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_playlist_userStateId ON Playlist(userStateId)`,
+  `CREATE TABLE IF NOT EXISTS PlaylistItem (
+    id TEXT PRIMARY KEY NOT NULL,
+    playlistId TEXT NOT NULL,
+    videoId TEXT NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0,
+    addedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (playlistId) REFERENCES Playlist(id) ON DELETE CASCADE
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_playlistitem_playlist_video ON PlaylistItem(playlistId, videoId)`,
+  `CREATE INDEX IF NOT EXISTS idx_playlistitem_playlist_pos ON PlaylistItem(playlistId, position)`,
 ];
 
 async function main() {

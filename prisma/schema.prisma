@@ -78,6 +78,45 @@ model UserState {
   watchLaterIds      String @default("") // pipe-separated video ids (Watch Later queue)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  playlists          Playlist[]
+}
+
+/// User-created playlists. A playlist belongs to a UserState (anonymous
+/// browser or authenticated user) and can be public (shareable link) or
+/// private. Videos are added via PlaylistItem (ordered, with an addedAt
+/// timestamp so we can show "added 2 days ago" and preserve insertion order).
+model Playlist {
+  id          String   @id @default(cuid())
+  userStateId String
+  title       String
+  description String   @default("")
+  visibility  String   @default("public") // public | private | unlisted
+  // Optional cover image — falls back to the first video's thumbnail.
+  coverUrl    String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userState   UserState     @relation(fields: [userStateId], references: [id], onDelete: Cascade)
+  items       PlaylistItem[]
+
+  @@index([userStateId])
+}
+
+/// A video inside a playlist. The `position` field preserves order even
+/// after removals (we compact on removal). Unique on [playlistId, videoId]
+/// so the same video can't be added twice to the same playlist.
+model PlaylistItem {
+  id         String   @id @default(cuid())
+  playlistId String
+  videoId    String
+  position   Int      @default(0)
+  addedAt    DateTime @default(now())
+
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, videoId])
+  @@index([playlistId, position])
 }
 
 // ── CIRKLE Authentication ──

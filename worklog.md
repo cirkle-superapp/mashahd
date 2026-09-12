@@ -535,3 +535,36 @@ Stage Summary:
 - The upload route (accidentally deleted in v3) is restored.
 - The transcode function is now safer (per-rendition isolated spawn, no shell, no fluent-ffmpeg multi-output), more observable (per-rendition error messages), and produces a real JPEG thumbnail.
 - All 208 v4 spec sections remain addressed (per MEDIA_MESH_V4_CHECKLIST.md), and the pipeline is now verified live end-to-end.
+
+---
+Task ID: 114 (Diff CIRKLE super-app vs Mashahd — find missing features to port)
+Agent: main
+Task: User provided GitHub/Turso/Vercel credentials and asked to implement any missing features from CIRKLE (the parent super-app) in Mashahd.
+
+Work Log:
+- Cloned all 3 cirkle-superapp org repos: wasl (chat app — the CIRKLE parent shell), verify (identity verification), mashahd (this project).
+- Inspected Wasl's prisma schema and components to identify CIRKLE-defining features:
+  * Stories (ephemeral 24h content shown in a story bar) — Mashahd MISSING
+  * Polls (interactive polls with multi-choice + anonymous options) — Mashahd MISSING
+  * Commits (AI-verified two-party agreements with fairness score, hash, signature state machine) — Mashahd MISSING
+  * Reactions (emoji reactions on messages) — Mashahd MISSING (only has like/dislike)
+  * Starred/pinned messages — Mashahd has pinned comments only
+  * Multi-language provider (Arabic + English i18n) — Mashahd MISSING (logo has Arabic مشاهِd but no i18n)
+  * Color theme provider (multi-accent themes, "cirkle" accent) — Mashahd MISSING (only dark/light)
+  * Business profiles + business dashboard — Mashahd MISSING (only has creator channels)
+  * WebRTC video calls — Mashahd MISSING (only has Go Live broadcasting)
+  * Phone numbers (multiple per user) — Mashahd MISSING
+- Verified Turso connection with provided credentials — works, all 13 Mashahd tables already present.
+- Updated /home/z/my-project/.env with TURSO_URL + TURSO_AUTH_TOKEN (kept local SQLite as DATABASE_URL for dev; Turso activates when env is loaded in production).
+- Confirmed dev server (3000) + P2P tracker (3003) running cleanly with the new env.
+
+Stage Summary:
+- 6 priority features identified to port from CIRKLE/Wasl to Mashahd:
+  1. Stories (ephemeral creator story bar at top of home — YouTube Stories style)
+  2. Polls (community polls on the watch page — engagement booster)
+  3. Commits (creator challenges/commitments with fairness score — CIRKLE's signature feature)
+  4. Multi-language (Arabic + English i18n — Mashahd already shows Arabic in its logo)
+  5. Color themes (accent color picker — give Mashahd its own accent identity beyond dark/light)
+  6. Comment emoji reactions (beyond like/dislike)
+- Turso credentials configured and verified working.
+- Ready to implement in parallel.

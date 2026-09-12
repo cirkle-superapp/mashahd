@@ -26,6 +26,7 @@ import { Splash } from "@/components/youtube/splash";
 import { KeyboardShortcuts } from "@/components/youtube/keyboard-shortcuts";
 import { MiniPlayer } from "@/components/youtube/mini-player";
 import { OnboardingTour } from "@/components/youtube/onboarding-tour";
+import { PlaylistView } from "@/components/youtube/playlist-view";
 import { useMashahdBridge } from "@/lib/mashahd-bridge";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +60,8 @@ function renderView(view: ReturnType<typeof useAppStore.getState>["view"]) {
       return <FavoritesView />;
     case "watchLater":
       return <WatchLaterView />;
+    case "playlist":
+      return <PlaylistView playlistId={view.playlistId} />;
   }
 }
 

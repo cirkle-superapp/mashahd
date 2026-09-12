@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2, MessageSquarePlus, Compass, Wand2, Heart, Bookmark, Check } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2, MessageSquarePlus, Compass, Wand2, Heart, Bookmark, Check, ListPlus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +13,8 @@ import { formatViews, formatSubs, formatCount, timeAgo } from "@/lib/format";
 import type { VideoWithFlags, Comment, Video } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { VideoCard } from "./video-card";
+import { SaveToPlaylist } from "./save-to-playlist";
+import { WatchParty } from "./watch-party";
 import { AiRecap } from "./ai-recap";
 import { SmartChapters } from "./smart-chapters";
 import { CirclePulse } from "./circle-pulse";
@@ -57,6 +59,8 @@ export function WatchView({ videoId }: { videoId: string }) {
   const [upNext, setUpNext] = useState(false);
   const [bulletsOn, setBulletsOn] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [partyOpen, setPartyOpen] = useState(false);
   const [starterText, setStarterText] = useState("");
   const [fav, setFav] = useState(false);
   const [later, setLater] = useState(false);
@@ -393,6 +397,30 @@ export function WatchView({ videoId }: { videoId: string }) {
                 {later ? <Check className="h-4 w-4 mr-1.5" /> : <Bookmark className="h-4 w-4 mr-1.5" />}
                 {later ? "Saved" : "Watch Later"}
               </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="rounded-full h-9 px-4 bg-muted hover:bg-accent hidden sm:inline-flex"
+                onClick={() => setSaveOpen(true)}
+                aria-label="Save to playlist"
+                title="Save to playlist"
+              >
+                <ListPlus className="h-4 w-4 mr-1.5" />
+                Save
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="rounded-full h-9 px-4 bg-muted hover:bg-accent hidden sm:inline-flex"
+                onClick={() => setPartyOpen(true)}
+                aria-label="Watch with friends"
+                title="Watch with friends in sync"
+              >
+                <Users className="h-4 w-4 mr-1.5" />
+                Watch Party
+              </Button>
+              <SaveToPlaylist open={saveOpen} onClose={() => setSaveOpen(false)} videoId={video.id} />
+              <WatchParty open={partyOpen} onClose={() => setPartyOpen(false)} videoId={video.id} videoTitle={video.title} />
               <Button variant="secondary" size="sm" className="rounded-full h-9 px-4 bg-muted hover:bg-accent hidden sm:inline-flex">
                 <Download className="h-4 w-4 mr-1.5" /> Download
               </Button>
