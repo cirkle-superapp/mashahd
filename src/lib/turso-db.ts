@@ -178,6 +178,7 @@ function createModel(client: Client, table: string) {
             userState: { table: "UserState", fk: "userStateId", isCollection: false },
             playlist: { table: "Playlist", fk: "playlistId", isCollection: false },
             video: { table: "Video", fk: "videoId", isCollection: false },
+            clips: { table: "Clip", fk: "videoId", isCollection: true },
           };
           const rel = relMap[relName];
           if (!rel) continue;
@@ -253,6 +254,7 @@ function createModel(client: Client, table: string) {
             userState: { table: "UserState", fk: "userStateId", isCollection: false },
             playlist: { table: "Playlist", fk: "playlistId", isCollection: false },
             video: { table: "Video", fk: "videoId", isCollection: false },
+            clips: { table: "Clip", fk: "videoId", isCollection: true },
           };
           const rel = relMap[relName];
           if (!rel) continue;
@@ -307,7 +309,7 @@ function createModel(client: Client, table: string) {
       }
       // Auto-set timestamps only for tables that have them
       const now = new Date().toISOString();
-      const tablesWithTimestamps = new Set(["Channel", "Video", "Comment", "UserState", "User", "Session", "VideoSource", "VideoRendition", "VideoManifest", "MediaProcessingJob", "Swarm", "PlaybackSession", "PlaybackTelemetry", "Playlist"]);
+      const tablesWithTimestamps = new Set(["Channel", "Video", "Comment", "UserState", "User", "Session", "VideoSource", "VideoRendition", "VideoManifest", "MediaProcessingJob", "Swarm", "Playlist", "Clip"]);
       if (tablesWithTimestamps.has(table)) {
         if (!data.createdAt) data.createdAt = now;
       }
@@ -454,6 +456,8 @@ export function createTursoDB() {
     // Playlists
     playlist: createModel(client, "Playlist"),
     playlistItem: createModel(client, "PlaylistItem"),
+    // Clips
+    clip: createModel(client, "Clip"),
     $queryRaw: async (sql: string) => {
       const result = await client.execute(sql);
       return result.rows;

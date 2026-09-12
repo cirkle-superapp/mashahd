@@ -39,6 +39,12 @@ export type Comment = {
   text: string;
   likes: number;
   createdAt: string;
+  // Optional timestamp the comment is pinned to (seconds from video start).
+  timestamp?: number | null;
+  // Optional parent comment ID (for threaded replies).
+  parentId?: string | null;
+  // Replies to this comment (only populated on top-level comments).
+  replies?: Comment[];
 };
 
 export type VideoWithFlags = Video & {

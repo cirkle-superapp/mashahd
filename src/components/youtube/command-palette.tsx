@@ -21,6 +21,8 @@ import {
   Wand2,
   Radio,
   UserPlus,
+  FileText,
+  Scissors,
 } from "lucide-react";
 import {
   Dialog,
@@ -218,6 +220,30 @@ export function CommandPalette() {
       group: "AI Features",
       run: () => triggerWatch(close, "tone"),
       keywords: "rewrite friendly witty formal",
+    },
+    {
+      id: "ai-transcript",
+      label: "Open searchable transcript",
+      hint: "Transcript",
+      icon: FileText,
+      group: "AI Features",
+      run: () => {
+        window.dispatchEvent(new CustomEvent("mashahd:toggle-transcript"));
+        close();
+      },
+      keywords: "captions subtitles search accessibility",
+    },
+    {
+      id: "clip-create",
+      label: "Create a clip of this video",
+      hint: "Clip",
+      icon: Scissors,
+      group: "AI Features",
+      run: () => {
+        window.dispatchEvent(new CustomEvent("mashahd:open-clip"));
+        close();
+      },
+      keywords: "cut share segment highlight",
     },
   ];
 

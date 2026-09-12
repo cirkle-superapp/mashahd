@@ -42,10 +42,14 @@ const tables: string[] = [
     avatarUrl TEXT NOT NULL,
     text TEXT NOT NULL,
     likes INTEGER NOT NULL DEFAULT 0,
+    timestamp INTEGER,
+    parentId TEXT,
     createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (videoId) REFERENCES Video(id) ON DELETE CASCADE
   )`,
   `CREATE INDEX IF NOT EXISTS idx_comment_videoId ON Comment(videoId)`,
+  `CREATE INDEX IF NOT EXISTS idx_comment_parentId ON Comment(parentId)`,
+  `CREATE INDEX IF NOT EXISTS idx_comment_video_ts ON Comment(videoId, timestamp)`,
   `CREATE TABLE IF NOT EXISTS UserState (
     id TEXT PRIMARY KEY NOT NULL,
     browserId TEXT NOT NULL UNIQUE,
@@ -204,6 +208,22 @@ const tables: string[] = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_playlistitem_playlist_video ON PlaylistItem(playlistId, videoId)`,
   `CREATE INDEX IF NOT EXISTS idx_playlistitem_playlist_pos ON PlaylistItem(playlistId, position)`,
+  // Clips — user-created short segments of videos
+  `CREATE TABLE IF NOT EXISTS Clip (
+    id TEXT PRIMARY KEY NOT NULL,
+    videoId TEXT NOT NULL,
+    creatorId TEXT NOT NULL,
+    creatorName TEXT NOT NULL DEFAULT 'Anonymous',
+    title TEXT NOT NULL,
+    startSec INTEGER NOT NULL,
+    endSec INTEGER NOT NULL,
+    note TEXT NOT NULL DEFAULT '',
+    views INTEGER NOT NULL DEFAULT 0,
+    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (videoId) REFERENCES Video(id) ON DELETE CASCADE
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_clip_videoId ON Clip(videoId)`,
+  `CREATE INDEX IF NOT EXISTS idx_clip_creatorId ON Clip(creatorId)`,
 ];
 
 async function main() {

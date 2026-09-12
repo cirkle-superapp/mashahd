@@ -52,17 +52,25 @@ model Video {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  videoId   String
-  author    String
-  avatarUrl String
-  text      String
-  likes     Int      @default(0)
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  videoId      String
+  author       String
+  avatarUrl    String
+  text         String
+  likes        Int      @default(0)
+  // Timestamp the comment is pinned to (in seconds from video start).
+  // null = a regular comment; a number = a timestamp comment (clickable).
+  timestamp    Int?
+  // Threading: a reply has a parentId pointing to the top-level comment.
+  // null = top-level comment; a string = a reply to that comment.
+  parentId     String?
+  createdAt    DateTime @default(now())
 
-  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  video        Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@index([videoId])
+  @@index([parentId])
+  @@index([videoId, timestamp])
 }
 
 // Tracks client-side state persisted across the API (likes, subscriptions,
@@ -117,6 +125,27 @@ model PlaylistItem {
 
   @@unique([playlistId, videoId])
   @@index([playlistId, position])
+}
+
+/// A user-created clip — a short segment (start → end seconds) of a video
+/// that can be shared with a permalink. Clips drive viral growth: viewers
+/// can highlight the best 15-60 seconds of a long video and share them.
+model Clip {
+  id          String   @id @default(cuid())
+  videoId     String
+  // The creator of the clip (anonymous browserId or userId).
+  creatorId   String
+  creatorName String   @default("Anonymous")
+  title       String
+  startSec    Int      // clip start (seconds)
+  endSec      Int      // clip end (seconds)
+  // Optional: a note the clipper adds.
+  note        String   @default("")
+  views       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([videoId])
+  @@index([creatorId])
 }
 
 // ── CIRKLE Authentication ──
