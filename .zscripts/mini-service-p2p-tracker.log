@@ -14,4 +14,4 @@ $ bun --hot index.ts
                  ^
 error: Failed to start server. Is port 3003 in use?
       at emitError (node:events:51:13)
-      at emitError (node:events:43:23)
+      at emitError (noderror: script "derror: script "dev" was terminated by signal SIGKILL (Forced quit)
