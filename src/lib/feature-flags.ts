@@ -17,6 +17,7 @@ export interface MediaFabricConfig {
   P2P_MAX_PEERS: number;
   P2P_MAX_UPLOAD_MBPS: number;
   P2P_MAX_UPLOAD_BYTES: number;
+  P2P_MAX_CONCURRENT_UPLOADS: number;
   P2P_BACKGROUND_ENABLED: boolean;
   P2P_LOW_BATTERY_MODE: boolean;
 
@@ -25,6 +26,7 @@ export interface MediaFabricConfig {
 
   // Transports
   WEBTRANSPORT_ENABLED: boolean;
+  WEBTRANSPORT_URL: string;
   MOQ_ENABLED: boolean;
 
   // Optimization features
@@ -34,12 +36,18 @@ export interface MediaFabricConfig {
   HEDGED_REQUESTS: boolean;
   REQUEST_COALESCING: boolean;
   SCARCITY_SCHEDULING: boolean;
+  DYNAMIC_REPLICATION: boolean;
+  HOT_CONTENT_PROMOTION: boolean;
+  LAN_OPTIMIZATION: boolean;
 
   // TURN
   TURN_ENABLED: boolean;
 
   // CORS
   ALLOWED_ORIGINS: string;
+
+  // Cost config (optional, for internal accounting)
+  ORIGIN_COST_PER_GB: number;
 }
 
 function parseBool(val: string | undefined, fallback: boolean): boolean {
@@ -61,12 +69,14 @@ export function getMediaFabricConfig(): MediaFabricConfig {
     P2P_MAX_PEERS: parseNum(process.env.P2P_MAX_PEERS, 6),
     P2P_MAX_UPLOAD_MBPS: parseNum(process.env.P2P_MAX_UPLOAD_MBPS, 2),
     P2P_MAX_UPLOAD_BYTES: parseNum(process.env.P2P_MAX_UPLOAD_BYTES, 262_144_000),
+    P2P_MAX_CONCURRENT_UPLOADS: parseNum(process.env.P2P_MAX_CONCURRENT_UPLOADS, 2),
     P2P_BACKGROUND_ENABLED: parseBool(process.env.P2P_BACKGROUND_ENABLED, false),
     P2P_LOW_BATTERY_MODE: parseBool(process.env.P2P_LOW_BATTERY_MODE, true),
 
     LOCAL_MEDIA_CACHE_ENABLED: parseBool(process.env.LOCAL_MEDIA_CACHE_ENABLED, true),
 
     WEBTRANSPORT_ENABLED: parseBool(process.env.WEBTRANSPORT_ENABLED, true),
+    WEBTRANSPORT_URL: process.env.WEBTRANSPORT_URL || "",
     MOQ_ENABLED: parseBool(process.env.MOQ_ENABLED, false),
 
     TRUSTED_SEED_ENABLED: parseBool(process.env.TRUSTED_SEED_ENABLED, true),
@@ -75,10 +85,15 @@ export function getMediaFabricConfig(): MediaFabricConfig {
     HEDGED_REQUESTS: parseBool(process.env.HEDGED_REQUESTS, true),
     REQUEST_COALESCING: parseBool(process.env.REQUEST_COALESCING, true),
     SCARCITY_SCHEDULING: parseBool(process.env.SCARCITY_SCHEDULING, true),
+    DYNAMIC_REPLICATION: parseBool(process.env.DYNAMIC_REPLICATION, true),
+    HOT_CONTENT_PROMOTION: parseBool(process.env.HOT_CONTENT_PROMOTION, true),
+    LAN_OPTIMIZATION: parseBool(process.env.LAN_OPTIMIZATION, true),
 
     TURN_ENABLED: parseBool(process.env.TURN_ENABLED, false),
 
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || "*",
+
+    ORIGIN_COST_PER_GB: parseNum(process.env.ORIGIN_COST_PER_GB, 0),
   };
 }
 
