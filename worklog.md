@@ -684,3 +684,79 @@ Stage Summary:
   * GitHub: in sync (efcca35)
   * Turso: 19 tables, all data present, app reading from Turso
   * Vercel: mashahd.vercel.app live, HTTP 200, health=ready, 29 videos from Turso, AI digest working
+
+---
+Task ID: 128-134 (Harden structure + 5 competitive features) — COMPLETE
+Agent: main
+Task: (1) Never roll to older git. (2) Harden structure, never delete/remove except needed modification. (3) Implement all features needed to outperform competitors and give user satisfaction.
+
+Work Log:
+
+1. NEVER ROLL BACK:
+- Verified git HEAD is at the latest commit (546c792) on both local + remote.
+- No git revert/reset operations performed — only forward commits.
+
+2. HARDEN STRUCTURE:
+- Created scripts/pre-commit-protect.sh — a git pre-commit hook that blocks commits deleting any of 56 essential files (32 API routes, 24 lib modules, 3 stores, page.tsx, layout.tsx, prisma schema, config files, mini-services). Override with MASHAHD_ALLOW_DELETE=1 for genuine refactors.
+- Installed the hook to .git/hooks/pre-commit.
+- Created .mashahd-protected manifest file (in version control) documenting all protected files.
+- Updated .gitignore to also ignore backups/, .zscripts/, tool-results/.
+- No files were deleted in this session — all changes were additions or modifications.
+
+3. FIVE COMPETITIVE FEATURES (outperform competitors):
+
+Feature 1 — Video Transcripts (accessibility + searchability):
+- GET /api/ai/transcript — LLM generates timestamped segments (cached 10 min, deterministic fallback).
+- TranscriptPanel component: searchable, click-to-seek, auto-highlights the active segment matching playback, auto-scrolls to follow.
+- Wired as 'Transcript' chip on the watch page + command palette entry.
+
+Feature 2 — Comment Threading (deeper engagement):
+- Prisma: added parentId + timestamp columns to Comment model.
+- Turso: migrated Comment table (ALTER TABLE ADD COLUMN for both).
+- API: GET returns top-level comments with replies nested (1 query for replies).
+- POST supports parentId for replies (no timestamp on replies).
+- UI: inline reply box per comment, replies rendered as indented thread.
+
+Feature 3 — Video Clips (viral growth):
+- Prisma: new Clip model (videoId, creatorId, title, startSec, endSec, note, views).
+- Turso: added Clip table (20 tables total now).
+- API: GET/POST /api/clips, GET /api/clips/[id] (increments views).
+- Validates: 5s ≤ length ≤ 120s, bounds within video duration.
+- ClipDialog: sliders for start/end, title + note fields, success screen with shareable permalink, lists existing clips.
+- Wired as 'Clip' chip on the watch page + command palette entry.
+
+Feature 4 — End Screen (proper video-end overlay):
+- EndScreen component: Replay button + 3 up-next cards + 10s countdown.
+- Auto-advances to the first up-next video when countdown hits 0.
+- Gold 'Up next' badge on the first card, hover-to-play affordance.
+- Replaces the simple toast notification with a richer end experience.
+
+Feature 5 — Timestamp Comments (pin to moment):
+- 'Pin to moment' toggle near the comment input.
+- When active, the next posted comment is pinned to the current video time.
+- Renders as a gold clickable chip (mm:ss) that seeks the player on click.
+
+Infrastructure:
+- Hardened: pre-commit hook + protected manifest (prevents accidental deletion).
+- Turso: migrated Comment table (added timestamp + parentId), added Clip table.
+- turso-db: registered Clip model + relations, fixed PlaybackSession/PlaybackTelemetry timestamp handling (they use startedAt/timestamp, not createdAt).
+- Command palette: added 'Open searchable transcript' + 'Create a clip' entries.
+
+Verification:
+- Lint: clean (0 errors, 0 warnings).
+- Local: all 3 services running (3000 + 3003 + 3004), health=ready.
+- Browser: VLM confirmed all 11 watch-page features visible (Transcript, Clip, AI Recap, Smart Chapters, AI Starters, Oracle, Tone, Save, Watch Party, Watch Later, Favorite).
+- Production: transcript API returns 6 segments, clips API returns 2 clips, threaded comments returns 4 top-level comments.
+- GitHub: 546c792 in sync (local = remote).
+- Turso: 20 tables, 2 clips, 1 threaded reply, 1 timestamp comment.
+- Vercel: mashahd.vercel.app HTTP 200, new deployment READY.
+
+Stage Summary:
+- Structural hardening: pre-commit hook protects 56 essential files from accidental deletion.
+- 5 competitive features implemented and verified live on production:
+  1. Video Transcripts (accessibility + searchability)
+  2. Comment Threading (deeper engagement)
+  3. Video Clips (viral growth)
+  4. End Screen (richer video-end experience)
+  5. Timestamp Comments (pin to moment)
+- All 3 platforms connected and verified.
