@@ -5,7 +5,7 @@
  *
  * Run with: bun run scripts/fetch-thumbnails.ts (will fail — z-ai removed)
  */
-// @ts-expect-error - z-ai-web-dev-sdk has been removed from the project
+// @ts-ignore - z-ai-web-dev-sdk has been removed from the project
 import ZAI from "z-ai-web-dev-sdk";
 import { writeFileSync, mkdirSync } from "node:fs";
 
