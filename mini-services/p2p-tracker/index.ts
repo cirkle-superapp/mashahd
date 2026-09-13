@@ -62,8 +62,15 @@ async function isValidSwarm(swarmId: string): Promise<boolean> {
 
   // Query Turso if available.
   if (!tursoClient) {
-    // No Turso → allow all (dev mode). In production, this should fail closed.
-    return true;
+    // §39, §87: FAIL CLOSED — if Turso is not configured, deny P2P joins.
+    // Playback continues via HTTP/HLS/R2 — P2P is an optimization, not a
+    // requirement. Allowing unvalidated swarms would enable swarm poisoning.
+    // In dev mode (no TURSO_URL), set FAIL_OPEN_P2P=true to override.
+    if (process.env.FAIL_OPEN_P2P === "true") {
+      return true;
+    }
+    console.warn("[p2p-tracker] Turso not configured — P2P joins denied (fail-closed). Set FAIL_OPEN_P2P=true to override in dev.");
+    return false;
   }
 
   try {
@@ -77,10 +84,11 @@ async function isValidSwarm(swarmId: string): Promise<boolean> {
     }
     return valid;
   } catch (e) {
-    console.warn("[p2p-tracker] Swarm validation error:", e);
-    // On DB error, fail open (don't block playback) — the origin remains
-    // the authoritative source, so a poisoned swarm can't corrupt media.
-    return true;
+    // §87: FAIL CLOSED on DB error — deny P2P join, keep playback safe.
+    // The viewer gets normal HTTP/HLS/R2 delivery instead of P2P.
+    // This is the correct separation: P2P security failure ≠ playback failure.
+    console.warn("[p2p-tracker] Swarm validation DB error — P2P joins denied (fail-closed):", e);
+    return false;
   }
 }
 

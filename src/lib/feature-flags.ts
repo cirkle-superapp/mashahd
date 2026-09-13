@@ -1,10 +1,10 @@
 /**
- * Feature flags for the Autonomous Distributed Media Fabric v3.
+ * Feature flags for the Autonomous Media Mesh v6.
  *
- * All flags default to safe values. Optional/experimental features are
- * disabled by default. Environment variables override defaults.
+ * All flags default to safe values per §173. Optional/experimental features
+ * are disabled by default. Environment variables override defaults.
  *
- * Implements S72.
+ * Implements §172 of the v6 spec.
  */
 
 export interface MediaFabricConfig {
@@ -40,6 +40,9 @@ export interface MediaFabricConfig {
   HOT_CONTENT_PROMOTION: boolean;
   LAN_OPTIMIZATION: boolean;
 
+  // v6 additions
+  FILEBASE_ARCHIVE_ENABLED: boolean;
+
   // TURN
   TURN_ENABLED: boolean;
 
@@ -48,6 +51,12 @@ export interface MediaFabricConfig {
 
   // Cost config (optional, for internal accounting)
   ORIGIN_COST_PER_GB: number;
+
+  // Storage provider selection
+  STORAGE_PROVIDER: string;
+
+  // P2P tracker fail-open override (dev only — §39, §87)
+  FAIL_OPEN_P2P: boolean;
 }
 
 function parseBool(val: string | undefined, fallback: boolean): boolean {
@@ -94,6 +103,11 @@ export function getMediaFabricConfig(): MediaFabricConfig {
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || "*",
 
     ORIGIN_COST_PER_GB: parseNum(process.env.ORIGIN_COST_PER_GB, 0),
+
+    // v6 additions
+    FILEBASE_ARCHIVE_ENABLED: parseBool(process.env.FILEBASE_ARCHIVE_ENABLED, false),
+    STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || "local",
+    FAIL_OPEN_P2P: parseBool(process.env.FAIL_OPEN_P2P, false),
   };
 }
 
