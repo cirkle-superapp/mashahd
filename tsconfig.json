@@ -41,6 +41,7 @@
     "examples",
     "skills",
     "tests",
-    "mini-services"
+    "mini-services",
+    "server-lib"
   ]
 }

@@ -115,7 +115,7 @@ export function getStorage(): StorageProvider {
         try {
           // Load the R2 provider via eval to completely hide it from the
           // bundler. The AWS SDK must not be included in the Vercel bundle.
-          const mod = (0, eval)("require")("./r2-storage");
+          const mod = (0, eval)("require")("../server-lib/r2-storage");
           const { R2StorageProvider } = mod;
           _instance = new R2StorageProvider({
             accountId,
@@ -143,7 +143,7 @@ export function getStorage(): StorageProvider {
 
       if (accessKeyId && secretAccessKey) {
         try {
-          const mod = (0, eval)("require")("./filebase-storage");
+          const mod = (0, eval)("require")("../server-lib/filebase-storage");
           const { FilebaseStorageProvider } = mod;
           _instance = new FilebaseStorageProvider({
             accessKeyId,

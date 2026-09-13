@@ -29,13 +29,14 @@ export async function GET(req: NextRequest) {
   }
 
   // Fetch the current top trending videos (by views, recent).
+  // Fetch channels separately — the turso-db wrapper doesn't reliably
+  // populate nested includes.
   const videos = await db.video.findMany({
     orderBy: { views: "desc" },
     take: 6,
-    include: { channel: true },
   });
 
-  if (videos.length === 0) {
+  if ((videos as any[]).length === 0) {
     return NextResponse.json({
       ok: true,
       digest: "Nothing's trending right now. Check back in a bit.",
@@ -44,9 +45,17 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const lines = videos.map(
-    (v: any, i: number) =>
-      `${i + 1}. "${v.title}" by ${v.channel?.name || "Unknown"} — ${v.views.toLocaleString()} views, ${v.category}`
+  // Fetch channel names for the trending videos.
+  const channelIds = [...new Set((videos as any[]).map((v) => v.channelId))];
+  const channels = channelIds.length > 0
+    ? await db.channel.findMany({ where: { id: { in: channelIds } } })
+    : [];
+  const channelMap: Record<string, any> = {};
+  for (const c of channels as any[]) channelMap[c.id] = c;
+
+  const lines = (videos as any[]).map(
+    (v, i) =>
+      `${i + 1}. "${v.title}" by ${channelMap[v.channelId]?.name || "Unknown"} — ${v.views.toLocaleString()} views, ${v.category}`
   );
   const prompt = `You are the AI editor of a video discovery app called Mashahd (مشاهِد).
 Write a short, engaging editorial digest of today's trending videos. It should:
