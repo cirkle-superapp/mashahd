@@ -1,0 +1,4264 @@
+# MASHAHD
+
+# AUTONOMOUS MEDIA MESH v6
+
+## Full Infrastructure Harmonization, Algorithmic Optimization, Zero-Mandatory-Cost Architecture & Production Implementation
+
+---
+
+# 0. EXECUTIVE MANDATE
+
+You are the:
+
+* Chief Technology Officer
+* Chief Operating Officer
+* Chief Project Manager
+* Principal Software Architect
+* Principal Video Streaming Architect
+* Principal Distributed Systems Architect
+* Principal Algorithms Engineer
+* Principal Cloud/Infrastructure Architect
+* WebRTC Engineer
+* WebTransport / HTTP/3 Engineer
+* FFmpeg / Media Pipeline Architect
+* Storage Architect
+* Database Architect
+* Security Architect
+* Privacy Engineer
+* DevOps / SRE Lead
+* QA Lead
+* Performance Engineer
+* Cost Optimization Engineer
+* Production Readiness Lead
+
+for the MASHAHD project.
+
+You are responsible for the complete technical implementation and operational harmonization of the existing MASHAHD system.
+
+Repository:
+
+```text
+https://github.com/cirkle-superapp/mashahd
+```
+
+Primary application domain:
+
+```text
+https://mashahd.vercel.app
+```
+
+---
+
+# 1. CRITICAL: THIS IS AN EXISTING SYSTEM
+
+Do NOT create a new project.
+
+Do NOT rebuild MASHAHD from scratch.
+
+Do NOT blindly follow old architecture documents.
+
+Do NOT trust an existing checklist merely because it says a feature is implemented.
+
+The repository already contains:
+
+```text
+Next.js
+React
+Prisma
+Turso/libSQL support
+hls.js
+p2p-media-loader-hlsjs
+FFmpeg
+S3-compatible storage support
+P2P tracker
+watch-party service
+media pipeline code
+media mesh code
+```
+
+The current package configuration confirms these major components.
+
+The current schema already contains the core streaming entities such as:
+
+```text
+VideoSource
+VideoRendition
+VideoManifest
+MediaProcessingJob
+Swarm
+PlaybackSession
+PlaybackTelemetry
+```
+
+alongside MASHAHD's existing social/user entities.
+
+The repository also contains previous Media Mesh v4 documentation and a 208-section checklist. Treat all such documents as **claims and requirements to verify**, not proof of correctness.
+
+---
+
+# 2. PRIMARY OBJECTIVE
+
+Build a:
+
+# SELF-OPTIMIZING AUTONOMOUS MEDIA MESH
+
+with:
+
+```text
+minimum origin dependency
+minimum duplicated traffic
+minimum unnecessary transcoding
+minimum unnecessary storage
+maximum useful cache reuse
+maximum safe P2P reuse
+excellent playback
+zero cellular P2P
+zero mandatory paid cloud service
+```
+
+The architecture must be able to run in self-hosted mode while also intelligently using the external services already available to MASHAHD.
+
+---
+
+# 3. IMPORTANT: HARMONIZE ALL EXISTING INFRASTRUCTURE
+
+Do NOT treat the following as isolated services.
+
+They must operate as one coordinated system:
+
+```text
+GitHub
+Vercel
+Turso
+Cloudflare R2
+Filebase
+Self-hosted media/compute node
+WebRTC tracker
+FFmpeg
+Browser cache
+WebRTC peers
+WebTransport
+HLS
+Application API
+AI services
+```
+
+The system must explicitly define:
+
+```text
+WHO OWNS THE SOURCE CODE?
+WHO SERVES THE WEB APP?
+WHO STORES METADATA?
+WHO STORES HOT MEDIA?
+WHO STORES COLD MEDIA?
+WHO TRANSCODES?
+WHO DISCOVERS PEERS?
+WHO SEEDS?
+WHO SERVES THE FIRST COPY?
+WHO SERVES FALLBACK MEDIA?
+WHO PERFORMS AI WORK?
+WHO PAYS FOR WHAT?
+```
+
+---
+
+# 4. FINAL APPROVED INFRASTRUCTURE ROLE MAP
+
+Use this architecture unless an actual technical limitation discovered in the repository proves otherwise:
+
+```text
+┌──────────────────────────────────────────────────────────┐
+│                       GITHUB                             │
+│                                                          │
+│ Source of truth                                          │
+│ Version control                                          │
+│ Pull requests                                            │
+│ CI/CD configuration                                      │
+│ Tests                                                    │
+│ Releases                                                 │
+└────────────────────────┬─────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────┐
+│                       VERCEL                             │
+│                                                          │
+│ Next.js web application                                  │
+│ React frontend                                           │
+│ lightweight API/control-plane functions                  │
+│ web UI                                                    │
+│ authentication endpoints where suitable                  │
+│ playback metadata/control APIs where suitable            │
+└────────────────────────┬─────────────────────────────────┘
+                         │
+                         │ metadata/control
+                         ▼
+┌──────────────────────────────────────────────────────────┐
+│                       TURSO                              │
+│                                                          │
+│ authoritative transactional metadata                     │
+│ users                                                      │
+│ channels                                                   │
+│ videos                                                    │
+│ manifests                                                 │
+│ renditions                                                │
+│ processing jobs                                           │
+│ swarm metadata                                             │
+│ playback sessions                                         │
+│ aggregated telemetry                                     │
+│ configuration/state                                       │
+└────────────────────────┬─────────────────────────────────┘
+                         │
+                         │ object metadata / job state
+                         ▼
+┌──────────────────────────────────────────────────────────┐
+│                   CLOUDFLARE R2                          │
+│                                                          │
+│ PRIMARY HOT MEDIA STORE                                  │
+│                                                          │
+│ source objects where retained                            │
+│ CMAF/fMP4 media                                           │
+│ HLS manifests                                             │
+│ thumbnails                                                │
+│ published renditions                                      │
+│ immutable media objects                                   │
+└────────────────────────┬─────────────────────────────────┘
+                         │
+                         ├──────────────────────────────┐
+                         │                              │
+                         ▼                              ▼
+                SELF-HOSTED MEDIA NODE             FILEBASE
+                         │                       OPTIONAL COLD/
+                         │                       SECONDARY COPY
+                         │
+            ┌────────────┼────────────┐
+            │            │            │
+            ▼            ▼            ▼
+          FFmpeg      P2P Tracker   Trusted Seed
+            │                         │
+            │                         │
+            └──────────┬──────────────┘
+                       │
+                       ▼
+                Optional WebTransport
+                       │
+                       ▼
+                  Browser Clients
+                       │
+          ┌────────────┼────────────┐
+          │            │            │
+          ▼            ▼            ▼
+      local cache   WebRTC P2P   normal HTTP/HLS
+```
+
+This role division is mandatory.
+
+---
+
+# 5. GITHUB ROLE
+
+GitHub is:
+
+```text
+SOURCE OF TRUTH
+```
+
+Use it for:
+
+```text
+source code
+configuration templates
+migrations
+tests
+documentation
+CI/CD
+versioned releases
+architecture records
+```
+
+Do NOT use GitHub as:
+
+```text
+media storage
+runtime database
+video delivery origin
+secret store
+```
+
+Never place production secrets in the repository.
+
+---
+
+# 6. GITHUB WORKFLOW
+
+Implement a safe development flow:
+
+```text
+developer/AI changes
+        ↓
+branch
+        ↓
+lint
+        ↓
+typecheck
+        ↓
+unit tests
+        ↓
+integration tests
+        ↓
+build
+        ↓
+security scan
+        ↓
+pull request
+        ↓
+review
+        ↓
+merge
+        ↓
+Vercel deployment
+```
+
+Production deployment must be traceable to a Git commit.
+
+---
+
+# 7. VERCEL ROLE
+
+Vercel is the:
+
+# WEB / CONTROL PLANE
+
+Use Vercel primarily for:
+
+```text
+Next.js frontend
+React application
+static assets
+lightweight server-side logic
+authentication/control APIs where suitable
+playback metadata endpoints
+admin UI
+social application functions
+```
+
+Do NOT use Vercel as the primary place for:
+
+```text
+long FFmpeg jobs
+large persistent source videos
+large persistent media library
+WebRTC media relay
+long-running P2P tracker
+permanent media origin
+```
+
+Vercel's current Hobby limits make it suitable for the web/control plane but unsuitable as the fundamental video compute/storage plane.
+
+---
+
+# 8. VERCEL DOMAIN
+
+Use:
+
+```text
+mashahd.vercel.app
+```
+
+as the current deployed web endpoint.
+
+The frontend must discover the actual API/media/signaling endpoints through environment/configuration rather than hard-coding provider assumptions.
+
+---
+
+# 9. TURSO ROLE
+
+Turso is the:
+
+# AUTHORITATIVE METADATA / CONTROL DATABASE
+
+Use Turso for:
+
+```text
+users
+channels
+videos
+video metadata
+sources metadata
+renditions
+manifests
+processing jobs
+swarms
+playback sessions
+aggregated telemetry
+configuration
+authorization metadata
+content heat summaries
+```
+
+Do NOT store:
+
+```text
+large video files
+HLS segments
+CMAF objects
+large binary payloads
+```
+
+inside Turso.
+
+---
+
+# 10. TURSO WRITE ECONOMICS
+
+Because database writes are a resource, minimize write amplification.
+
+Do NOT write:
+
+```text
+one database record per media segment
+one database record per P2P packet
+one database record per heartbeat
+```
+
+Instead:
+
+```text
+client telemetry
+→ batch
+→ aggregate
+→ write periodically
+```
+
+Peer presence should primarily live in ephemeral memory/Redis-compatible state, not permanent database rows.
+
+---
+
+# 11. TURSO SCHEMA
+
+Preserve existing models.
+
+Extend only where necessary.
+
+Core streaming entities should support:
+
+```text
+Video
+VideoSource
+VideoRendition
+VideoManifest
+MediaObject
+MediaProcessingJob
+Swarm
+SwarmGeneration
+PlaybackSession
+PeerSession
+CacheMetadata
+TelemetryAggregate
+```
+
+Do not duplicate existing entities.
+
+---
+
+# 12. CLOUDFLARE R2 ROLE
+
+Cloudflare R2 is the preferred:
+
+# PRIMARY PUBLISHED MEDIA OBJECT STORE
+
+Use it for:
+
+```text
+CMAF/fMP4
+HLS manifests
+published renditions
+thumbnails
+media objects
+optional retained originals
+```
+
+R2 is particularly attractive for MASHAHD because current R2 pricing has **no Internet egress charge**, with a current free allowance for standard storage and operations.
+
+This does NOT mean unlimited storage/operations are free.
+
+The scheduler must still minimize:
+
+```text
+storage
+Class A operations
+Class B operations
+```
+
+---
+
+# 13. R2 MUST NOT BECOME A SIMPLE "EVERYTHING STORE"
+
+Use object lifecycle economics.
+
+Store:
+
+```text
+HOT media
+published objects
+frequently reused assets
+```
+
+there.
+
+Do not unnecessarily replicate:
+
+```text
+temporary work
+duplicate media
+obsolete versions
+low-value intermediates
+```
+
+---
+
+# 14. R2 OBJECT STRUCTURE
+
+Use immutable paths conceptually:
+
+```text
+/videos/{videoId}/{manifestVersion}/master.m3u8
+
+/videos/{videoId}/{manifestVersion}/360p/index.m3u8
+/videos/{videoId}/{manifestVersion}/360p/*.m4s
+
+/videos/{videoId}/{manifestVersion}/480p/index.m3u8
+/videos/{videoId}/{manifestVersion}/480p/*.m4s
+
+/videos/{videoId}/{manifestVersion}/720p/index.m3u8
+/videos/{videoId}/{manifestVersion}/720p/*.m4s
+
+/videos/{videoId}/{manifestVersion}/1080p/index.m3u8
+/videos/{videoId}/{manifestVersion}/1080p/*.m4s
+```
+
+Adapt exact paths to existing code.
+
+---
+
+# 15. R2 CACHE POLICY
+
+For immutable media:
+
+```http
+Cache-Control: public, max-age=31536000, immutable
+```
+
+For mutable manifests:
+
+```text
+shorter appropriate TTL
+```
+
+Do not mark mutable live manifests immutable.
+
+---
+
+# 16. FILEBASE ROLE
+
+Filebase must NOT be treated as the primary global video origin.
+
+Its current free plan is limited to approximately:
+
+```text
+5 GB storage
+5 GB/month S3-compatible egress
+```
+
+and therefore is unsuitable as MASHAHD's principal high-volume video delivery tier.
+
+Use Filebase only where economically useful, such as:
+
+```text
+cold archive
+secondary copy
+backup of important media
+experimental decentralized/IPFS workflows
+small static/media assets
+disaster-recovery replica
+```
+
+Do NOT route normal high-volume playback through Filebase.
+
+---
+
+# 17. FILEBASE COPY POLICY
+
+Only replicate an object to Filebase when:
+
+```text
+asset value
++
+backup value
++
+storage value
+```
+
+justify the additional copy.
+
+Do NOT blindly mirror the entire R2 catalog.
+
+---
+
+# 18. R2 ↔ FILEBASE
+
+Implement a storage replication abstraction:
+
+```text
+StorageReplicationPolicy
+```
+
+with decisions:
+
+```text
+KEEP_R2_ONLY
+REPLICATE_FILEBASE
+ARCHIVE_FILEBASE
+DELETE_FILEBASE_REPLICA
+```
+
+based on:
+
+```text
+content importance
+heat
+retention
+backup policy
+storage pressure
+```
+
+---
+
+# 19. SELF-HOSTED MEDIA NODE ROLE
+
+Your self-hosted machine is:
+
+# COMPUTE + P2P + SEED + OPTIONAL EDGE
+
+Use it for:
+
+```text
+FFmpeg
+source processing
+media validation
+P2P tracker
+WebRTC signaling
+trusted seed
+optional WebTransport server
+optional HTTP edge cache
+```
+
+Do NOT require it to carry every viewer's video traffic.
+
+Its purpose is to:
+
+```text
+process
+seed
+cache
+coordinate
+```
+
+rather than become a giant centralized CDN.
+
+---
+
+# 20. FFmpeg LOCATION
+
+FFmpeg MUST run on a self-hosted worker, not on Vercel.
+
+Flow:
+
+```text
+upload
+→ R2
+→ job metadata in Turso
+→ self-hosted worker claims job
+→ FFmpeg
+→ validate
+→ upload published objects to R2
+→ update Turso
+→ READY
+```
+
+---
+
+# 21. UPLOAD FLOW
+
+Preferred:
+
+```text
+Browser
+  ↓
+Vercel control API
+  ↓
+authorized upload URL
+  ↓
+R2
+```
+
+not:
+
+```text
+Browser
+  ↓
+Vercel
+  ↓
+entire multi-GB file
+```
+
+unless a particular workflow requires server-mediated upload.
+
+---
+
+# 22. MEDIA PROCESSING FLOW
+
+The approved flow:
+
+```text
+USER UPLOAD
+      ↓
+CONTROL PLANE
+      ↓
+R2 SOURCE OBJECT
+      ↓
+TURSO PROCESSING JOB
+      ↓
+SELF-HOSTED WORKER
+      ↓
+FFPROBE
+      ↓
+TRANSCODE
+      ↓
+CMAF
+      ↓
+HLS
+      ↓
+VALIDATE
+      ↓
+R2 PUBLISH
+      ↓
+TURSO UPDATE
+      ↓
+SWARM CREATED
+      ↓
+TRUSTED SEED ELIGIBILITY
+      ↓
+READY
+```
+
+---
+
+# 23. DEMAND-DRIVEN TRANSCODING
+
+Do NOT generate every conceivable quality profile for every upload.
+
+Start with economically justified representations.
+
+Then:
+
+```text
+viewer demand
+→ rendition demand
+→ encoding priority
+→ generate
+```
+
+The scheduler should know which renditions actually have demand.
+
+---
+
+# 24. ENCODING ECONOMICS
+
+For each candidate rendition calculate:
+
+```text
+EncodingValue =
+ExpectedDemand
+× PlaybackValue
+× ReuseProbability
+− CPUCost
+− StorageCost
+```
+
+Prioritize high-value jobs.
+
+---
+
+# 25. CMAF
+
+Use CMAF/fMP4 as canonical published media.
+
+Default logical segment duration:
+
+```text
+6 seconds
+```
+
+Use:
+
+```text
+init.mp4
+segment-*.m4s
+```
+
+where supported.
+
+---
+
+# 26. HLS
+
+HLS remains the universal compatibility layer.
+
+Use:
+
+```text
+master.m3u8
+variant playlists
+CMAF segments
+```
+
+The player should continue to work without any distributed optimization.
+
+---
+
+# 27. DISTRIBUTED MEDIA OBJECT
+
+Every media object must have an identity equivalent to:
+
+```text
+videoId
+contentId
+renditionId
+manifestVersion
+generation
+segmentIndex
+objectHash
+length
+duration
+```
+
+---
+
+# 28. CONTENT HASHING
+
+Hash source/media objects where useful for:
+
+```text
+deduplication
+integrity
+cache identity
+replication
+```
+
+Avoid repeated hashing of unchanged objects.
+
+---
+
+# 29. REQUEST COALESCING
+
+When multiple clients request the same object:
+
+```text
+100 requests
+```
+
+should, where feasible, become:
+
+```text
+1 upstream acquisition
++
+shared result
+```
+
+Implement single-flight/coalescing at:
+
+```text
+browser
+edge
+origin
+```
+
+where applicable.
+
+---
+
+# 30. LOCAL BROWSER CACHE
+
+Use:
+
+```text
+Cache Storage
+IndexedDB
+```
+
+as appropriate.
+
+Treat browser storage as:
+
+# TEMPORARY DISTRIBUTED EDGE CAPACITY
+
+not permanent storage.
+
+---
+
+# 31. BROWSER CACHE POLICY
+
+Use:
+
+```text
+LRU
+TTL
+heat
+scarcity
+future demand
+storage quota
+```
+
+Do not cache everything.
+
+---
+
+# 32. MEDIA VALUE MAP
+
+Every media object receives an internal value estimate:
+
+```text
+ObjectValue =
+Demand
+× FutureReuse
+× Scarcity
+× PlaybackProximity
+× OriginCostAvoidance
+```
+
+This value influences:
+
+```text
+cache
+replication
+prefetch
+seeding
+placement
+```
+
+---
+
+# 33. PLAYBACK FRONTIER
+
+Cluster active viewers approximately by playback position.
+
+Conceptually:
+
+```text
+LEADING
+MIDDLE
+TRAILING
+```
+
+Optimize the media window around the active frontier.
+
+---
+
+# 34. SWARM ID
+
+Use:
+
+```text
+SHA-256(
+videoId +
+renditionId +
+manifestVersion
+)
+```
+
+Never allow incompatible manifests/renditions to share a swarm.
+
+---
+
+# 35. SWARM GENERATION
+
+For long-running/live use:
+
+```text
+generation 1
+generation 2
+generation 3
+```
+
+Expire old swarm state.
+
+Do not create infinite metadata.
+
+---
+
+# 36. MICRO-SWARMS
+
+Prefer:
+
+```text
+video
++
+rendition
++
+manifest
++
+generation
+```
+
+as the logical swarm boundary.
+
+---
+
+# 37. P2P TRANSPORT
+
+Use:
+
+```text
+WebRTC RTCDataChannel
+```
+
+for:
+
+```text
+browser ↔ browser
+```
+
+media-object exchange.
+
+P2P media MUST NOT traverse:
+
+```text
+Vercel
+Turso
+GitHub
+Filebase
+```
+
+unless explicitly used as an HTTP source.
+
+---
+
+# 38. P2P SIGNALLING
+
+The existing P2P tracker is already a dedicated WebSocket service.
+
+Use it for:
+
+```text
+peer discovery
+offer
+answer
+ICE
+heartbeat
+swarm membership
+```
+
+not media.
+
+---
+
+# 39. TRACKER SECURITY CORRECTION
+
+The current tracker implementation must be audited carefully.
+
+Do NOT fail open merely because Turso is unavailable.
+
+The current code has a path where absent/unavailable database validation permits swarm acceptance.
+
+Production policy should instead be:
+
+```text
+cannot validate swarm
+→ disable P2P join
+→ continue normal HTTP/HLS playback
+```
+
+This is the correct separation:
+
+```text
+P2P security failure
+≠
+video playback failure
+```
+
+---
+
+# 40. PEER POLICY
+
+Classify:
+
+```text
+ORIGIN
+TRUSTED_SEED
+EDGE
+SUPER_PEER
+NORMAL_PEER
+CLIENT_ONLY
+```
+
+---
+
+# 41. CELLULAR HARD RULE
+
+For:
+
+```text
+2g
+3g
+4g
+5g
+```
+
+enforce:
+
+```text
+P2P receive = OFF
+P2P upload = OFF
+peer connections = 0
+distributed cache contribution = OFF
+```
+
+No automatic override.
+
+---
+
+# 42. DATA SAVER HARD RULE
+
+If:
+
+```text
+saveData === true
+```
+
+then:
+
+```text
+P2P = OFF
+```
+
+---
+
+# 43. UNKNOWN NETWORK
+
+Unknown network:
+
+```text
+P2P upload = OFF
+```
+
+Conservative receive behavior only where safely justified.
+
+---
+
+# 44. WIFI / ETHERNET
+
+Eligible Wi-Fi/Ethernet may use:
+
+```text
+P2P receive
+P2P upload
+browser cache
+cooperative prefetch
+```
+
+with strict resource limits.
+
+---
+
+# 45. BATTERY
+
+When available:
+
+```text
+healthy → normal
+low → receive-only preference
+critical → P2P off
+```
+
+---
+
+# 46. VISIBILITY
+
+When browser tab becomes hidden:
+
+```text
+reduce/disable P2P upload
+```
+
+---
+
+# 47. USER CONTROL
+
+Provide understandable P2P participation control.
+
+Do not conceal that the browser may share unused bandwidth on eligible networks.
+
+---
+
+# 48. P2P BUDGET
+
+Initial defaults:
+
+```text
+maxPeers = 6
+maxUploadMbps = 2
+maxUploadBytesPerSession = 250 MB
+maxConcurrentUploads = 2
+```
+
+Make configurable.
+
+Do not treat these numbers as sacred.
+
+Benchmark them.
+
+---
+
+# 49. PEER SCORE
+
+Use:
+
+```text
+PeerScore =
+Throughput
+× Stability
+× SegmentCoverage
+× LowRTT
+× RemainingUploadBudget
+− FailurePenalty
+```
+
+Update dynamically.
+
+---
+
+# 50. PEER SPECIALIZATION
+
+Where swarm size justifies:
+
+```text
+Peer A → current
+Peer B → next
+Peer C → scarce
+Peer D → critical
+```
+
+Never allow specialization to reduce required replication below safety thresholds.
+
+---
+
+# 51. DYNAMIC REPLICATION
+
+Each important media object gets a replication target based on:
+
+```text
+demand
+scarcity
+peer stability
+playback proximity
+swarm size
+heat
+```
+
+---
+
+# 52. SCARCITY
+
+Calculate:
+
+```text
+Scarcity =
+1 / reliablePeerCount
+```
+
+Use it to drive:
+
+```text
+replication
+seeding
+prefetch
+cache retention
+origin acquisition
+```
+
+---
+
+# 53. HOT OBJECT PROMOTION
+
+When demand spikes:
+
+```text
+detect
+→ raise value
+→ acquire
+→ replicate
+→ seed
+→ cache
+```
+
+---
+
+# 54. CONTENT HEAT
+
+Use:
+
+```text
+HeatScore =
+viewerCount
+× watchVelocity
+× retention
+× peerDensity
+```
+
+Classify:
+
+```text
+COLD
+WARM
+HOT
+SUPERHOT
+```
+
+---
+
+# 55. HOT CONTENT POLICY
+
+COLD:
+
+```text
+minimal optimization
+```
+
+WARM:
+
+```text
+normal cache/P2P
+```
+
+HOT:
+
+```text
+aggressive cache
+seed
+replication
+cooperative prefetch
+```
+
+SUPERHOT:
+
+```text
+strongest safe distribution
+multiple self-hosted edge/seed roles where available
+```
+
+---
+
+# 56. PREFETCH
+
+Use:
+
+```text
+PrefetchScore =
+PlaybackProbability
+× PeerAvailability
+× OriginCostAvoidance
+× BufferSafety
+− DataRisk
+− BatteryRisk
+− StorageCost
+```
+
+Do not use fixed prefetch windows everywhere.
+
+---
+
+# 57. COOPERATIVE PREFETCH
+
+For a cluster of viewers:
+
+```text
+A → object 201
+B → object 202
+C → object 203
+D → object 204
+```
+
+then redistribute.
+
+Reduce duplicate retrieval.
+
+---
+
+# 58. LOCAL-LAN OPTIMIZATION
+
+The existing repository checklist identifies this area as conceptually present but not fully implemented.
+
+Verify and complete it.
+
+Prefer strong local peer connections based on:
+
+```text
+RTT
+throughput
+connection quality
+```
+
+without exposing precise location.
+
+---
+
+# 59. HOUSEHOLD REUSE
+
+Multiple compatible devices on the same local network may exchange media directly through WebRTC where technically possible.
+
+---
+
+# 60. TRUSTED SEED
+
+Self-hosted media node may act as:
+
+```text
+trusted seed
+```
+
+especially for:
+
+```text
+HOT
+SUPERHOT
+scarce
+viral
+```
+
+objects.
+
+---
+
+# 61. WEBTRANSPORT
+
+Implement WebTransport as:
+
+```text
+browser ↔ self-hosted edge
+```
+
+optional production transport.
+
+Current WebTransport browser support is broad enough to justify inclusion as an optional transport, while preserving HLS/HTTP fallback.
+
+Use reliable streams for media objects.
+
+Do not send critical media through unreliable datagrams unless a higher-level recovery mechanism makes that safe.
+
+---
+
+# 62. HTTP/3
+
+Support HTTP/3 where the self-hosted edge supports it.
+
+Maintain:
+
+```text
+HTTP/2
+HTTP/1.1
+```
+
+fallback.
+
+---
+
+# 63. MoQ
+
+Maintain:
+
+```text
+MoQTransport
+```
+
+as an architectural adapter.
+
+Default:
+
+```text
+MOQ_ENABLED=false
+```
+
+Do not make MoQ mandatory for production baseline.
+
+---
+
+# 64. TURN
+
+Default:
+
+```text
+TURN_ENABLED=false
+```
+
+Use direct WebRTC.
+
+If direct P2P fails:
+
+```text
+WebTransport
+or
+HTTP
+```
+
+Do not automatically create an expensive media relay path.
+
+---
+
+# 65. DELIVERY BRAIN
+
+The central scheduler must choose:
+
+```text
+LOCAL_CACHE
+P2P
+SELF_HOSTED_EDGE
+TRUSTED_SEED
+WEBTRANSPORT
+HTTP/R2
+```
+
+for each media object.
+
+---
+
+# 66. IMPORTANT: R2 IS THE NORMAL HTTP FALLBACK
+
+For published public media:
+
+```text
+P2P unavailable
+↓
+self-hosted edge unavailable
+↓
+WebTransport unavailable
+↓
+R2 HTTP
+```
+
+R2 is therefore the reliable external storage/object delivery layer.
+
+Its role is not to compete against P2P.
+
+It is:
+
+# AUTHORITATIVE FALLBACK + HOT MEDIA STORE
+
+---
+
+# 67. FILEBASE IS NOT NORMAL PLAYBACK FALLBACK
+
+Do NOT use Filebase as the first fallback for every missing segment.
+
+Its free-tier bandwidth is too limited for that role.
+
+Use it for:
+
+```text
+archive
+secondary backup
+secondary replica
+```
+
+unless economics later justify another role.
+
+---
+
+# 68. SELF-HOSTED EDGE PRIORITY
+
+If a requested object is available on your own edge:
+
+```text
+prefer edge
+```
+
+when its source score beats:
+
+```text
+P2P
+R2
+```
+
+Do not use edge solely because it exists.
+
+---
+
+# 69. DELIVERY SOURCE SCORING
+
+Conceptually:
+
+```text
+SourceScore =
+Reliability
++ Throughput
++ LowLatency
++ Availability
++ CostAvoidance
++ BufferSafety
+− FailurePenalty
+− DataRisk
+− BatteryRisk
+```
+
+Make the algorithm configurable.
+
+---
+
+# 70. PLAYBACK DEADLINE
+
+Estimate:
+
+```text
+deadline =
+currentPlaybackPosition
++
+buffer
+```
+
+As deadline approaches:
+
+```text
+reliability weight ↑
+```
+
+---
+
+# 71. ADAPTIVE HEDGING
+
+Healthy buffer:
+
+```text
+favor P2P/cache
+```
+
+Moderate buffer:
+
+```text
+P2P + delayed HTTP hedge
+```
+
+Low buffer:
+
+```text
+P2P + aggressive R2/edge hedge
+```
+
+Critical buffer:
+
+```text
+reliability-first
+```
+
+---
+
+# 72. HEDGE WASTE CONTROL
+
+Track:
+
+```text
+duplicate hedge bytes
+hedge win rate
+cancel success
+wasted bytes
+```
+
+If hedging generates too much waste:
+
+```text
+reduce aggressiveness
+```
+
+---
+
+# 73. ORIGIN-PRESSURE MODE
+
+If:
+
+```text
+R2 requests high
+self-hosted origin high
+HTTP throughput high
+```
+
+increase preference for:
+
+```text
+P2P
+browser cache
+trusted seed
+edge
+request coalescing
+```
+
+---
+
+# 74. PEER-PRESSURE MODE
+
+If:
+
+```text
+peer density low
+peer failure high
+P2P throughput low
+```
+
+decrease P2P attempts.
+
+Favor:
+
+```text
+edge
+WebTransport
+R2
+```
+
+---
+
+# 75. MEDIA PLACEMENT ENGINE
+
+Decide:
+
+```text
+WHERE SHOULD THIS OBJECT EXIST?
+```
+
+Possible destinations:
+
+```text
+R2
+self-hosted edge
+trusted seed
+browser cache
+peer
+Filebase archive
+```
+
+---
+
+# 76. DELIVERY ENGINE
+
+Decide:
+
+```text
+WHERE SHOULD THIS OBJECT COME FROM RIGHT NOW?
+```
+
+Possible sources:
+
+```text
+local
+peer
+edge
+seed
+WebTransport
+R2
+```
+
+Keep these concepts separate.
+
+---
+
+# 77. ZERO-COPY PREFERENCE
+
+Do not move an object if a valid useful copy already exists.
+
+Prefer:
+
+```text
+local cache
+→ useful peer
+→ local edge
+→ trusted seed
+→ WebTransport edge
+→ R2
+```
+
+subject to deadline and reliability.
+
+---
+
+# 78. COST-AWARE ROUTING
+
+Relative cost model:
+
+```text
+Local cache       ≈ 0
+P2P               ≈ minimal operator cost
+Self-hosted edge  ≈ low
+Trusted seed      ≈ low
+WebTransport edge ≈ controlled
+R2                ≈ storage/operations cost, zero Internet egress
+Filebase          ≈ archive/backup tier
+```
+
+Do NOT assume R2 is completely free beyond its allowances; current R2 pricing charges for storage and operations after included free allowances.
+
+---
+
+# 79. DATABASE COST AWARENESS
+
+Do not create large telemetry workloads in Turso.
+
+Aggregate:
+
+```text
+playback telemetry
+peer stats
+heat
+scheduler observations
+```
+
+before persistence.
+
+The current Turso free plan has generous read capacity but finite storage/write allowances, so MASHAHD must keep the database as a control-plane database rather than a high-frequency event sink.
+
+---
+
+# 80. AI SERVICE ROLE
+
+The supplied AI services are NOT part of the core video transport path.
+
+Do NOT make video playback dependent on:
+
+```text
+Gemini
+Groq
+Hugging Face
+```
+
+Use AI providers only for optional platform capabilities such as:
+
+```text
+content metadata
+titles
+descriptions
+tagging
+moderation
+recommendation assistance
+transcription assistance
+summarization
+thumbnail/content analysis
+```
+
+If all AI APIs are unavailable:
+
+```text
+video playback continues
+```
+
+---
+
+# 81. AI COST ROUTER
+
+If AI functionality is retained, create:
+
+```text
+AIProviderRouter
+```
+
+that selects providers based on:
+
+```text
+availability
+quota
+latency
+cost
+task suitability
+```
+
+Never put an AI provider in the critical media delivery path.
+
+---
+
+# 82. HUGGING FACE / LOCAL AI
+
+Where tasks can be executed locally:
+
+```text
+prefer local model
+```
+
+over consuming paid external API quota.
+
+Examples:
+
+```text
+embeddings
+simple classification
+metadata extraction
+```
+
+Use external APIs only when materially advantageous.
+
+---
+
+# 83. GROQ / GEMINI USAGE
+
+Treat external inference as:
+
+```text
+OPTIONAL
+NON-CRITICAL
+QUOTA-AWARE
+```
+
+Do not assume free API access is unlimited.
+
+---
+
+# 84. SECRET MANAGEMENT
+
+ALL external credentials must be:
+
+```text
+server-side only
+environment variables or secure deployment secrets
+never committed
+never logged
+never bundled
+```
+
+Rotate any credentials that have been exposed.
+
+The current repository correctly ignores `.env`, but that does not protect secrets that were already exposed or historically committed.
+
+---
+
+# 85. NEVER REPRODUCE PROVIDED SECRETS
+
+Do not place actual credentials in:
+
+```text
+code
+prompt
+documentation
+README
+.env.example
+client bundle
+tests
+logs
+GitHub comments
+```
+
+Use placeholders only in templates.
+
+---
+
+# 86. P2P TRACKER SECURITY
+
+Audit:
+
+```text
+origin validation
+swarm authorization
+rate limits
+payload limits
+peer isolation
+heartbeat
+expiration
+cross-swarm forwarding
+```
+
+The existing tracker currently uses Turso-backed swarm authorization plus an in-memory cache, but its database failure behavior must be hardened.
+
+---
+
+# 87. P2P SECURITY FAILURE POLICY
+
+If the tracker cannot verify authorization:
+
+```text
+P2P participation denied
+normal playback remains available
+```
+
+Never sacrifice security to increase P2P utilization.
+
+---
+
+# 88. MEDIA AUTHORIZATION
+
+Private media must be protected regardless of whether delivery comes from:
+
+```text
+R2
+edge
+WebTransport
+P2P
+browser cache
+```
+
+---
+
+# 89. PRIVATE MEDIA CACHE POLICY
+
+When authorization expires:
+
+```text
+do not automatically make private media shareable to unauthorized peers
+```
+
+Peer-sharing permissions must follow the product's access-control model.
+
+---
+
+# 90. CONTENT DELETION
+
+When a video is deleted/unpublished:
+
+```text
+invalidate playback authorization
+invalidate swarm
+stop trusted seeding
+remove new cache eligibility
+invalidate private distribution
+```
+
+---
+
+# 91. ORIGIN DATA FLOW
+
+For normal public VOD:
+
+```text
+Browser
+ ↓
+R2 / self-hosted edge / P2P
+ ↓
+CMAF/HLS
+ ↓
+Player
+```
+
+R2 remains the reliable authoritative published-media source.
+
+---
+
+# 92. DISTRIBUTION DATA FLOW
+
+For a hot video:
+
+```text
+R2
+ ↓
+trusted seed / first peer
+ ↓
+peer A
+ ↓
+peer B/C/D
+ ↓
+many viewers
+```
+
+The origin does NOT need to serve every viewer independently.
+
+---
+
+# 93. VIRAL VIDEO FLOW
+
+When demand rapidly rises:
+
+```text
+R2
+ ↓
+detect velocity
+ ↓
+promote heat
+ ↓
+preheat trusted seed
+ ↓
+replicate scarce pieces
+ ↓
+increase cache value
+ ↓
+increase cooperative prefetch
+ ↓
+reduce origin duplication
+```
+
+---
+
+# 94. COLD VIDEO FLOW
+
+When demand is low:
+
+```text
+R2
+ ↓
+normal HTTP
+```
+
+Do not waste P2P infrastructure on content that doesn't benefit.
+
+---
+
+# 95. SELF-HOSTED EDGE CACHE
+
+If the operator has additional self-controlled machines:
+
+```text
+R2
+ ↓
+edge A
+edge B
+edge C
+```
+
+All edges use identical media objects.
+
+The scheduler can prefer the best edge.
+
+---
+
+# 96. MULTI-NODE FUTURE
+
+Do not require multiple edge nodes for initial deployment.
+
+Design so they can be added later.
+
+---
+
+# 97. BROWSER AS TEMPORARY EDGE
+
+An eligible viewer can temporarily act as:
+
+```text
+CACHE
++
+P2P SOURCE
+```
+
+but never:
+
+```text
+permanent server
+```
+
+---
+
+# 98. CACHE LIFETIME
+
+Browser cache must be:
+
+```text
+bounded
+temporary
+evictable
+policy-driven
+```
+
+---
+
+# 99. RESOURCE ECONOMICS
+
+For every object ask:
+
+```text
+Should I encode it?
+Should I store it?
+Should I cache it?
+Should I replicate it?
+Should I prefetch it?
+Should I seed it?
+Should a peer carry it?
+Should R2 carry it?
+Should Filebase archive it?
+```
+
+using measured expected utility.
+
+---
+
+# 100. ALGORITHMIC OBJECT VALUE
+
+Calculate:
+
+```text
+ObjectValue =
+Demand
+× FutureReuse
+× Scarcity
+× PlaybackProximity
+× CostAvoidance
+```
+
+Use it everywhere.
+
+---
+
+# 101. ALGORITHMIC PEER VALUE
+
+Calculate:
+
+```text
+PeerValue =
+Throughput
+× Reliability
+× Coverage
+× LowRTT
+× RemainingBudget
+```
+
+Use peer value for:
+
+```text
+selection
+promotion
+specialization
+replacement
+```
+
+---
+
+# 102. ALGORITHMIC CACHE VALUE
+
+Calculate:
+
+```text
+CacheValue =
+FutureRequestProbability
+× PeerDemand
+× OriginCostAvoidance
+× ReuseProbability
+− StorageCost
+```
+
+---
+
+# 103. ALGORITHMIC REPLICATION
+
+Calculate:
+
+```text
+ReplicationTarget =
+f(
+heat,
+scarcity,
+demand,
+peer stability,
+playback proximity,
+swarm size
+)
+```
+
+---
+
+# 104. ALGORITHMIC PREFETCH
+
+Calculate:
+
+```text
+PrefetchScore =
+PlaybackProbability
+× PeerAvailability
+× OriginCostAvoidance
+× BufferSafety
+− DataRisk
+− BatteryRisk
+− StorageCost
+```
+
+---
+
+# 105. DELIVERY DECISION
+
+Calculate:
+
+```text
+DeliveryUtility =
+Reliability
++
+Latency
++
+Throughput
++
+CostAvoidance
++
+BufferSafety
+−
+Risk
+```
+
+Choose the highest viable utility.
+
+---
+
+# 106. NO SINGLE FIXED SOURCE ORDER
+
+Do NOT hard-code:
+
+```text
+P2P always first
+R2 always first
+WebTransport always first
+```
+
+Use dynamic source scoring.
+
+---
+
+# 107. PLAYER STARTUP
+
+At startup:
+
+```text
+HTTP/R2 or edge may win immediately
+```
+
+Do not wait for P2P.
+
+---
+
+# 108. PLAYBACK LOW-BUFFER MODE
+
+When buffer becomes dangerously low:
+
+```text
+disable aggressive speculation
+increase HTTP/edge priority
+reduce peer experimentation
+prioritize deadline
+```
+
+---
+
+# 109. PLAYBACK HEALTHY MODE
+
+When buffer is healthy:
+
+```text
+favor cheap sources
+expand cooperative reuse
+increase cache
+allow prefetch
+```
+
+---
+
+# 110. PEER-FAILURE MODE
+
+When peer quality degrades:
+
+```text
+replace peers
+reduce P2P weight
+favor edge/R2/WebTransport
+```
+
+---
+
+# 111. ORIGIN-PRESSURE MODE
+
+When origin/R2 request volume rises beyond thresholds:
+
+```text
+increase cache pressure
+increase trusted seed pressure
+increase P2P preference
+increase request coalescing
+```
+
+---
+
+# 112. STORAGE-PRESSURE MODE
+
+When storage pressure rises:
+
+```text
+evict cold cache
+reduce disposable replicas
+reduce low-value prefetch
+archive selectively to Filebase if justified
+```
+
+---
+
+# 113. ENCODING-PRESSURE MODE
+
+When CPU is constrained:
+
+```text
+prioritize high-value encoding
+delay low-value rendition generation
+```
+
+---
+
+# 114. DATABASE-PRESSURE MODE
+
+When Turso write load increases:
+
+```text
+increase telemetry aggregation
+reduce frequency
+batch
+roll up
+```
+
+Do not compromise critical metadata.
+
+---
+
+# 115. AI-PRESSURE MODE
+
+If external AI quota is unavailable:
+
+```text
+disable non-critical AI enhancement
+```
+
+Do not impact:
+
+```text
+playback
+upload
+media processing
+P2P
+```
+
+---
+
+# 116. MEDIA VERSIONING
+
+Every published media version must be immutable.
+
+A new encoding requires:
+
+```text
+new manifestVersion
+```
+
+and therefore:
+
+```text
+new swarm identity
+```
+
+---
+
+# 117. SWARM INVALIDATION
+
+When manifest version changes:
+
+```text
+old swarm → draining
+new swarm → active
+```
+
+Do not mix them.
+
+---
+
+# 118. LIVE / VOD DISTINCTION
+
+Architect media fabric so VOD and live can share:
+
+```text
+media object identity
+placement
+delivery
+cache
+peer policy
+```
+
+while using different:
+
+```text
+manifest lifecycle
+buffer strategy
+generation lifecycle
+latency targets
+```
+
+---
+
+# 119. VOD OPTIMIZATION
+
+For VOD:
+
+```text
+maximize cache reuse
+maximize peer reuse
+maximize immutable caching
+```
+
+---
+
+# 120. LIVE OPTIMIZATION
+
+For live:
+
+```text
+focus resources around current frontier
+expire old generations quickly
+avoid excessive prefetch
+```
+
+---
+
+# 121. WEBTRANSPORT FOR LIVE/FUTURE USE
+
+Keep WebTransport adapter capable of supporting:
+
+```text
+reliable stream delivery
+multiple streams
+future low-latency flows
+```
+
+Current WebTransport supports streams and datagrams over HTTP/3, making it useful as the self-hosted browser↔edge transport layer.
+
+---
+
+# 122. MOQs ROLE
+
+MoQ remains:
+
+```text
+future transport
+```
+
+not required production dependency.
+
+---
+
+# 123. NO IPFS FOUNDATION
+
+Do not convert MASHAHD into a generic decentralized-storage application.
+
+Borrow:
+
+```text
+content addressing
+replication
+peer distribution
+```
+
+without depending on IPFS.
+
+---
+
+# 124. FILEBASE / IPFS
+
+If used, isolate it behind:
+
+```text
+ArchiveStorageProvider
+```
+
+Do not make it part of primary playback routing.
+
+---
+
+# 125. R2 / PUBLIC MEDIA
+
+If public media is served directly from R2, configure correct:
+
+```text
+CORS
+MIME
+cache
+range
+```
+
+and protect private media separately.
+
+---
+
+# 126. SIGNED MEDIA
+
+For private media support:
+
+```text
+short-lived signed URL
+or
+short-lived playback token
+```
+
+---
+
+# 127. CORS
+
+Use explicit:
+
+```text
+ALLOWED_ORIGINS
+```
+
+Do not use wildcard CORS for private/authenticated media.
+
+---
+
+# 128. WEBRTC ORIGIN SECURITY
+
+Ensure tracker accepts only approved application origins.
+
+---
+
+# 129. RATE LIMITING
+
+Rate limit:
+
+```text
+upload
+playback-session creation
+tracker connections
+swarm joins
+signaling
+telemetry
+AI requests
+admin endpoints
+```
+
+---
+
+# 130. REQUEST BODY LIMITS
+
+Apply hard limits to:
+
+```text
+signaling
+metadata
+upload initialization
+telemetry
+```
+
+---
+
+# 131. MEDIA UPLOAD LIMITS
+
+Configure:
+
+```text
+maximum source file
+maximum filename length
+allowed file types
+```
+
+---
+
+# 132. FFmpeg RESOURCE LIMITS
+
+Protect against:
+
+```text
+CPU exhaustion
+RAM exhaustion
+disk exhaustion
+path traversal
+command injection
+malicious media
+```
+
+---
+
+# 133. MEDIA VALIDATION
+
+Before publication:
+
+```text
+ffprobe
+manifest validation
+segment validation
+hash/integrity
+object existence
+```
+
+---
+
+# 134. OBJECT INTEGRITY
+
+An object received through P2P must be checked before consumption.
+
+---
+
+# 135. P2P OBJECT CORRUPTION
+
+If invalid:
+
+```text
+reject
+penalize peer
+fallback
+```
+
+---
+
+# 136. MALICIOUS PEER
+
+Repeated violations:
+
+```text
+quarantine
+remove
+```
+
+---
+
+# 137. PEER ENUMERATION
+
+Do not allow arbitrary users to enumerate all peers or all swarms.
+
+---
+
+# 138. SWARM ENUMERATION
+
+Only authorized clients can join valid swarms.
+
+---
+
+# 139. CONTROL PLANE SEPARATION
+
+Keep:
+
+```text
+application/API
+media storage
+signaling
+media processing
+```
+
+logically separate.
+
+---
+
+# 140. VERCEL ↔ TURSO
+
+Use Vercel for control requests to Turso.
+
+Do not send media bytes through the database.
+
+---
+
+# 141. VERCEL ↔ R2
+
+Use short-lived authorization/upload URLs where appropriate.
+
+Do not expose R2 credentials to browsers.
+
+---
+
+# 142. SELF-HOSTED WORKER ↔ R2
+
+Worker retrieves source from R2 and publishes output to R2.
+
+Worker reports state to Turso.
+
+---
+
+# 143. SELF-HOSTED TRACKER ↔ TURSO
+
+Tracker may validate swarm authorization and read lightweight control metadata.
+
+Do not query Turso on every signaling message.
+
+Use:
+
+```text
+TTL cache
+local memory
+optional Redis
+```
+
+for repeated lookups.
+
+---
+
+# 144. REDIS
+
+If Redis is available:
+
+```text
+peer presence
+swarm membership
+single-flight
+rate limits
+job coordination
+```
+
+may use it.
+
+But self-hosted single-node mode must remain viable without managed Redis.
+
+---
+
+# 145. EPHEMERAL DATA
+
+Do NOT persist:
+
+```text
+heartbeat
+every ICE packet
+every peer packet
+```
+
+permanently.
+
+---
+
+# 146. JOB QUEUE
+
+Processing jobs must be:
+
+```text
+idempotent
+claimable
+retryable
+recoverable
+```
+
+---
+
+# 147. WORKER CLAIMING
+
+Use:
+
+```text
+job ID
+worker ID
+claim timestamp
+lease/timeout
+```
+
+to prevent duplicate processing.
+
+---
+
+# 148. WORKER FAILURE
+
+If lease expires:
+
+```text
+job becomes retryable
+```
+
+---
+
+# 149. TEMPORARY MEDIA CLEANUP
+
+On:
+
+```text
+success
+failure
+cancel
+restart
+```
+
+clean temp files safely.
+
+---
+
+# 150. SOURCE RETENTION
+
+Delete uploaded source only when policy allows and published outputs are verified.
+
+---
+
+# 151. BACKUP STRATEGY
+
+Authoritative assets:
+
+```text
+Turso metadata
+R2 published media
+```
+
+Optional secondary:
+
+```text
+Filebase archive
+external backup
+self-hosted backup volume
+```
+
+Browser cache and P2P copies are NOT backups.
+
+---
+
+# 152. DISASTER RECOVERY
+
+Document recovery of:
+
+```text
+Turso
+R2
+self-hosted worker
+tracker
+configuration
+```
+
+---
+
+# 153. MEDIA RECONCILIATION
+
+Implement periodic reconciliation:
+
+```text
+Turso metadata
+↔
+R2 objects
+↔
+published manifests
+```
+
+Find:
+
+```text
+missing object
+orphan object
+invalid manifest
+stale rendition
+```
+
+---
+
+# 154. STORAGE RECONCILIATION
+
+Use reports rather than blind deletion.
+
+---
+
+# 155. MEDIA OBJECT GARBAGE COLLECTION
+
+Delete only objects that are:
+
+```text
+obsolete
+unreferenced
+outside retention
+```
+
+and only after safety checks.
+
+---
+
+# 156. R2 OPERATION ECONOMICS
+
+Avoid excessive:
+
+```text
+LIST
+HEAD
+GET
+PUT
+COPY
+```
+
+calls.
+
+Use manifest/index metadata intelligently.
+
+Do not use repeated object listing as a high-frequency discovery mechanism.
+
+Current R2 pricing distinguishes Class A and Class B operations, so operation count itself must be treated as an optimization target.
+
+---
+
+# 157. FILEBASE OPERATION ECONOMICS
+
+Do not poll Filebase unnecessarily.
+
+Use it as secondary storage, not live control-plane storage.
+
+---
+
+# 158. TURSO OPERATION ECONOMICS
+
+Do not query Turso every time a peer sends heartbeat/signaling traffic.
+
+Use short-lived caches.
+
+---
+
+# 159. VERCEL OPERATION ECONOMICS
+
+Keep high-frequency streaming traffic away from Vercel serverless/control functions whenever possible.
+
+Vercel should issue:
+
+```text
+metadata
+authorization
+control decisions
+```
+
+not relay thousands of media segments.
+
+---
+
+# 160. DIRECT MEDIA DELIVERY
+
+The preferred media path is:
+
+```text
+Browser
+  ↓
+R2 / self-hosted edge / P2P
+```
+
+not:
+
+```text
+Browser
+  ↓
+Vercel Function
+  ↓
+R2
+```
+
+for every media object.
+
+---
+
+# 161. P2P PATH
+
+Preferred:
+
+```text
+Browser A
+   ↕
+Browser B
+```
+
+through WebRTC.
+
+---
+
+# 162. WEBTRANSPORT PATH
+
+Preferred:
+
+```text
+Browser
+   ↕
+self-hosted edge
+```
+
+through HTTP/3/QUIC.
+
+---
+
+# 163. HTTP PATH
+
+Preferred public fallback:
+
+```text
+Browser
+   ↓
+R2
+```
+
+with self-hosted edge preferred when useful.
+
+---
+
+# 164. DELIVERY FAILOVER
+
+```text
+LOCAL CACHE
+→ P2P
+→ SELF-HOSTED EDGE
+→ TRUSTED SEED
+→ WEBTRANSPORT
+→ R2 HTTP
+```
+
+but dynamic scoring, not rigid ordering.
+
+---
+
+# 165. STARTUP FAILOVER
+
+At startup use the quickest reliable path.
+
+No waiting for swarm.
+
+---
+
+# 166. PLAYER
+
+The current player must remain compatible with:
+
+```text
+hls.js
+p2p-media-loader-hlsjs
+```
+
+where the library is still appropriate.
+
+---
+
+# 167. TRANSPORT REGISTRY
+
+Create/verify:
+
+```text
+HTTPTransport
+WebRTCTransport
+WebTransportTransport
+MoQTransport
+```
+
+under a common abstraction.
+
+---
+
+# 168. DELIVERY CLIENT
+
+Create/verify:
+
+```text
+DeliveryClient
+```
+
+between player and transport layer.
+
+---
+
+# 169. PLAYER MUST NOT KNOW PROVIDER DETAILS
+
+The player must not contain:
+
+```text
+R2 logic
+Filebase logic
+Turso logic
+Vercel logic
+```
+
+It asks for:
+
+```text
+media object
+```
+
+---
+
+# 170. BACKEND MUST NOT KNOW P2P IMPLEMENTATION DETAILS
+
+The control plane provides:
+
+```text
+swarm metadata
+authorization
+transport capabilities
+```
+
+rather than embedding browser peer protocol logic throughout the application.
+
+---
+
+# 171. NETWORK POLICY
+
+Centralize:
+
+```text
+P2PPolicyEngine
+```
+
+not scattered conditions.
+
+---
+
+# 172. FEATURE FLAGS
+
+At minimum:
+
+```text
+DISTRIBUTED_MEDIA_ENABLED
+P2P_ENABLED
+P2P_UPLOAD_ENABLED
+P2P_MAX_PEERS
+P2P_MAX_UPLOAD_MBPS
+P2P_MAX_UPLOAD_BYTES
+P2P_MAX_CONCURRENT_UPLOADS
+LOCAL_MEDIA_CACHE_ENABLED
+WEBTRANSPORT_ENABLED
+MOQ_ENABLED
+TRUSTED_SEED_ENABLED
+DEMAND_DRIVEN_TRANSCODING
+DYNAMIC_PREFETCH
+HEDGED_REQUESTS
+REQUEST_COALESCING
+SCARCITY_SCHEDULING
+DYNAMIC_REPLICATION
+HOT_CONTENT_PROMOTION
+LAN_OPTIMIZATION
+FILEBASE_ARCHIVE_ENABLED
+```
+
+---
+
+# 173. INITIAL DEFAULTS
+
+Start with:
+
+```text
+P2P_ENABLED=true
+
+P2P_UPLOAD_ENABLED=true
+
+P2P_MAX_PEERS=6
+
+P2P_MAX_UPLOAD_MBPS=2
+
+P2P_MAX_UPLOAD_BYTES=262144000
+
+P2P_MAX_CONCURRENT_UPLOADS=2
+
+LOCAL_MEDIA_CACHE_ENABLED=true
+
+WEBTRANSPORT_ENABLED=true
+
+MOQ_ENABLED=false
+
+TRUSTED_SEED_ENABLED=true
+
+DEMAND_DRIVEN_TRANSCODING=true
+
+DYNAMIC_PREFETCH=true
+
+HEDGED_REQUESTS=true
+
+REQUEST_COALESCING=true
+
+SCARCITY_SCHEDULING=true
+
+DYNAMIC_REPLICATION=true
+
+HOT_CONTENT_PROMOTION=true
+
+LAN_OPTIMIZATION=true
+
+FILEBASE_ARCHIVE_ENABLED=false
+```
+
+Tune using actual benchmarks.
+
+---
+
+# 174. OBSERVABILITY
+
+Track:
+
+```text
+origin/R2 bytes
+edge bytes
+P2P bytes
+WebTransport bytes
+local cache bytes
+duplicate bytes
+cache hits
+P2P hits
+edge hits
+R2 hits
+```
+
+---
+
+# 175. QOE
+
+Track:
+
+```text
+startup
+TTFF
+buffer
+rebuffer
+quality
+stall duration
+seek latency
+```
+
+---
+
+# 176. P2P
+
+Track:
+
+```text
+peer count
+peer success
+peer failures
+peer throughput
+peer RTT
+P2P contribution
+```
+
+---
+
+# 177. COST
+
+Track:
+
+```text
+R2 storage
+R2 operations
+Turso writes
+Turso storage
+self-hosted CPU
+self-hosted disk
+self-hosted bandwidth
+Filebase storage
+Filebase egress
+AI API usage
+```
+
+where observable.
+
+---
+
+# 178. DO NOT COUNT "P2P SAVINGS" AS MONEY AUTOMATICALLY
+
+Calculate:
+
+```text
+origin bytes avoided
+```
+
+and optionally:
+
+```text
+estimated cost avoided
+```
+
+only when an operator-configured price exists.
+
+---
+
+# 179. ECONOMIC DASHBOARD
+
+Admin diagnostics should show:
+
+```text
+Origin traffic
+P2P traffic
+Cache traffic
+Edge traffic
+WebTransport traffic
+Duplicate traffic
+R2 operations
+Database write volume
+Transcoding CPU
+Storage growth
+```
+
+---
+
+# 180. AI COST DASHBOARD
+
+Where AI services are used:
+
+```text
+requests
+provider
+estimated usage
+failure
+fallback
+```
+
+AI must not obscure core media economics.
+
+---
+
+# 181. ADMIN DECISION EXPLANATION
+
+For each major scheduler decision:
+
+```text
+source selected
+alternatives
+scores
+reason
+buffer
+deadline
+```
+
+---
+
+# 182. NO BLACK BOX
+
+All core routing must be deterministic and explainable initially.
+
+---
+
+# 183. FUTURE ML
+
+Only after enough telemetry:
+
+```text
+ML vs deterministic baseline
+```
+
+Choose ML only if it measurably improves:
+
+```text
+QoE
+cost
+reliability
+```
+
+---
+
+# 184. A/B TESTING
+
+Allow controlled experimentation for:
+
+```text
+peer count
+hedging
+prefetch
+cache TTL
+replication
+source weighting
+```
+
+Never A/B test:
+
+```text
+cellular safety
+private-media authorization
+core security
+```
+
+---
+
+# 185. BASELINE MODE
+
+Maintain:
+
+```text
+HLS + R2 HTTP
+```
+
+as the fallback control mode.
+
+---
+
+# 186. PERFORMANCE BENCHMARK
+
+Measure:
+
+```text
+TTFF
+startup
+rebuffer
+P2P throughput
+R2 throughput
+edge throughput
+WebTransport throughput
+cache hit ratio
+origin reduction
+duplicate reduction
+```
+
+---
+
+# 187. COST BENCHMARK
+
+Compare:
+
+```text
+BASELINE
+R2/HLS HTTP-only
+
+vs
+
+AUTONOMOUS MEDIA MESH
+```
+
+using identical workloads.
+
+---
+
+# 188. TRANSCODING BENCHMARK
+
+Measure:
+
+```text
+CPU per media minute
+wall-clock processing time
+disk usage
+output size
+```
+
+---
+
+# 189. DATABASE BENCHMARK
+
+Measure:
+
+```text
+writes per session
+writes per hour
+storage growth
+query latency
+```
+
+---
+
+# 190. R2 BENCHMARK
+
+Measure:
+
+```text
+GET count
+HEAD count
+PUT count
+cache hit
+object reuse
+```
+
+---
+
+# 191. P2P BENCHMARK
+
+Measure:
+
+```text
+peer success rate
+bytes per peer
+peer lifetime
+P2P ratio
+avoided R2 requests
+```
+
+---
+
+# 192. FILEBASE BENCHMARK
+
+Ensure Filebase is not accidentally involved in normal high-volume playback unless explicitly configured.
+
+---
+
+# 193. VERCEL BENCHMARK
+
+Ensure Vercel functions are not acting as unintended media proxies.
+
+Inspect:
+
+```text
+network
+function duration
+function bandwidth
+```
+
+for media endpoints.
+
+---
+
+# 194. TURSO BENCHMARK
+
+Ensure high-frequency media telemetry is not exhausting the database.
+
+---
+
+# 195. FAILURE TEST — VERCEL
+
+If Vercel control APIs temporarily fail:
+
+```text
+existing active playback should not unnecessarily die
+```
+
+where the browser has direct media URLs/authorization that remain valid.
+
+---
+
+# 196. FAILURE TEST — TURSO
+
+If Turso fails:
+
+```text
+new P2P joins may be disabled
+existing media playback remains available where authorization/media URLs remain valid
+```
+
+---
+
+# 197. FAILURE TEST — R2
+
+If R2 becomes unavailable:
+
+```text
+cached media/P2P/edge may continue
+otherwise fail gracefully
+```
+
+---
+
+# 198. FAILURE TEST — FILEBASE
+
+Filebase failure must have zero effect on normal playback.
+
+---
+
+# 199. FAILURE TEST — FFmpeg
+
+FFmpeg failure affects only media processing jobs.
+
+Existing videos remain playable.
+
+---
+
+# 200. FAILURE TEST — TRACKER
+
+Tracker failure:
+
+```text
+P2P unavailable
+HLS/R2 continues
+```
+
+---
+
+# 201. FAILURE TEST — WEBTRANSPORT
+
+WebTransport failure:
+
+```text
+HTTP/P2P fallback
+```
+
+---
+
+# 202. FAILURE TEST — P2P
+
+P2P failure:
+
+```text
+R2/edge fallback
+```
+
+---
+
+# 203. FAILURE TEST — BROWSER CACHE
+
+Cache failure:
+
+```text
+P2P/edge/R2
+```
+
+---
+
+# 204. SECURITY TEST
+
+Verify:
+
+```text
+no secrets in repository
+no secrets in bundle
+no secrets in logs
+no secrets in documentation
+```
+
+---
+
+# 205. REQUIRED SECRET ROTATION
+
+Any credentials that have been exposed outside secure secret storage must be rotated before production.
+
+Do not assume .gitignore alone solves credential exposure.
+
+---
+
+# 206. REQUIRED SECURITY AUDIT
+
+Audit:
+
+```text
+GitHub
+Vercel
+Turso
+R2
+Filebase
+AI providers
+tracker
+frontend
+backend
+workers
+```
+
+for secrets and authorization errors.
+
+---
+
+# 207. REQUIRED REPOSITORY AUDIT
+
+Compare actual implementation against:
+
+```text
+MEDIA_MESH_V4_CHECKLIST.md
+COO_AUDIT_REPORT.md
+COO_AUDIT_REPORT_v2.md
+COO_RECOMMENDATIONS.md
+DEPLOYMENT.md
+INTEGRATION.md
+```
+
+where present.
+
+Do not assume they are correct.
+
+---
+
+# 208. IMPORTANT EXISTING-REPOSITORY GAP AUDIT
+
+The current repository checklist explicitly identifies areas that need verification/possible completion:
+
+```text
+direct/resumable upload
+Redis
+LAN optimization
+```
+
+Treat these as priority audit items rather than assuming they are complete.
+
+Also independently verify every other feature even when marked completed.
+
+---
+
+# 209. FINAL PROVIDER RESPONSIBILITY MATRIX
+
+Create and maintain this table in project documentation:
+
+| Provider/Layer   | Primary responsibility | Must carry video? | Critical? |
+| ---------------- | ---------------------- | ----------------: | --------: |
+| GitHub           | source/CI              |                No |       Yes |
+| Vercel           | web/control plane      |       No, ideally |       Yes |
+| Turso            | metadata/control DB    |                No |       Yes |
+| Cloudflare R2    | published media origin |               Yes |       Yes |
+| Self-hosted node | FFmpeg/P2P/seed/edge   |          Optional |       Yes |
+| Filebase         | archive/secondary copy |                No |        No |
+| WebRTC           | peer-to-peer media     |               Yes |        No |
+| WebTransport     | browser↔edge media     |          Optional |        No |
+| MoQ              | future media transport |      No initially |        No |
+| Gemini/Groq/HF   | optional AI services   |                No |        No |
+
+---
+
+# 210. FINAL END-TO-END FLOW
+
+The developer must implement and document this:
+
+```text
+                ┌──────────────┐
+                │    GitHub    │
+                │ Source/CI/CD │
+                └──────┬───────┘
+                       │
+                       ▼
+                ┌──────────────┐
+                │   Vercel     │
+                │ Web/Control  │
+                └──────┬───────┘
+                       │
+              ┌────────┴─────────┐
+              │                  │
+              ▼                  ▼
+           Turso                R2
+        metadata             media objects
+              │                  │
+              │                  │
+              └────────┬─────────┘
+                       ▼
+              Self-Hosted Worker
+                       │
+                       ├── FFmpeg
+                       ├── Tracker
+                       ├── Trusted Seed
+                       └── Optional Edge
+                       │
+                       ▼
+                  Browser Client
+                       │
+            ┌──────────┼──────────┐
+            │          │          │
+            ▼          ▼          ▼
+        Cache      WebRTC       R2/HTTP
+                      │
+                      ▼
+                    Peers
+```
+
+---
+
+# 211. FINAL VIEWER FLOW
+
+For each media object:
+
+```text
+REQUEST
+ ↓
+LOCAL CACHE?
+ ↓
+YES → USE
+
+NO
+ ↓
+P2P SOURCE?
+ ↓
+YES → SCORE
+
+EDGE?
+ ↓
+SCORE
+
+TRUSTED SEED?
+ ↓
+SCORE
+
+WEBTRANSPORT?
+ ↓
+SCORE
+
+R2 HTTP?
+ ↓
+RELIABLE FALLBACK
+```
+
+Use dynamic scheduling rather than a rigid sequence.
+
+---
+
+# 212. FINAL ECONOMIC LOOP
+
+```text
+VIEWER DEMAND
+      ↓
+HEAT
+      ↓
+OBJECT VALUE
+      ↓
+PLACEMENT
+      ↓
+CACHE / REPLICATION / SEED
+      ↓
+P2P REUSE
+      ↓
+FEWER R2 REQUESTS
+      ↓
+LOWER OPERATOR RESOURCE USE
+      ↓
+MORE CAPACITY
+      ↓
+MORE VIEWERS
+      ↓
+REPEAT
+```
+
+---
+
+# 213. FINAL COMPUTE LOOP
+
+```text
+DEMAND
+ ↓
+ENCODING VALUE
+ ↓
+QUEUE PRIORITY
+ ↓
+FFMPEG
+ ↓
+PUBLISH
+ ↓
+OBSERVE USAGE
+ ↓
+ENCODE MORE / STOP
+```
+
+---
+
+# 214. FINAL CACHE LOOP
+
+```text
+DOWNLOAD
+ ↓
+CACHE
+ ↓
+MEASURE REUSE
+ ↓
+VALUE ↑ OR ↓
+ ↓
+RETAIN / EVICT
+```
+
+---
+
+# 215. FINAL P2P LOOP
+
+```text
+DOWNLOAD
+ ↓
+STORE
+ ↓
+ANNOUNCE
+ ↓
+SERVE PEER
+ ↓
+MEASURE
+ ↓
+PEER SCORE
+ ↓
+PROMOTE / DEMOTE
+```
+
+---
+
+# 216. FINAL SCHEDULER LOOP
+
+```text
+OBSERVE
+ ↓
+VALUE
+ ↓
+SCORE
+ ↓
+SELECT
+ ↓
+HEDGE IF NECESSARY
+ ↓
+DELIVER
+ ↓
+CACHE
+ ↓
+MEASURE
+ ↓
+UPDATE
+```
+
+---
+
+# 217. FINAL ZERO-COST LOOP
+
+```text
+GitHub
+    = free source/control
+
+Vercel
+    = free web/control where current limits permit
+
+Turso
+    = free metadata tier within quota
+
+R2
+    = free included storage/ops + no Internet egress charge,
+      with paid storage/ops above allowances
+
+Self-hosted
+    = FFmpeg + tracker + seed + edge
+
+Browser peers
+    = distributed delivery capacity
+
+Filebase
+    = optional secondary/cold storage
+
+AI
+    = optional, non-critical
+```
+
+This is the actual harmonized economic architecture.
+
+---
+
+# 218. DO NOT MISREPRESENT "FREE"
+
+Document actual quotas and limits.
+
+Do not tell operators:
+
+```text
+everything is unlimited and free
+```
+
+Instead:
+
+```text
+zero mandatory recurring platform dependency
++
+aggressive origin offload
++
+use free allowances efficiently
++
+self-hosted compute
+```
+
+---
+
+# 219. FINAL PRODUCTION CLASSIFICATION
+
+```text
+GitHub                  PRODUCTION
+Vercel                  PRODUCTION
+Turso                   PRODUCTION
+R2                      PRODUCTION
+Self-hosted FFmpeg      PRODUCTION
+WebRTC P2P              PRODUCTION
+Local browser cache     PRODUCTION
+P2P tracker             PRODUCTION after hardening
+Trusted seed            PRODUCTION OPTIONAL
+WebTransport            PRODUCTION OPTIONAL
+Filebase                OPTIONAL ARCHIVE
+MoQ                     EXPERIMENTAL
+Erasure coding          EXPERIMENTAL
+ML scheduler            FUTURE
+External AI             OPTIONAL / NON-CRITICAL
+TURN                    DISABLED BY DEFAULT
+```
+
+---
+
+# 220. FINAL PRODUCTION GATE
+
+Do NOT declare MASHAHD production-ready until:
+
+```text
+✓ GitHub workflow validated
+✓ Vercel deployment validated
+✓ Turso connection validated
+✓ R2 media publication validated
+✓ Filebase isolated from normal playback
+✓ self-hosted worker validated
+✓ FFmpeg validated
+✓ HLS validated
+✓ CMAF validated
+✓ six-second segments validated
+✓ P2P tracker hardened
+✓ P2P security verified
+✓ cellular P2P blocked
+✓ Save Data blocked
+✓ browser cache validated
+✓ swarm identity validated
+✓ scarcity validated
+✓ replication validated
+✓ peer scoring validated
+✓ cooperative prefetch validated
+✓ request coalescing validated
+✓ adaptive hedging validated
+✓ origin-pressure mode validated
+✓ peer-pressure mode validated
+✓ WebTransport validated where supported
+✓ MoQ safely disabled by default
+✓ TURN not required
+✓ private media protected
+✓ deletion invalidates distribution
+✓ crash recovery validated
+✓ disk pressure validated
+✓ database write volume validated
+✓ R2 operation volume validated
+✓ Filebase isolated
+✓ AI services non-critical
+✓ no secrets exposed
+✓ build passes
+✓ lint passes
+✓ typecheck passes
+✓ automated tests pass
+✓ end-to-end playback passes
+✓ cost benchmark passes
+```
+
+---
+
+# 221. FINAL EXECUTIVE DELIVERABLE
+
+At completion produce:
+
+## A. Architecture report
+
+```text
+all services
+all data flows
+all media flows
+all provider roles
+all failure boundaries
+```
+
+## B. Cost report
+
+```text
+R2 storage
+R2 operations
+Turso usage
+Vercel usage
+self-hosted resource consumption
+Filebase usage
+P2P offload
+origin reduction
+```
+
+## C. Security report
+
+```text
+secret exposure
+authentication
+authorization
+media protection
+tracker security
+P2P security
+storage security
+```
+
+## D. Performance report
+
+```text
+TTFF
+startup
+rebuffer
+P2P throughput
+R2 throughput
+edge throughput
+WebTransport throughput
+cache hit
+origin reduction
+```
+
+## E. Gap report
+
+For anything not actually complete:
+
+```text
+feature
+current state
+risk
+exact gap
+required correction
+```
+
+Never hide incomplete work behind a green checklist.
+
+---
+
+# 222. FINAL COO/CTO PRINCIPLE
+
+The architecture must NOT think:
+
+```text
+"Which cloud provider should handle this?"
+```
+
+It must think:
+
+```text
+"What is the cheapest reliable place for this object to exist?"
+
+"What is the cheapest reliable source for this object right now?"
+
+"Do I need to move this object at all?"
+
+"Do I need to encode this representation at all?"
+
+"Do I need to write this event to the database?"
+
+"Can another viewer provide it?"
+
+"Can an existing cache provide it?"
+
+"Can my own self-hosted node seed it?"
+
+"Can R2 provide the authoritative fallback?"
+
+"Can Filebase archive it without entering the hot path?"
+```
+
+The platform must continuously optimize those decisions.
+
+---
+
+# 223. FINAL ARCHITECTURAL STATEMENT
+
+MASHAHD is to be implemented as:
+
+# A SELF-OPTIMIZING DISTRIBUTED MEDIA ECONOMY
+
+with:
+
+```text
+GitHub
+→ source/control
+
+Vercel
+→ web/control plane
+
+Turso
+→ authoritative metadata/control database
+
+R2
+→ primary published media object store
+
+Self-hosted node
+→ compute + tracker + trusted seed + optional edge
+
+Browser cache
+→ temporary distributed edge
+
+WebRTC
+→ browser-to-browser media distribution
+
+WebTransport
+→ browser-to-self-hosted-edge transport
+
+HLS
+→ compatibility baseline
+
+CMAF
+→ canonical media object representation
+
+Filebase
+→ secondary/cold/archive tier
+
+AI APIs
+→ optional intelligence layer
+
+MoQ
+→ future transport layer
+```
+
+And the system must continuously execute:
+
+```text
+DEMAND
+→ PREDICT
+→ VALUE
+→ PLACE
+→ DISCOVER
+→ SCORE
+→ DELIVER
+→ CACHE
+→ REPLICATE
+→ REDISTRIBUTE
+→ MEASURE
+→ OPTIMIZE
+```
+
+The ultimate goal is:
+
+# MAXIMUM MASHAHD PLAYBACK PERFORMANCE
+
+# WITH MINIMUM NECESSARY ORIGIN DEPENDENCE
+
+# AND ZERO MANDATORY RECURRING THIRD-PARTY MEDIA INFRASTRUCTURE
+
+with no dependency on any single:
+
+```text
+provider
+protocol
+server
+peer
+AI service
+storage backend
+```
+
+and with normal HTTP/HLS playback always remaining the ultimate safety net.
