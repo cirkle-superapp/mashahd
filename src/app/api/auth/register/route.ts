@@ -98,6 +98,14 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Send welcome email (best-effort — doesn't block registration).
+  if (email) {
+    try {
+      const { sendWelcomeEmail } = await import("@/lib/email-service");
+      sendWelcomeEmail({ email, username, displayName }).catch(() => {});
+    } catch { /* email service not available */ }
+  }
+
   return NextResponse.json({
     ok: true,
     user: {
