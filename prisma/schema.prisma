@@ -242,11 +242,16 @@ model VideoManifest {
 model MediaProcessingJob {
   id              String   @id @default(cuid())
   videoId         String
-  status          String   // UPLOADING | UPLOADED | QUEUED | PROCESSING | PACKAGING | VALIDATING | READY | FAILED | RETRYING
+  status          String   // UPLOADING | UPLOADED | QUEUED | CLAIMED | PROCESSING | PACKAGING | VALIDATING | READY | FAILED | RETRYABLE_FAILURE | PERMANENT_FAILURE | CANCELLED
   progress        Int      @default(0) // 0-100
   error           String   @default("")
+  errorClass      String   @default("") // transient | permanent | ""
   profile         String   @default("cpu-safe") // cpu-safe | balanced | high-quality
   retryCount      Int      @default(0)
+  maxRetries      Int      @default(3)
+  priority        Int      @default(0) // higher = more urgent
+  claimedBy       String?  // worker identity (hostname + pid)
+  claimedAt       DateTime?
   startedAt       DateTime?
   completedAt     DateTime?
   createdAt       DateTime @default(now())
@@ -256,6 +261,7 @@ model MediaProcessingJob {
 
   @@index([videoId])
   @@index([status])
+  @@index([status, priority])
 }
 
 model Swarm {

@@ -1,7 +1,27 @@
 import { createClient } from "@libsql/client";
 
-const TURSO_URL = "libsql://mashahd-fortleem.aws-us-east-1.turso.io";
-const TURSO_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJnaWQiOiIyMTIyNTIwNy1iNWJmLTRjM2MtOGFiNS0xYmEzNDNlNjU5NmEiLCJpYXQiOjE3ODkxNjE4MTksImtpZCI6IjJTRm4xQWZVUnU1TFF5a0xkc0d3YzV3VldVdlRlcVdhVjg2UXZYUk9DMWMiLCJyaWQiOiJlNzM4OTU1MS0xMTFlLTQ5NWYtYjkxZi0zNmI5M2UyNThhNGUifQ.fygqboSEmsvwsSpP0CpZo9uMAY0sJS8uAYdcoE5bFmvOY0pIPyNB8W3ILQUhXXC12peyvcomvW8ax7NN5RfsBg";
+/**
+ * Push the Mashahd schema to Turso.
+ *
+ * SECURITY: reads TURSO_URL + TURSO_AUTH_TOKEN from environment variables.
+ * Never hardcode credentials in source files. Copy .env.example to .env
+ * and fill in the values.
+ *
+ * Usage:
+ *   bun run scripts/push-turso.ts   (reads from .env automatically)
+ *   TURSO_URL=... TURSO_AUTH_TOKEN=... bun run scripts/push-turso.ts
+ */
+
+const TURSO_URL = process.env.TURSO_URL || "";
+const TURSO_TOKEN = process.env.TURSO_AUTH_TOKEN || "";
+
+if (!TURSO_URL || !TURSO_TOKEN) {
+  console.error("ERROR: TURSO_URL and TURSO_AUTH_TOKEN environment variables are required.");
+  console.error("Copy .env.example to .env and fill in the values, or export them before running:");
+  console.error("  export TURSO_URL=libsql://your-db.turso.io");
+  console.error("  export TURSO_AUTH_TOKEN=your-token-here");
+  process.exit(1);
+}
 
 const client = createClient({ url: TURSO_URL, authToken: TURSO_TOKEN });
 

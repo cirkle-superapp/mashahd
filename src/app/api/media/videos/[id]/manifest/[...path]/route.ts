@@ -68,11 +68,13 @@ export async function GET(
 
   const range = req.headers.get("range");
   const data = await storage.read(rel);
+  // Convert Buffer to Uint8Array for NextResponse BodyInit compatibility.
+  const bodyData = new Uint8Array(data);
   if (range && isSegment) {
     const [startStr, endStr] = range.replace("bytes=", "").split("-");
     const start = parseInt(startStr, 10);
     const end = endStr ? parseInt(endStr, 10) : data.length - 1;
-    const chunk = data.subarray(start, end + 1);
+    const chunk = bodyData.subarray(start, end + 1);
     return new NextResponse(chunk, {
       status: 206,
       headers: {
@@ -86,7 +88,7 @@ export async function GET(
     });
   }
 
-  return new NextResponse(data, {
+  return new NextResponse(bodyData, {
     status: 200,
     headers: {
       "Content-Type": mime,

@@ -67,11 +67,15 @@ export function classifyEconomyState(ctx: PlacementContext): MediaEconomyState {
   else if (heat.heatClass === "HOT") mediaState = "HOT";
   else if (heat.heatClass === "SUPERHOT") mediaState = "SUPERHOT";
 
-  // Origin state (S166)
+  // Origin state (S166). NOTE: this is a stateless computation from the
+  // current load — RECOVERY is a transient state that requires knowing the
+  // previous state. Callers that want stateful transitions should track
+  // the previous state externally and pass it in.
   let originState: OriginState = "NORMAL";
   if (ctx.originLoad > 0.9) originState = "CRITICAL_ORIGIN_PRESSURE";
   else if (ctx.originLoad > 0.75) originState = "ORIGIN_PRESSURE";
-  else if (ctx.originLoad < 0.5 && originState !== "NORMAL") originState = "RECOVERY";
+  // When load < 0.5, origin is healthy (NORMAL). A stateful caller can
+  // interpret a transition from PRESSURE → NORMAL as "RECOVERY".
 
   // P2P state (S167)
   let p2pState: P2PState = "NO_PEERS";

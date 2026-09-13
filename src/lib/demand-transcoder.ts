@@ -68,20 +68,49 @@ export function recordDemand(
   if (isFallback) signal.fallbackCount++;
 }
 
+// ── Unique viewer tracking ──
+// Bounded LRU set of viewer IDs per rendition. Each rendition key has its
+// own Set of viewerIds, capped at MAX_VIEWERS_PER_RENDITION. Entries expire
+// after VIEWER_TTL_MS so stale viewers don't count forever.
+const MAX_VIEWERS_PER_RENDITION = 1000;
+const VIEWER_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const viewerSets = new Map<string, Map<string, number>>(); // key → (viewerId → firstSeenTs)
+
 /**
- * Record a unique viewer requesting a rendition.
+ * Record a unique viewer requesting a rendition. Only increments the unique
+ * counter if this viewer hasn't been seen for this rendition in the TTL window.
  */
 export function recordUniqueViewer(
   videoId: string,
   renditionId: RenditionId,
   viewerId: string
 ): void {
-  // In production this would use a set. For the in-memory version, we
-  // just increment uniqueViewers when a new browserId requests.
   recordDemand(videoId, renditionId);
   const key = `${videoId}:${renditionId}`;
   const signal = demandSignals.get(key);
-  if (signal) signal.uniqueViewers++;
+  if (!signal) return;
+
+  // Get or create the viewer set for this rendition.
+  let viewers = viewerSets.get(key);
+  if (!viewers) {
+    viewers = new Map();
+    viewerSets.set(key, viewers);
+  }
+
+  const now = Date.now();
+  // Evict expired entries if the set is getting full.
+  if (viewers.size >= MAX_VIEWERS_PER_RENDITION) {
+    for (const [vid, ts] of viewers) {
+      if (now - ts > VIEWER_TTL_MS) viewers.delete(vid);
+    }
+  }
+
+  // Only count as unique if not already in the set (and not expired).
+  const existing = viewers.get(viewerId);
+  if (existing === undefined || now - existing > VIEWER_TTL_MS) {
+    viewers.set(viewerId, now);
+    signal.uniqueViewers = viewers.size;
+  }
 }
 
 /**

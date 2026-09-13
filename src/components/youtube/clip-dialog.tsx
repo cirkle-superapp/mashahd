@@ -52,7 +52,7 @@ export function ClipDialog({
   onSeek: (t: number) => void;
 }) {
   const bid = useBrowserId();
-  const { avatar, displayName } = useAvatar();
+  const { avatar, name } = useAvatar();
   const qc = useQueryClient();
 
   // Default clip = ±10s around current time, clamped to [0, duration].
@@ -83,7 +83,7 @@ export function ClipDialog({
         body: JSON.stringify({
           videoId,
           creatorId: bid,
-          creatorName: displayName,
+          creatorName: name,
           title: title.trim(),
           startSec: start,
           endSec: end,

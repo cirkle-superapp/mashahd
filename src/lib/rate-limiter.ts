@@ -110,7 +110,7 @@ export async function rateLimit(
         });
         newCount = 1;
       } else {
-        const row = existing.rows[0] as { count: number; windowStart: number };
+        const row = existing.rows[0] as unknown as { count: number; windowStart: number };
         const rowWindow = Number(row.windowStart);
         if (rowWindow !== windowStart) {
           // Window expired — reset.

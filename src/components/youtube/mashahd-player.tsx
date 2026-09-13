@@ -83,6 +83,15 @@ export function MashahdPlayer({
   const sessionIdRef = useRef<string>("");
   const startTimeRef = useRef<number>(0);
 
+  // ── Refs that mirror state for the telemetry interval ──
+  // The interval captures values in its closure, but we want it to read
+  // the LATEST values (not the stale ones from when the interval was
+  // created). These refs are updated alongside their corresponding state.
+  const hudStatsRef = useRef<P2PStats>({ p2pBytes: 0, cdnBytes: 0, peerCount: 0, p2pRatio: 0 });
+  const rebufferCountRef = useRef(0);
+  const startupTimeRef2 = useRef(0);
+  const p2pPolicyRef = useRef<P2PPolicy | null>(null);
+
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
@@ -104,6 +113,12 @@ export function MashahdPlayer({
   const [p2pPolicy, setP2pPolicy] = useState<P2PPolicy | null>(null);
   const [rebufferCount, setRebufferCount] = useState(0);
   const [startupTime, setStartupTime] = useState(0);
+
+  // Sync refs with state so the telemetry interval reads latest values.
+  useEffect(() => { hudStatsRef.current = hudStats; }, [hudStats]);
+  useEffect(() => { rebufferCountRef.current = rebufferCount; }, [rebufferCount]);
+  useEffect(() => { startupTimeRef2.current = startupTime; }, [startupTime]);
+  useEffect(() => { p2pPolicyRef.current = p2pPolicy; }, [p2pPolicy]);
 
   // ── Initialize HLS + P2P on mount / video change ──
   useEffect(() => {
@@ -158,12 +173,20 @@ export function MashahdPlayer({
       // If P2P is enabled and we have a swarmId, attach the P2P engine.
       if (policy.enabled && swarmId) {
         try {
-          engine = new HlsJsP2PEngine({
+          // p2p-media-loader-hlsjs v4 API: HlsJsP2PEngine takes a config
+          // where swarmId is a top-level property. The type definitions
+          // may be incomplete, so we cast to the constructor with the
+          // extended config shape.
+          const P2PEngine = HlsJsP2PEngine as unknown as new (config: {
+            swarmId: string;
+            maxPeerConnections: number;
+          }) => { initHlsJsEvents: (hls: Hls) => void; destroy: () => void; core?: any };
+          engine = new P2PEngine({
             swarmId,
             maxPeerConnections: policy.maxPeers,
-          });
+          }) as any;
           // Wire the P2P engine into hls.js events.
-          engine.initHlsJsEvents(hls);
+          (engine as any).initHlsJsEvents(hls);
           engineRef.current = engine;
 
           // Wire P2P stats for the HUD.
@@ -207,18 +230,21 @@ export function MashahdPlayer({
       if (autoPlay) video.play().catch(() => {});
     }
 
-    // Telemetry — batched every 20s.
+    // Telemetry — batched every 20s. Reads from refs (not state) so the
+    // interval always sends the LATEST values, not stale closure captures.
     telemetryTimer.current = setInterval(() => {
       sendTelemetry({
         sessionId: sessionIdRef.current,
         videoId,
-        cdnBytes: hudStats.cdnBytes,
-        p2pBytes: hudStats.p2pBytes,
-        rebufferCount,
-        startupTime,
-        peerCount: hudStats.peerCount,
-        currentRendition: "",
-        p2pEnabled: policy.enabled,
+        cdnBytes: hudStatsRef.current.cdnBytes,
+        p2pBytes: hudStatsRef.current.p2pBytes,
+        rebufferCount: rebufferCountRef.current,
+        startupTime: startupTimeRef2.current,
+        peerCount: hudStatsRef.current.peerCount,
+        currentRendition: hlsRef.current?.levels?.[hlsRef.current.currentLevel || 0]?.height
+          ? `${hlsRef.current.levels[hlsRef.current.currentLevel || 0].height}p`
+          : "",
+        p2pEnabled: p2pPolicyRef.current?.enabled ?? false,
       });
     }, 20000);
 

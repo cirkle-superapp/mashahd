@@ -40,7 +40,7 @@ async function ensureInit() {
     const db = await openDB();
     const tx = db.transaction("cache-index", "readonly");
     const store = tx.objectStore("cache-index");
-    const all = await store.getAll();
+    const all = await store.getAll() as unknown as any[];
     for (const entry of all) {
       cacheIndex.set(entry.url, entry);
       totalCacheSize += entry.size;

@@ -41,7 +41,7 @@ export function WatchParty({
   videoId: string;
   videoTitle: string;
 }) {
-  const { avatar, displayName } = useAvatar();
+  const { avatar, name } = useAvatar();
   const party = useWatchParty();
   const [mode, setMode] = useState<"menu" | "create" | "join">("menu");
   const [joinCode, setJoinCode] = useState("");
@@ -61,7 +61,7 @@ export function WatchParty({
   }, [party.chat]);
 
   const handleCreate = () => {
-    party.create(videoId, videoTitle, displayName, avatar);
+    party.create(videoId, videoTitle, name, avatar);
     setMode("create");
   };
 
@@ -70,7 +70,7 @@ export function WatchParty({
       toast.error("Party codes are 6 characters");
       return;
     }
-    party.join(joinCode, displayName, avatar);
+    party.join(joinCode, name, avatar);
     setMode("create"); // show the party view
   };
 

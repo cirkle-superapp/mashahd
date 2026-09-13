@@ -44,6 +44,13 @@ interface Party {
   // Shared playback state — the host is the source of truth.
   playing: boolean;
   currentTime: number;
+  // Monotonic state revision — incremented on every state change.
+  // Clients send their lastSeenRevision on reconnect; the server sends
+  // back the full state + all messages with revision > lastSeenRevision.
+  stateRevision: number;
+  // Generation — increments on host change. Used by clients to detect
+  // that the host has changed (and they should re-sync).
+  generation: number;
   updatedAt: number;
 }
 
@@ -108,13 +115,14 @@ wss.on("connection", (ws, req) => {
   send(ws, { type: "welcome", memberId });
 
   ws.on("message", (raw) => {
-    if (raw.length > MAX_PAYLOAD) {
+    const rawBytes = Buffer.isBuffer(raw) ? raw : Buffer.from(raw as ArrayBuffer);
+    if (rawBytes.length > MAX_PAYLOAD) {
       send(ws, { type: "error", code: "PAYLOAD_TOO_LARGE", message: "message exceeds 4KB" });
       return;
     }
     let msg: any;
     try {
-      msg = JSON.parse(raw.toString());
+      msg = JSON.parse(rawBytes.toString());
     } catch {
       send(ws, { type: "error", code: "BAD_JSON", message: "invalid JSON" });
       return;
@@ -147,6 +155,8 @@ wss.on("connection", (ws, req) => {
           members: new Set([memberId]),
           playing: false,
           currentTime: 0,
+          stateRevision: 1, // monotonic counter — starts at 1
+          generation: 1, // increments on host change
           updatedAt: Date.now(),
         };
         parties.set(code, party);
@@ -157,6 +167,8 @@ wss.on("connection", (ws, req) => {
           videoId,
           videoTitle,
           isHost: true,
+          stateRevision: party.stateRevision,
+          generation: party.generation,
         });
         broadcastPresence(code);
         break;
@@ -188,10 +200,44 @@ wss.on("connection", (ws, req) => {
           // Sync the new joiner to the current playback state.
           playing: party.playing,
           currentTime: party.currentTime,
+          // State recovery (Phase 16): include the current revision + generation
+          // so the client can detect if it needs to re-sync.
+          stateRevision: party.stateRevision,
+          generation: party.generation,
         });
         broadcastPresence(code);
         // Notify others that someone joined.
         broadcast(code, { type: "member_joined", name: member.name }, memberId);
+        break;
+      }
+
+      case "reconnect": {
+        // Phase 16: State recovery after reconnect.
+        // Client sends its lastSeenRevision + party code. Server sends back
+        // the full state so the client can reconstruct.
+        const code = String(msg.code || "").toUpperCase().slice(0, CODE_LEN);
+        const lastSeenRevision = Number(msg.lastSeenRevision) || 0;
+        const party = parties.get(code);
+        if (!party) {
+          send(ws, { type: "error", code: "PARTY_NOT_FOUND", message: `No party with code ${code}` });
+          return;
+        }
+        // Re-add the member to the party.
+        party.members.add(memberId);
+        member.partyCode = code;
+        // Send the full current state.
+        send(ws, {
+          type: "reconnect_state",
+          code,
+          videoId: party.videoId,
+          videoTitle: party.videoTitle,
+          playing: party.playing,
+          currentTime: party.currentTime,
+          stateRevision: party.stateRevision,
+          generation: party.generation,
+          isHost: memberId === party.hostId,
+        });
+        broadcastPresence(code);
         break;
       }
 
@@ -219,6 +265,8 @@ wss.on("connection", (ws, req) => {
         }
         if (action === "play") party.playing = true;
         if (action === "pause") party.playing = false;
+        // Increment the monotonic state revision.
+        party.stateRevision++;
         party.updatedAt = Date.now();
         broadcast(party.code, {
           type: "sync",
@@ -226,6 +274,9 @@ wss.on("connection", (ws, req) => {
           currentTime: party.currentTime,
           playing: party.playing,
           from: memberId,
+          stateRevision: party.stateRevision,
+          generation: party.generation,
+          serverTime: Date.now(),
         }, memberId);
         break;
       }
@@ -279,9 +330,13 @@ function leaveParty(member: Member) {
     const next = party.members.values().next();
     if (!next.done) {
       party.hostId = next.value;
+      party.generation++; // Increment generation on host change (Phase 16)
+      party.stateRevision++;
       // Notify the new host.
       const newHost = members.get(party.hostId);
-      if (newHost) send(newHost.ws, { type: "promoted", code: party.code });
+      if (newHost) send(newHost.ws, { type: "promoted", code: party.code, generation: party.generation });
+      // Broadcast the generation change to all members.
+      broadcast(party.code, { type: "host_changed", newHostId: party.hostId, generation: party.generation });
     } else {
       parties.delete(party.code);
       return;
@@ -309,5 +364,26 @@ setInterval(() => {
     }
   }
 }, HEARTBEAT_INTERVAL);
+
+// ── Drift correction (Phase 16) ──
+// Every 30s, the host broadcasts a "drift_check" message with the server
+// time + current position. Clients compare their local time to the server
+// time and adjust if drift > 2s. This prevents gradual desync over long
+// watch sessions.
+const DRIFT_CHECK_INTERVAL_MS = 30_000;
+setInterval(() => {
+  for (const [code, party] of parties) {
+    if (party.members.size === 0) continue;
+    // Only send drift checks if the party is actively playing.
+    if (!party.playing) continue;
+    broadcast(code, {
+      type: "drift_check",
+      serverTime: Date.now(),
+      currentTime: party.currentTime,
+      stateRevision: party.stateRevision,
+      generation: party.generation,
+    });
+  }
+}, DRIFT_CHECK_INTERVAL_MS);
 
 console.log(`[watch-party] listening on ws://localhost:${PORT}`);

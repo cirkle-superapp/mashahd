@@ -70,7 +70,7 @@ export function buildDecisionRecord(
     let rejectReason: string | undefined;
     if (isRejected) {
       if (s.score < 0.3) rejectReason = "low score";
-      else if (s.effectiveValue < selected?.effectiveValue) rejectReason = "lower effective value than primary";
+      else if (selected?.effectiveValue !== undefined && s.effectiveValue < selected.effectiveValue) rejectReason = "lower effective value than primary";
       else rejectReason = "not selected by scheduler";
     }
     return {

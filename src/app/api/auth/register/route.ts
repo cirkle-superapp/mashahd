@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   if (isEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) {
     return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
   }
-  if (!isEmail && phone.length < 7) {
+  if (!isEmail && phone && phone.length < 7) {
     return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
   }
 

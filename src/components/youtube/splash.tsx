@@ -72,7 +72,7 @@ export function Splash() {
             transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
             className="relative"
           >
-            <MashahdMark size={140} animated full />
+            <MashahdMark size={140} animated />
           </motion.div>
 
           {/* Wordmark — fades up 0.6s after mark */}

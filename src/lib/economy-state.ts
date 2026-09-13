@@ -78,15 +78,16 @@ export function getAdaptiveRecommendations(metrics: SystemMetrics): string[] {
  * Classify the full economy state from system metrics.
  */
 export function classifyEconomy(metrics: SystemMetrics): EconomySnapshot {
-  // Origin state (S166)
+  // Origin state (S166). Stateless computation — RECOVERY is a transient
+  // state that requires knowing the previous state. A stateful caller can
+  // detect RECOVERY by comparing the previous snapshot's origin state.
   let origin: OriginState = "NORMAL";
   if (metrics.cpuLoad > 0.9 || metrics.originRequestRate > 200) {
     origin = "CRITICAL_ORIGIN_PRESSURE";
   } else if (metrics.cpuLoad > 0.75 || metrics.originRequestRate > 100) {
     origin = "ORIGIN_PRESSURE";
-  } else if (origin !== "NORMAL" && metrics.cpuLoad < 0.5) {
-    origin = "RECOVERY";
   }
+  // When cpuLoad < 0.5, origin is NORMAL (recovered).
 
   // P2P state (S167)
   let p2p: P2PState = "NO_PEERS";

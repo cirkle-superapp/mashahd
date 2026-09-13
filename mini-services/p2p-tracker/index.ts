@@ -24,12 +24,65 @@
  */
 
 import { WebSocketServer, WebSocket } from "ws";
+import { createClient, type Client } from "@libsql/client";
 
 const PORT = 3003;
 const HEARTBEAT_INTERVAL = 20000; // 20s
 const PEER_TIMEOUT = 60000; // 60s without heartbeat → expire
 const MAX_PAYLOAD = 16384; // 16 KB — signaling messages are small
 const MAX_PEERS_PER_SWARM = 50;
+
+// ── Turso client for swarm authorization (S89, S91) ──
+// Verifies that a swarmId actually exists in the DB before allowing a peer
+// to join. Prevents swarm poisoning.
+let tursoClient: Client | null = null;
+const tursoUrl = process.env.TURSO_URL;
+const tursoToken = process.env.TURSO_AUTH_TOKEN;
+if (tursoUrl && tursoToken) {
+  try {
+    const httpsUrl = tursoUrl.startsWith("libsql://") ? tursoUrl.replace("libsql://", "https://") : tursoUrl;
+    tursoClient = createClient({ url: httpsUrl, authToken: tursoToken });
+    console.log("[p2p-tracker] Swarm authorization enabled (Turso)");
+  } catch (e) {
+    console.warn("[p2p-tracker] Turso init failed, swarm authorization disabled:", e);
+  }
+}
+
+// In-memory cache of valid swarmIds (60s TTL) to avoid a DB query per join.
+const swarmCache = new Map<string, number>(); // swarmId → expiresAt
+const SWARM_CACHE_TTL_MS = 60_000;
+
+async function isValidSwarm(swarmId: string): Promise<boolean> {
+  // Check cache first.
+  const cached = swarmCache.get(swarmId);
+  if (cached !== undefined) {
+    if (cached > Date.now()) return true;
+    swarmCache.delete(swarmId);
+  }
+
+  // Query Turso if available.
+  if (!tursoClient) {
+    // No Turso → allow all (dev mode). In production, this should fail closed.
+    return true;
+  }
+
+  try {
+    const result = await tursoClient.execute({
+      sql: "SELECT id FROM Swarm WHERE swarmId = ? LIMIT 1",
+      args: [swarmId],
+    });
+    const valid = result.rows.length > 0;
+    if (valid) {
+      swarmCache.set(swarmId, Date.now() + SWARM_CACHE_TTL_MS);
+    }
+    return valid;
+  } catch (e) {
+    console.warn("[p2p-tracker] Swarm validation error:", e);
+    // On DB error, fail open (don't block playback) — the origin remains
+    // the authoritative source, so a poisoned swarm can't corrupt media.
+    return true;
+  }
+}
 
 interface Peer {
   ws: WebSocket;
@@ -42,9 +95,26 @@ interface Peer {
 const peers = new Map<string, Peer>();
 const swarms = new Map<string, Set<string>>(); // swarmId → Set<peerId>
 
+// Allowed origins for WebSocket connections. Comma-separated env var.
+// Defaults to localhost for dev. In production, set to the app's domain.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 const wss = new WebSocketServer({ port: PORT });
 
 wss.on("connection", (ws, req) => {
+  // ── Origin validation (S85-S86, S143) ──
+  // Reject connections from disallowed origins. This prevents cross-site
+  // WebSocket hijacking (CSWSH) attacks.
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.length > 0 && !ALLOWED_ORIGINS.includes(origin)) {
+    console.warn(`[p2p-tracker] Rejected connection from origin: ${origin}`);
+    ws.close(1008, "Origin not allowed");
+    return;
+  }
+
   const peerId = `p_${Math.random().toString(36).slice(2, 12)}`;
   const peer: Peer = { ws, peerId, swarmId: null, lastHeartbeat: Date.now(), isAlive: true };
   peers.set(peerId, peer);
@@ -52,14 +122,15 @@ wss.on("connection", (ws, req) => {
   // Acknowledge the new peer with its ID.
   send(ws, { type: "welcome", peerId });
 
-  ws.on("message", (raw) => {
-    if (raw.length > MAX_PAYLOAD) {
+  ws.on("message", async (raw) => {
+    const rawBytes = Buffer.isBuffer(raw) ? raw : Buffer.from(raw as ArrayBuffer);
+    if (rawBytes.length > MAX_PAYLOAD) {
       send(ws, { type: "error", code: "PAYLOAD_TOO_LARGE", message: "message exceeds 16KB" });
       return;
     }
     let msg: any;
     try {
-      msg = JSON.parse(raw.toString());
+      msg = JSON.parse(rawBytes.toString());
     } catch {
       send(ws, { type: "error", code: "MALFORMED", message: "invalid JSON" });
       return;
@@ -76,6 +147,14 @@ wss.on("connection", (ws, req) => {
         const swarmId = String(msg.swarmId || "");
         if (!swarmId) {
           send(ws, { type: "error", code: "NO_SWARM", message: "swarmId required" });
+          return;
+        }
+        // ── Swarm authorization (S89, S91) ──
+        // Verify the swarmId exists in the DB before allowing the join.
+        // Prevents swarm poisoning where a peer claims a different swarm.
+        const valid = await isValidSwarm(swarmId);
+        if (!valid) {
+          send(ws, { type: "error", code: "INVALID_SWARM", message: "swarmId not found" });
           return;
         }
         // Rate limit: max 50 peers per swarm.

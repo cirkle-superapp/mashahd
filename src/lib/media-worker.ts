@@ -41,6 +41,19 @@ const PROFILES: Record<EncodingProfile, { crf: number; preset: string; maxConcur
   "high-quality": { crf: 20, preset: "slow", maxConcurrent: 1 },
 };
 
+/** Parse an ffprobe frame rate string like "30/1" or "29.97" safely (no eval). */
+function parseFrameRate(rate: string | undefined): number {
+  if (!rate) return 30;
+  const parts = rate.split("/");
+  if (parts.length === 2) {
+    const num = parseFloat(parts[0]);
+    const den = parseFloat(parts[1]) || 1;
+    return den > 0 ? num / den : 30;
+  }
+  const n = parseFloat(rate);
+  return isNaN(n) ? 30 : n;
+}
+
 /** Detect ffmpeg + ffprobe on startup. Fail clearly if unavailable. */
 export function detectFFmpeg(): { ffmpeg: string; ffprobe: string } {
   const ff = process.env.FFMPEG_PATH || "ffmpeg";
@@ -62,7 +75,7 @@ export function probe(filePath: string): Promise<ProbeResult> {
         height: v.height || 0,
         codec: v.codec_name || "unknown",
         audioCodec: a?.codec_name || "none",
-        frameRate: eval(`(${v.r_frame_rate || "30/1"})`) || 30,
+        frameRate: parseFrameRate(v.r_frame_rate),
         bitrate: Math.round((data.format.bit_rate || 0) / 1000),
         fileSize: data.format.size || 0,
       });
