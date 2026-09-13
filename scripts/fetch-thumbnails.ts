@@ -1,9 +1,11 @@
 /**
- * One-off script: fetch real video thumbnails via the z-ai-web-dev-sdk
- * image-search service and write clean JSON to /home/z/my-project/tmp/img-search/all.json
+ * One-off script: fetch real video thumbnails via the z-ai image-search service.
+ * ALREADY RUN — thumbnails are in /home/z/my-project/tmp/img-search/all.json.
+ * Kept for reference only. z-ai has been removed from the project.
  *
- * Run with: bun run scripts/fetch-thumbnails.ts
+ * Run with: bun run scripts/fetch-thumbnails.ts (will fail — z-ai removed)
  */
+// @ts-expect-error - z-ai-web-dev-sdk has been removed from the project
 import ZAI from "z-ai-web-dev-sdk";
 import { writeFileSync, mkdirSync } from "node:fs";
 
