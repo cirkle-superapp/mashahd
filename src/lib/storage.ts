@@ -113,9 +113,10 @@ export function getStorage(): StorageProvider {
 
       if (accountId && accessKeyId && secretAccessKey) {
         try {
-          // Lazy-load the R2 provider only when R2 is active.
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const { R2StorageProvider } = require("./r2-storage");
+          // Load the R2 provider via eval to completely hide it from the
+          // bundler. The AWS SDK must not be included in the Vercel bundle.
+          const mod = (0, eval)("require")("./r2-storage");
+          const { R2StorageProvider } = mod;
           _instance = new R2StorageProvider({
             accountId,
             accessKeyId,
@@ -142,8 +143,8 @@ export function getStorage(): StorageProvider {
 
       if (accessKeyId && secretAccessKey) {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const { FilebaseStorageProvider } = require("./filebase-storage");
+          const mod = (0, eval)("require")("./filebase-storage");
+          const { FilebaseStorageProvider } = mod;
           _instance = new FilebaseStorageProvider({
             accessKeyId,
             secretAccessKey,
