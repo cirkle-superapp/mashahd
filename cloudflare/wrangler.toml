@@ -1,0 +1,17 @@
+name = "mashahd-edge"
+main = "worker.js"
+compatibility_date = "2024-09-01"
+
+# Free tier: 100K requests/day, 10ms CPU/invocation
+# This worker is stateless — it only caches + proxies.
+
+[vars]
+ORIGIN_URL = "https://mashahd.vercel.app"
+
+# To use a self-hosted origin instead:
+# ORIGIN_URL = "https://your-domain.com"
+
+# Optional: R2 bucket binding (when R2 is enabled)
+# [[r2_buckets]]
+# binding = "MEDIA_BUCKET"
+# bucket_name = "mashahd-media"

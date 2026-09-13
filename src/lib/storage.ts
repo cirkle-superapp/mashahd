@@ -101,15 +101,49 @@ let _instance: StorageProvider | null = null;
 export function getStorage(): StorageProvider {
   if (!_instance) {
     const provider = process.env.STORAGE_PROVIDER || "local";
-    if (provider === "s3") {
-      // S3-compatible storage would be configured here via env vars.
-      // For now we fall back to local so the app never requires a cloud account.
+
+    if (provider === "r2") {
+      // Cloudflare R2 (S3-compatible, zero egress fees).
+      // Requires R2 to be enabled on the Cloudflare dashboard.
+      const accountId = process.env.R2_ACCOUNT_ID;
+      const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+      const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+      const bucket = process.env.R2_BUCKET || "mashahd-media";
+      const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL;
+
+      if (accountId && accessKeyId && secretAccessKey) {
+        try {
+          // Lazy-load the R2 provider only when R2 is active.
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { R2StorageProvider } = require("./r2-storage");
+          _instance = new R2StorageProvider({
+            accountId,
+            accessKeyId,
+            secretAccessKey,
+            bucket,
+            publicBaseUrl,
+          });
+          console.log(`[storage] Using Cloudflare R2: bucket=${bucket}`);
+        } catch (e) {
+          console.warn("[storage] R2 init failed, falling back to local:", e);
+          _instance = new LocalFilesystemStorage();
+        }
+      } else {
+        console.warn("[storage] R2 credentials not set, falling back to local");
+        _instance = new LocalFilesystemStorage();
+      }
+    } else if (provider === "s3") {
+      // S3-compatible storage (AWS S3, Backblaze B2, MinIO, etc.)
+      // Falls back to local for now — implement when needed.
       _instance = new LocalFilesystemStorage();
     } else {
+      // Local filesystem (default, zero-cost, self-hosted).
       _instance = new LocalFilesystemStorage();
     }
   }
-  return _instance;
+  // Guarantee non-null return (all code paths above set _instance,
+  // but TypeScript can't prove it through the nested conditionals).
+  return _instance ?? new LocalFilesystemStorage();
 }
 
 /**
