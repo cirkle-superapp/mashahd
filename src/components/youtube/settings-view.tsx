@@ -112,15 +112,34 @@ export function SettingsView({ initialTab = "general" }: { initialTab?: string }
                 <Switch />
               </SettingRow>
               <SettingRow title="Clear watch history" desc="Remove every video from your watch history.">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full"
-                  onClick={() => toast.success("Watch history cleared")}
-                >
+                <Button variant="outline" size="sm" className="rounded-full" onClick={() => toast.success("Watch history cleared")}>
                   Clear
                 </Button>
               </SettingRow>
+
+              {/* §47: User P2P Control — transparent opt-out */}
+              <div className="pt-4 border-t border-border">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-[hsl(var(--gold))]" />
+                  Peer-to-Peer Delivery
+                </h3>
+                <SettingRow
+                  title="Help improve delivery"
+                  desc="When on Wi-Fi, Mashahd may share unused bandwidth to help other viewers load videos faster. This never happens on cellular networks and never slows your device."
+                >
+                  <Switch defaultChecked onChange={() => toast.info("P2P setting updated — changes apply on next video")} />
+                </SettingRow>
+                <SettingRow
+                  title="Data saver mode"
+                  desc="Disable all P2P and background media loading. Videos will load through standard HTTP only."
+                >
+                  <Switch onChange={() => toast.info("Data saver updated — changes apply on next video")} />
+                </SettingRow>
+                <p className="text-xs text-muted-foreground mt-2 px-1">
+                  P2P only activates on Wi-Fi/Ethernet with sufficient battery. It never uses your data plan.
+                  Your IP address is never shared with other peers — only encrypted media chunks.
+                </p>
+              </div>
             </div>
           )}
 
