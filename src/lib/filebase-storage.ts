@@ -32,13 +32,14 @@ export class FilebaseStorageProvider implements StorageProvider {
   }) {
     this.bucket = opts.bucket;
     this.client = new S3Client({
-      region: "us-east-1",
-      endpoint: "https://s3.filebase.com",
+      region: "auto", // Filebase requires "auto" (us-east-1 still works but auto is recommended)
+      endpoint: "https://s3.filebase.io", // NOTE: .io NOT .com
       credentials: {
         accessKeyId: opts.accessKeyId,
         secretAccessKey: opts.secretAccessKey,
       },
       forcePathStyle: true,
+      // Filebase requires AWS Signature v4 (the default for @aws-sdk/client-s3)
     });
     // Filebase provides IPFS gateways: https://ipfs.filebase.io/ipfs/{CID}
     // But CIDs aren't known until after upload, so we don't set httpBase.
