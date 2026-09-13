@@ -7,5 +7,15 @@
   "regions": ["iad1"],
   "env": {
     "NEXT_TELEMETRY_DISABLED": "1"
+  },
+  "functions": {
+    "src/app/api/media/presign-upload/route.ts": {
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "src/app/api/media/upload-complete/route.ts": {
+      "maxDuration": 60,
+      "memory": 2048
+    }
   }
 }
