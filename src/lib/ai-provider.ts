@@ -60,6 +60,13 @@ export async function aiChat(opts: AIChatOptions): Promise<AIChatResult> {
     () => tryHF(opts),
   ];
 
+  // Track AI requests for observability (§180).
+  // Use a dynamic import to avoid circular dependency with the metrics store.
+  try {
+    const { incrementMetric } = await import("./metrics-store");
+    incrementMetric("aiRequests");
+  } catch { /* metrics store not available */ }
+
   for (const provider of providers) {
     try {
       const result = await provider();
@@ -71,6 +78,12 @@ export async function aiChat(opts: AIChatOptions): Promise<AIChatResult> {
       console.warn(`[ai-provider] ${e}`);
     }
   }
+
+  // All providers failed — track the fallback.
+  try {
+    const { incrementMetric } = await import("./metrics-store");
+    incrementMetric("aiFallbacks");
+  } catch { /* metrics store not available */ }
 
   // All providers failed — return empty string (caller provides deterministic fallback).
   return { text: "", source: "fallback" };
