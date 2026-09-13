@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import ZAI from "z-ai-web-dev-sdk";
+import { aiChat } from "@/lib/ai-provider";
 import { db } from "@/lib/db";
 
 /**
@@ -8,8 +8,9 @@ import { db } from "@/lib/db";
  *
  * AI Recap (adapted from CIRKLE's ai-recap overlay). Generates a concise
  * "recap" of a video — a 2-sentence TL;DR plus 3-4 key-takeaway bullets —
- * using the z-ai LLM. Falls back to a deterministic summary if the SDK is
- * unavailable.
+ * using the multi-provider LLM abstraction (z-ai → Groq → Gemini → HF →
+ * deterministic fallback). Falls back to a deterministic summary if every
+ * provider fails or the response isn't valid JSON.
  */
 export async function POST(req: NextRequest) {
   const { videoId } = await req.json().catch(() => ({} as { videoId?: string }));
@@ -44,30 +45,33 @@ Respond in EXACTLY this JSON shape (no markdown fences, no extra text):
   "vibe": "one-word mood label, e.g. Reflective, Energetic, Cozy, Curious"
 }`;
 
-  try {
-    const zai = await ZAI.create();
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: "assistant", content: "You produce tight, accurate video recaps in JSON." },
-        { role: "user", content: prompt },
-      ],
-      thinking: { type: "disabled" },
-    });
-    const content = completion.choices[0]?.message?.content?.trim() || "";
-    // Try to parse JSON; tolerate code fences.
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    const recap = jsonMatch
-      ? JSON.parse(jsonMatch[0])
-      : fallbackRecap(video.title, channelName, video.category);
-    return NextResponse.json({ ok: true, recap, source: "ai" });
-  } catch (e) {
-    console.error("[ai/summarize] LLM failed, using fallback:", e);
-    return NextResponse.json({
-      ok: true,
-      recap: fallbackRecap(video.title, channelName, video.category),
-      source: "fallback",
-    });
+  // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
+  // to the legacy "ai"|"fallback" values the client already checks against.
+  const { text, source: aiSource } = await aiChat({
+    system: "You produce tight, accurate video recaps in JSON.",
+    user: prompt,
+    maxTokens: 800,
+    temperature: 0.7,
+  });
+
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  let recap;
+  let source: "ai" | "fallback";
+  if (jsonMatch) {
+    try {
+      recap = JSON.parse(jsonMatch[0]);
+      source = aiSource === "fallback" ? "fallback" : "ai";
+    } catch (e) {
+      console.error("[ai/summarize] JSON parse failed, using fallback:", e);
+      recap = fallbackRecap(video.title, channelName, video.category);
+      source = "fallback";
+    }
+  } else {
+    console.error("[ai/summarize] no JSON in LLM response, using fallback");
+    recap = fallbackRecap(video.title, channelName, video.category);
+    source = "fallback";
   }
+  return NextResponse.json({ ok: true, recap, source });
 }
 
 function fallbackRecap(title: string, channel: string, category: string) {

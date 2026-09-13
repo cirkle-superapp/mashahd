@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import ZAI from "z-ai-web-dev-sdk";
+import { aiChat } from "@/lib/ai-provider";
 import { db } from "@/lib/db";
 
 /**
@@ -43,23 +43,27 @@ Viewer question: ${question}
 
 Answer in 2-4 sentences, conversational, no markdown headers.`;
 
-  try {
-    const zai = await ZAI.create();
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: "assistant", content: "You are the Mashahd Oracle — concise, helpful, honest." },
-        { role: "user", content: prompt },
-      ],
-      thinking: { type: "disabled" },
-    });
-    const answer = completion.choices[0]?.message?.content?.trim() || "";
-    return NextResponse.json({ ok: true, answer, source: "ai" });
-  } catch (e) {
-    console.error("[ai/oracle] LLM failed:", e);
+  // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
+  // to the legacy "ai"|"fallback" values the client already checks against.
+  const { text, source: aiSource } = await aiChat({
+    system: "You are the Mashahd Oracle — concise, helpful, honest.",
+    user: prompt,
+    maxTokens: 400,
+    temperature: 0.7,
+  });
+
+  const answer = text.trim();
+  if (!answer) {
+    console.error("[ai/oracle] LLM returned empty answer, using fallback");
     return NextResponse.json({
       ok: true,
       answer: `Great question. Based on "${video.title}", I'd suggest watching the full video — the answer usually unfolds in the second half. (The Oracle is offline right now, so this is a fallback reply.)`,
       source: "fallback",
     });
   }
+  return NextResponse.json({
+    ok: true,
+    answer,
+    source: aiSource === "fallback" ? "fallback" : "ai",
+  });
 }

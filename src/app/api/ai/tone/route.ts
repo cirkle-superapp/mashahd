@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import ZAI from "z-ai-web-dev-sdk";
+import { aiChat } from "@/lib/ai-provider";
 
 /**
  * POST /api/ai/tone
@@ -23,20 +23,23 @@ export async function POST(req: NextRequest) {
 
 Original: ${trimmed}`;
 
-  try {
-    const zai = await ZAI.create();
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: "assistant", content: "You rewrite short comments in a given tone. You emit only the rewritten text." },
-        { role: "user", content: prompt },
-      ],
-      thinking: { type: "disabled" },
-    });
-    const rewritten = completion.choices[0]?.message?.content?.trim().replace(/^"|"$/g, "") || "";
-    if (!rewritten) throw new Error("empty rewrite");
-    return NextResponse.json({ ok: true, text: rewritten, source: "ai" });
-  } catch (e) {
-    console.error("[ai/tone] LLM failed:", e);
+  // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
+  // to the legacy "ai"|"fallback" values the client already checks against.
+  const { text: raw, source: aiSource } = await aiChat({
+    system: "You rewrite short comments in a given tone. You emit only the rewritten text.",
+    user: prompt,
+    maxTokens: 200,
+    temperature: 0.7,
+  });
+
+  const rewritten = raw.trim().replace(/^"|"$/g, "");
+  if (!rewritten) {
+    console.error("[ai/tone] LLM returned empty rewrite, using original");
     return NextResponse.json({ ok: true, text: trimmed, source: "fallback" });
   }
+  return NextResponse.json({
+    ok: true,
+    text: rewritten,
+    source: aiSource === "fallback" ? "fallback" : "ai",
+  });
 }

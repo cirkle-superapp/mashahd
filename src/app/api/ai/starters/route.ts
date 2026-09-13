@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import ZAI from "z-ai-web-dev-sdk";
+import { aiChat } from "@/lib/ai-provider";
 import { db } from "@/lib/db";
 
 /**
@@ -38,31 +38,34 @@ Generate exactly 4 short comment-style conversation starters (each <= 120 chars)
 
 Respond with EXACTLY 4 lines, nothing else.`;
 
-  try {
-    const zai = await ZAI.create();
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: "assistant", content: "You emit exactly 4 short lines, no preamble, no numbering." },
-        { role: "user", content: prompt },
-      ],
-      thinking: { type: "disabled" },
-    });
-    const content = completion.choices[0]?.message?.content?.trim() || "";
-    const starters = content
-      .split("\n")
-      .map((s) => s.replace(/^\d+[\).\s-]*/, "").trim().replace(/^"|"$/g, ""))
-      .filter((s) => s.length > 0 && s.length <= 200)
-      .slice(0, 4);
-    if (starters.length < 3) throw new Error("too few starters");
-    return NextResponse.json({ ok: true, starters, source: "ai" });
-  } catch (e) {
-    console.error("[ai/starters] LLM failed:", e);
+  // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
+  // to the legacy "ai"|"fallback" values the client already checks against.
+  const { text, source: aiSource } = await aiChat({
+    system: "You emit exactly 4 short lines, no preamble, no numbering.",
+    user: prompt,
+    maxTokens: 300,
+    temperature: 0.8,
+  });
+
+  const starters = text
+    .split("\n")
+    .map((s) => s.replace(/^\d+[\).\s-]*/, "").trim().replace(/^"|"$/g, ""))
+    .filter((s) => s.length > 0 && s.length <= 200)
+    .slice(0, 4);
+
+  if (starters.length < 3) {
+    console.error("[ai/starters] LLM returned too few starters, using fallback");
     return NextResponse.json({
       ok: true,
       starters: fallbackStarters(video.title, video.category),
       source: "fallback",
     });
   }
+  return NextResponse.json({
+    ok: true,
+    starters,
+    source: aiSource === "fallback" ? "fallback" : "ai",
+  });
 }
 
 function fallbackStarters(title: string, category: string): string[] {

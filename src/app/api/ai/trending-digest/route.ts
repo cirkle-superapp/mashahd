@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import ZAI from "z-ai-web-dev-sdk";
+import { aiChat } from "@/lib/ai-provider";
 import { db } from "@/lib/db";
 
 /**
@@ -61,26 +61,25 @@ ${lines.join("\n")}
 
 Respond with the digest text only — no markdown, no quotes, no preamble.`;
 
+  // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
+  // to the legacy "ai"|"fallback" values the client already checks against.
+  const { text, source: aiSource } = await aiChat({
+    system: "You write short, punchy editorial digests for a video app.",
+    user: prompt,
+    maxTokens: 300,
+    temperature: 0.7,
+  });
+
   let digest: string;
-  let source: "ai" | "fallback" = "ai";
-  try {
-    const zai = await ZAI.create();
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: "assistant", content: "You write short, punchy editorial digests for a video app." },
-        { role: "user", content: prompt },
-      ],
-      thinking: { type: "disabled" },
-    });
-    digest = completion.choices[0]?.message?.content?.trim() || fallbackDigest(videos);
-    if (!digest || digest.length < 20) {
-      digest = fallbackDigest(videos);
-      source = "fallback";
-    }
-  } catch (e) {
-    console.error("[ai/trending-digest] LLM failed, using fallback:", e);
+  let source: "ai" | "fallback";
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.length < 20) {
+    console.error("[ai/trending-digest] LLM returned empty/short digest, using fallback");
     digest = fallbackDigest(videos);
     source = "fallback";
+  } else {
+    digest = trimmed;
+    source = aiSource === "fallback" ? "fallback" : "ai";
   }
 
   _cache = {

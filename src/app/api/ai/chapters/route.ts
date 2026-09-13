@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import ZAI from "z-ai-web-dev-sdk";
+import { aiChat } from "@/lib/ai-provider";
 import { db } from "@/lib/db";
 
 /**
@@ -9,7 +9,8 @@ import { db } from "@/lib/db";
  * Smart Chapters (adapted from CIRKLE's smart-chapters overlay). Generates
  * 4-7 chapter segments with timestamps that the player can seek to. The LLM
  * is asked for JSON; we validate the shape and clamp timestamps to the
- * video duration. Falls back to evenly-spaced chapters if the SDK fails.
+ * video duration. Falls back to evenly-spaced chapters if the SDK fails or
+ * the response isn't valid JSON.
  */
 export async function POST(req: NextRequest) {
   const { videoId } = await req.json().catch(() => ({} as { videoId?: string }));
@@ -52,40 +53,51 @@ Rules:
 - Chapters must be in ascending order by seconds.
 - Titles <= 40 chars. Summaries <= 100 chars.`;
 
-  try {
-    const zai = await ZAI.create();
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: "assistant", content: "You emit valid JSON only — no markdown fences, no prose." },
-        { role: "user", content: prompt },
-      ],
-      thinking: { type: "disabled" },
-    });
-    const content = completion.choices[0]?.message?.content?.trim() || "";
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("no JSON in response");
-    const parsed = JSON.parse(jsonMatch[0]) as { chapters?: Array<Record<string, unknown>> };
-    const chapters = (parsed.chapters || [])
-      .map((c) => ({
-        title: String(c.title || "Chapter").slice(0, 60),
-        seconds: Math.max(0, Math.min(video.durationSec - 5, Number(c.seconds) || 0)),
-        mood: String(c.mood || "—").slice(0, 24),
-        summary: String(c.summary || "").slice(0, 140),
-      }))
-      .sort((a, b) => a.seconds - b.seconds)
-      .slice(0, 7);
-    // Ensure the first chapter starts at 0
-    if (chapters.length && chapters[0].seconds !== 0) chapters[0].seconds = 0;
-    if (chapters.length < 3) throw new Error("too few chapters");
-    return NextResponse.json({ ok: true, chapters, source: "ai" });
-  } catch (e) {
-    console.error("[ai/chapters] LLM failed, using fallback:", e);
-    return NextResponse.json({
-      ok: true,
-      chapters: fallbackChapters(video.title, video.durationSec),
-      source: "fallback",
-    });
+  // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
+  // to the legacy "ai"|"fallback" values the client already checks against.
+  const { text, source: aiSource } = await aiChat({
+    system: "You emit valid JSON only — no markdown fences, no prose.",
+    user: prompt,
+    maxTokens: 900,
+    temperature: 0.7,
+  });
+
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  let chapters: ReturnType<typeof fallbackChapters> | null = null;
+  let source: "ai" | "fallback" = aiSource === "fallback" ? "fallback" : "ai";
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]) as { chapters?: Array<Record<string, unknown>> };
+      const built = (parsed.chapters || [])
+        .map((c) => ({
+          title: String(c.title || "Chapter").slice(0, 60),
+          seconds: Math.max(0, Math.min(video.durationSec - 5, Number(c.seconds) || 0)),
+          mood: String(c.mood || "—").slice(0, 24),
+          summary: String(c.summary || "").slice(0, 140),
+        }))
+        .sort((a, b) => a.seconds - b.seconds)
+        .slice(0, 7);
+      // Ensure the first chapter starts at 0
+      if (built.length && built[0].seconds !== 0) built[0].seconds = 0;
+      if (built.length >= 3) {
+        chapters = built;
+        source = aiSource === "fallback" ? "fallback" : "ai";
+      } else {
+        throw new Error("too few chapters");
+      }
+    } catch (e) {
+      console.error("[ai/chapters] JSON parse/validate failed, using fallback:", e);
+      chapters = null;
+    }
+  } else {
+    console.error("[ai/chapters] no JSON in LLM response, using fallback");
   }
+
+  if (!chapters) {
+    chapters = fallbackChapters(video.title, video.durationSec);
+    source = "fallback";
+  }
+  return NextResponse.json({ ok: true, chapters, source });
 }
 
 function fallbackChapters(title: string, durationSec: number) {

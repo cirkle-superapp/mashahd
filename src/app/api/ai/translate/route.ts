@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import ZAI from "z-ai-web-dev-sdk";
+import { aiChat } from "@/lib/ai-provider";
 
 /**
  * POST /api/ai/translate
  * Body: { texts: string[], target: "en" | "ar" | "fr" | "es" | "zh" }
  *
  * Live Translate (adapted from CIRKLE's live-translate overlay). Translates
- * a batch of comment strings into the target language using the z-ai LLM.
- * Returns translations in the same order as the input. Falls back to the
- * original text on failure so the UI never breaks.
+ * a batch of comment strings into the target language using the multi-provider
+ * LLM abstraction. Uses a single prompt that asks for all translations at once
+ * (preferred over per-item calls for efficiency). Returns translations in the
+ * same order as the input. Falls back to the original text on failure so the
+ * UI never breaks.
  */
 export async function POST(req: NextRequest) {
   const { texts, target } = await req.json().catch(
@@ -38,18 +40,27 @@ Respond as a JSON object with an array "translations" of ${arr.length} strings, 
 Input:
 ${numbered}`;
 
-  try {
-    const zai = await ZAI.create();
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: "assistant", content: "You are a professional translator. You emit valid JSON only." },
-        { role: "user", content: prompt },
-      ],
-      thinking: { type: "disabled" },
+  // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
+  // to the legacy "ai"|"fallback" values the client already checks against.
+  const { text, source: aiSource } = await aiChat({
+    system: "You are a professional translator. You emit valid JSON only.",
+    user: prompt,
+    maxTokens: Math.min(2000, 200 * arr.length + 200),
+    temperature: 0.3,
+  });
+
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    console.error("[ai/translate] no JSON in LLM response, using fallback");
+    return NextResponse.json({
+      ok: true,
+      translations: arr.slice(),
+      source: "fallback",
+      target: lang,
     });
-    const content = completion.choices[0]?.message?.content?.trim() || "";
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("no JSON in response");
+  }
+
+  try {
     const parsed = JSON.parse(jsonMatch[0]) as { translations?: string[] };
     const translations = (parsed.translations || []).map((t) => String(t));
     // Pad/trim to match input length
@@ -57,11 +68,11 @@ ${numbered}`;
     return NextResponse.json({
       ok: true,
       translations: translations.slice(0, arr.length),
-      source: "ai",
+      source: aiSource === "fallback" ? "fallback" : "ai",
       target: lang,
     });
   } catch (e) {
-    console.error("[ai/translate] LLM failed, using fallback:", e);
+    console.error("[ai/translate] JSON parse failed, using fallback:", e);
     return NextResponse.json({
       ok: true,
       translations: arr.slice(),

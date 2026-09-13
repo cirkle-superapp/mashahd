@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import ZAI from "z-ai-web-dev-sdk";
+import { aiChat } from "@/lib/ai-provider";
 import { db } from "@/lib/db";
 
 /**
@@ -91,40 +91,44 @@ Respond in EXACTLY this JSON shape (no markdown fences, no preamble):
 
 The first segment MUST start at 0. The last segment MUST end at or before ${duration}. Segments MUST be in chronological order with no gaps.`;
 
+  // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
+  // to the legacy "ai"|"fallback" values the client already checks against.
+  const { text, source: aiSource } = await aiChat({
+    system: "You generate realistic video transcripts as JSON.",
+    user: prompt,
+    maxTokens: 1500,
+    temperature: 0.7,
+  });
+
   let transcript: TranscriptSegment[];
-  let source: "ai" | "fallback" = "ai";
-  try {
-    const zai = await ZAI.create();
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: "assistant", content: "You generate realistic video transcripts as JSON." },
-        { role: "user", content: prompt },
-      ],
-      thinking: { type: "disabled" },
-    });
-    const content = completion.choices[0]?.message?.content?.trim() || "";
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
+  let source: "ai" | "fallback";
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    console.error("[ai/transcript] no JSON in LLM response, using fallback");
+    transcript = fallbackTranscript(video.title, channelName, video.category, duration);
+    source = "fallback";
+  } else {
+    try {
       const parsed = JSON.parse(jsonMatch[0]);
-      transcript = (parsed.segments || []).map((s: any) => ({
+      const built = (parsed.segments || []).map((s: any) => ({
         start: Math.max(0, Math.floor(Number(s.start) || 0)),
         end: Math.max(0, Math.floor(Number(s.end) || 0)),
         text: String(s.text || "").slice(0, 300),
       }));
       // Validate: must have at least 3 segments, sorted, no gaps.
-      if (transcript.length < 3) throw new Error("too few segments");
-      transcript.sort((a, b) => a.start - b.start);
+      if (built.length < 3) throw new Error("too few segments");
+      built.sort((a, b) => a.start - b.start);
       // Cap the last segment to the duration.
-      if (transcript.length > 0 && transcript[transcript.length - 1].end > duration) {
-        transcript[transcript.length - 1].end = duration;
+      if (built.length > 0 && built[built.length - 1].end > duration) {
+        built[built.length - 1].end = duration;
       }
-    } else {
-      throw new Error("no JSON in response");
+      transcript = built;
+      source = aiSource === "fallback" ? "fallback" : "ai";
+    } catch (e) {
+      console.error("[ai/transcript] JSON parse/validate failed, using fallback:", e);
+      transcript = fallbackTranscript(video.title, channelName, video.category, duration);
+      source = "fallback";
     }
-  } catch (e) {
-    console.error("[ai/transcript] LLM failed, using fallback:", e);
-    transcript = fallbackTranscript(video.title, channelName, video.category, duration);
-    source = "fallback";
   }
 
   _cache.set(videoId, { at: Date.now(), data: transcript });
