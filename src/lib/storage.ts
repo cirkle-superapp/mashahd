@@ -132,6 +132,33 @@ export function getStorage(): StorageProvider {
         console.warn("[storage] R2 credentials not set, falling back to local");
         _instance = new LocalFilesystemStorage();
       }
+    } else if (provider === "filebase") {
+      // Filebase (S3-compatible with IPFS pinning, 5GB free, no payment card).
+      // Requires a bucket to be created via the Filebase dashboard first.
+      const accessKeyId = process.env.FILEBASE_ACCESS_KEY_ID;
+      const secretAccessKey = process.env.FILEBASE_SECRET_ACCESS_KEY;
+      const bucket = process.env.FILEBASE_BUCKET || "mashahd-media";
+      const publicBaseUrl = process.env.FILEBASE_PUBLIC_BASE_URL;
+
+      if (accessKeyId && secretAccessKey) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { FilebaseStorageProvider } = require("./filebase-storage");
+          _instance = new FilebaseStorageProvider({
+            accessKeyId,
+            secretAccessKey,
+            bucket,
+            publicBaseUrl,
+          });
+          console.log(`[storage] Using Filebase: bucket=${bucket}`);
+        } catch (e) {
+          console.warn("[storage] Filebase init failed, falling back to local:", e);
+          _instance = new LocalFilesystemStorage();
+        }
+      } else {
+        console.warn("[storage] Filebase credentials not set, falling back to local");
+        _instance = new LocalFilesystemStorage();
+      }
     } else if (provider === "s3") {
       // S3-compatible storage (AWS S3, Backblaze B2, MinIO, etc.)
       // Falls back to local for now — implement when needed.
