@@ -33,19 +33,32 @@
    └─────┬────┘ └──────────┘ └──────────┘
          │
          ├──→ TURSO (free DB) — control-plane state
-         ├──→ LOCAL STORAGE — media files (originals + HLS)
+         ├──→ FILEBASE (free 5GB, no payment card) — primary media store
+         ├──→ LOCAL STORAGE — temp/compute (originals + HLS during processing)
          └──→ FFMPEG WORKERS — transcode + package
 ```
+
+> **NOTE**: Cloudflare R2 was originally planned as the primary media store,
+> but R2 requires a payment card to enable. **Filebase** is used instead —
+> it's S3-compatible with IPFS pinning, 5GB free, and requires NO payment card.
+> R2 code remains as an optional provider (can be activated if a payment card
+> is added later).
 
 ## Components
 
 | Component | Cost | Payment Card? | Required? |
 |-----------|------|:---:|:---:|
-| Cloudflare Free | $0 | No | Optional |
-| Turso Free | $0 | No | Yes (DB) |
-| Local hardware | $0 (owned) | N/A | Yes (media compute) |
+| Cloudflare Free | $0 | No | Optional (edge cache) |
+| Turso Free | $0 | No | Yes (metadata DB) |
+| **Filebase** | $0 (5GB) | **No** | Yes (primary media store) |
+| Neon Postgres | $0 (0.5GB) | No | Optional (analytics) |
+| Local hardware | $0 (owned) | N/A | Yes (FFmpeg compute) |
 | GitHub Free | $0 | No | Yes (code) |
-| Vercel Free | $0 | No | Optional (portability) |
+| Vercel Free | $0 | No | Yes (web/control plane) |
+| Resend | $0 (3K emails/mo) | No | Optional (email) |
+| Inngest | $0 (25K invocations) | No | Optional (background jobs) |
+| Cloudflare R2 | $0 (10GB) | **Yes** | Optional (not required) |
+| 5 AI providers | $0 | No | Optional (non-critical) |
 
 ## Zero-Cost Limits
 

@@ -9,9 +9,13 @@ implementation.
 | **GitHub** | Source code, CI/CD, version control, releases | No | Yes | Unlimited public repos | No |
 | **Vercel** | Next.js web app, React frontend, control-plane APIs | No (ideally) | Yes | 100GB bandwidth, 100GB-hrs serverless | No |
 | **Turso** | Authoritative metadata/control DB (users, videos, jobs, swarms) | No | Yes | 500 DBs, 9GB, 1B reads/month | No |
-| **Cloudflare R2** | Primary published media store (CMAF segments, manifests, thumbnails) | Yes | Yes | 10GB storage, 1M Class A ops, 10M Class B ops, zero egress | Yes (on file, not charged for free tier) |
+| **Filebase** | **Primary published media store** (CMAF, manifests, thumbnails, IPFS pinning) | **Yes** | **Yes** | 5GB storage, 5GB egress/month | **No** |
 | **Self-hosted node** | FFmpeg transcoding, P2P tracker, trusted seed, optional edge | Optional | Yes | Unlimited (owned hardware) | N/A |
-| **Filebase** | Archive/secondary copy, IPFS pinning, disaster recovery | No | No | 5GB storage, 5GB egress/month | No |
+| **Neon Postgres** | Analytics warehouse (telemetry, heat history, AI usage) | No | No | 0.5GB, unlimited reads | No |
+| **Resend** | Transactional email (welcome, notifications) | No | No | 3K emails/month | No |
+| **Inngest** | Background job queue (transcode, GC, reconciliation) | No | No | 25K invocations/month | No |
+| **Cloudflare R2** | **OPTIONAL** media store (alternative to Filebase, needs payment card) | Optional | No | 10GB storage, zero egress | **Yes** |
+| **Cloudflare Workers** | Edge caching, TLS, DNS | No | No | 100K req/day | No |
 | **WebRTC** | Browser-to-browser media distribution (P2P) | Yes | No | N/A (browser-native) | N/A |
 | **WebTransport** | Browser↔self-hosted-edge transport (optional) | Optional | No | N/A (self-hosted) | N/A |
 | **MoQ** | Future media transport (experimental) | No initially | No | N/A | N/A |

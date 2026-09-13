@@ -6,51 +6,88 @@ import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 /**
  * POST /api/media/presign-upload
  *
- * Returns a presigned URL for direct browser → R2 upload.
- * Per v6 spec §21: the browser uploads directly to R2, NOT through Vercel.
+ * Returns a presigned URL for direct browser → Filebase (S3-compatible) upload.
+ * Per v6 spec §21: the browser uploads directly to the storage backend,
+ * NOT through Vercel. This avoids Vercel's body limit + serverless timeout.
  *
- * This implementation uses a manual AWS Signature V4 presigned URL — no
- * AWS SDK needed (keeps the bundle lean for Vercel).
+ * Works with ANY S3-compatible provider: Filebase, R2, Backblaze B2, MinIO.
+ * The provider is selected by STORAGE_PROVIDER env var:
+ *   - filebase → https://s3.filebase.io (no payment card)
+ *   - r2 → https://{accountId}.r2.cloudflarestorage.com (needs payment card)
+ *
+ * Uses manual AWS Signature V4 — no AWS SDK needed (keeps bundle lean).
  *
  * Body: { videoId, filename, contentType, fileSize }
- * Response: { uploadUrl, method, headers, expiresIn }
+ * Response: { uploadUrl, method, headers, key, expiresIn }
  */
-
-const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || "";
-const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || "";
-const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || "";
-const R2_BUCKET = process.env.R2_BUCKET || "mashahd-media";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2 GB
 const PRESIGN_EXPIRY = 3600; // 1 hour
 
-/**
- * Generate an AWS Signature V4 presigned URL for R2 (S3-compatible).
- * No external SDK needed — pure crypto.
- */
-function presignR2Url(opts: {
-  bucket: string;
-  key: string;
+interface S3Config {
+  endpoint: string;
   accessKeyId: string;
   secretAccessKey: string;
-  accountId: string;
+  bucket: string;
+  region: string;
+}
+
+function getS3Config(): S3Config | null {
+  const provider = process.env.STORAGE_PROVIDER || "local";
+
+  if (provider === "filebase") {
+    const accessKeyId = process.env.FILEBASE_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.FILEBASE_SECRET_ACCESS_KEY;
+    const bucket = process.env.FILEBASE_BUCKET || "mashahd";
+    if (!accessKeyId || !secretAccessKey) return null;
+    return { endpoint: "https://s3.filebase.io", accessKeyId, secretAccessKey, bucket, region: "auto" };
+  }
+
+  if (provider === "r2") {
+    const accountId = process.env.R2_ACCOUNT_ID;
+    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+    const bucket = process.env.R2_BUCKET || "mashahd-media";
+    if (!accountId || !accessKeyId || !secretAccessKey) return null;
+    return { endpoint: `https://${accountId}.r2.cloudflarestorage.com`, accessKeyId, secretAccessKey, bucket, region: "auto" };
+  }
+
+  // Generic S3 (MinIO, Backblaze, etc.)
+  if (provider === "s3") {
+    const endpoint = process.env.S3_ENDPOINT;
+    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+    const bucket = process.env.S3_BUCKET || "mashahd";
+    const region = process.env.S3_REGION || "us-east-1";
+    if (!endpoint || !accessKeyId || !secretAccessKey) return null;
+    return { endpoint, accessKeyId, secretAccessKey, bucket, region };
+  }
+
+  return null; // local filesystem — no presigned URL needed
+}
+
+/**
+ * Generate an AWS Signature V4 presigned PUT URL for any S3-compatible provider.
+ * Pure crypto — no AWS SDK needed.
+ */
+function presignS3Url(opts: {
+  config: S3Config;
+  key: string;
   contentType: string;
   expiresIn: number;
 }): string {
-  const { bucket, key, accessKeyId, secretAccessKey, accountId, contentType, expiresIn } = opts;
-  const host = `${accountId}.r2.cloudflarestorage.com`;
-  const endpoint = `https://${host}/${bucket}/${key}`;
+  const { config, key, contentType, expiresIn } = opts;
+  const host = new URL(config.endpoint).host;
 
   const now = new Date();
   const dateStamp = now.toISOString().slice(0, 10).replace(/-/g, "");
   const amzDate = now.toISOString().slice(0, 19).replace(/[-:]/g, "") + "Z";
-  const credentialScope = `${dateStamp}/auto/s3/aws4_request`;
+  const credentialScope = `${dateStamp}/${config.region}/s3/aws4_request`;
 
-  // Canonical request
-  const canonicalUri = `/${bucket}/${key}`;
+  const canonicalUri = `/${config.bucket}/${key}`;
   const canonicalQueryString = [
     `X-Amz-Algorithm=AWS4-HMAC-SHA256`,
-    `X-Amz-Credential=${encodeURIComponent(accessKeyId + "/" + credentialScope)}`,
+    `X-Amz-Credential=${encodeURIComponent(config.accessKeyId + "/" + credentialScope)}`,
     `X-Amz-Date=${amzDate}`,
     `X-Amz-Expires=${expiresIn}`,
     `X-Amz-SignedHeaders=host`,
@@ -69,7 +106,6 @@ function presignR2Url(opts: {
     payloadHash,
   ].join("\n");
 
-  // String to sign
   const stringToSign = [
     "AWS4-HMAC-SHA256",
     amzDate,
@@ -77,15 +113,13 @@ function presignR2Url(opts: {
     createHash("sha256").update(canonicalRequest).digest("hex"),
   ].join("\n");
 
-  // Signing key
-  const kDate = createHmac("sha256", `AWS4${secretAccessKey}`).update(dateStamp).digest();
-  const kRegion = createHmac("sha256", kDate).update("auto").digest();
+  const kDate = createHmac("sha256", `AWS4${config.secretAccessKey}`).update(dateStamp).digest();
+  const kRegion = createHmac("sha256", kDate).update(config.region).digest();
   const kService = createHmac("sha256", kRegion).update("s3").digest();
   const kSigning = createHmac("sha256", kService).update("aws4_request").digest();
   const signature = createHmac("sha256", kSigning).update(stringToSign).digest("hex");
 
-  // Build the final presigned URL
-  return `${endpoint}?${canonicalQueryString}&X-Amz-Signature=${signature}`;
+  return `${config.endpoint}${canonicalUri}?${canonicalQueryString}&X-Amz-Signature=${signature}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -95,11 +129,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many upload requests" }, { status: 429 });
   }
 
-  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
-    return NextResponse.json(
-      { error: "R2 storage not configured — use server-mediated upload instead" },
-      { status: 501 }
-    );
+  const config = getS3Config();
+  if (!config) {
+    return NextResponse.json({
+      error: "Cloud storage not configured. Set STORAGE_PROVIDER=filebase and FILEBASE_* env vars.",
+      hint: "Filebase is recommended — 5GB free, no payment card required.",
+    }, { status: 501 });
   }
 
   const body = await req.json().catch(() => ({}));
@@ -124,13 +159,9 @@ export async function POST(req: NextRequest) {
   const safeName = String(filename).replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 200) || "source.mp4";
   const key = `videos/${videoId}/source/${safeName}`;
 
-  // Generate presigned URL using pure crypto (no AWS SDK).
-  const uploadUrl = presignR2Url({
-    bucket: R2_BUCKET,
+  const uploadUrl = presignS3Url({
+    config,
     key,
-    accessKeyId: R2_ACCESS_KEY_ID,
-    secretAccessKey: R2_SECRET_ACCESS_KEY,
-    accountId: R2_ACCOUNT_ID,
     contentType: contentType || "video/mp4",
     expiresIn: PRESIGN_EXPIRY,
   });
@@ -145,6 +176,7 @@ export async function POST(req: NextRequest) {
     method: "PUT",
     headers: { "Content-Type": contentType || "video/mp4" },
     key,
+    provider: process.env.STORAGE_PROVIDER,
     expiresIn: PRESIGN_EXPIRY,
   });
 }

@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     }, { status: 501 });
   }
 
-  // Download the source from storage (R2 or local).
+  // Download the source from storage (Filebase, R2, or local — provider-agnostic).
   const storage = getStorage();
   const sourceBuf = await storage.read(key);
   const computedHash = hashContent(sourceBuf);
