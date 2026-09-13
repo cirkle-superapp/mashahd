@@ -7,7 +7,10 @@
  *   - S7: Dynamic node roles (SUPER_PEER, NORMAL_PEER, CLIENT_ONLY)
  *   - S107: Peer utility
  *   - S108: Swarm-level optimization (role assignment)
+ *   - §58-59: LAN optimization (prefer local peers based on RTT/throughput)
  */
+
+import { classifyLANPeers, applyLANBoost, type PeerConnectionMetrics } from "./lan-optimization";
 
 export type NodeRole = "ORIGIN" | "TRUSTED_SEED" | "EDGE_CACHE" | "SUPER_PEER" | "NORMAL_PEER" | "CLIENT_ONLY";
 
@@ -31,6 +34,7 @@ export interface PeerScore {
   role: NodeRole;
   quarantined: boolean;
   quarantineReason?: string;
+  isLANPeer: boolean; // §58: whether this peer is likely on the same LAN
 }
 
 const QUARANTINE_THRESHOLD = 3; // failures before quarantine
@@ -43,13 +47,37 @@ const quarantinedPeers = new Map<string, { until: number; reason: string }>();
  *
  * PeerScore = Throughput × Stability × SegmentCoverage × LowRTT × RemainingBudget
  */
-export function scorePeer(m: PeerMetrics): PeerScore {
+export function scorePeer(m: PeerMetrics, allPeers?: PeerMetrics[]): PeerScore {
   const throughputScore = Math.min(1, m.throughput / 5); // normalize to 5 Mbps
   const lowRttScore = m.rtt > 0 ? Math.max(0, 1 - m.rtt / 500) : 0.5;
   const budgetScore = Math.min(1, m.remainingUploadBudget / 262_144_000); // normalize to 250MB
   const coverageScore = m.segmentCoverage;
 
-  const score = throughputScore * m.stability * coverageScore * lowRttScore * budgetScore;
+  let score = throughputScore * m.stability * coverageScore * lowRttScore * budgetScore;
+
+  // §58-59: LAN optimization — boost score for peers likely on the same LAN.
+  // This doesn't expose IP addresses — it only uses RTT + throughput as proxies.
+  let isLANPeer = false;
+  if (allPeers && allPeers.length > 0) {
+    const connMetrics: PeerConnectionMetrics[] = allPeers.map((p) => ({
+      peerId: p.peerId,
+      rttMs: p.rtt,
+      throughputMbps: p.throughput,
+      failureCount: p.recentFailures,
+      successCount: Math.round(p.successRate * 100),
+    }));
+    const lanGroup = classifyLANPeers(connMetrics, true);
+    isLANPeer = lanGroup.localPeers.some((p) => p.peerId === m.peerId);
+    if (isLANPeer) {
+      score = applyLANBoost(score, { peerId: m.peerId, rttMs: m.rtt, throughputMbps: m.throughput, failureCount: m.recentFailures, successCount: Math.round(m.successRate * 100) }, lanGroup);
+    }
+  } else {
+    // Single-peer call — check RTT directly for LAN classification.
+    if (m.rtt > 0 && m.rtt < 5 && m.throughput > 50) {
+      isLANPeer = true;
+      score *= 1.5; // 50% boost for LAN peers (§58)
+    }
+  }
 
   // Determine role
   let role: NodeRole = "NORMAL_PEER";
@@ -57,9 +85,9 @@ export function scorePeer(m: PeerMetrics): PeerScore {
     role = "CLIENT_ONLY";
   } else if (m.throughput > 5 && m.stability > 0.9 && m.successRate > 0.95 && m.remainingUploadBudget > 100_000_000) {
     role = "SUPER_PEER";
-  } else if (m.connectionAge > 300 && m.stability > 0.8) {
-    // Stable for 5+ minutes → consider trusted seed candidate
-    role = "NORMAL_PEER"; // upgrade to TRUSTED_SEED requires server-side config
+  } else if (isLANPeer && m.stability > 0.8) {
+    // LAN peers are good SUPER_PEER candidates (high throughput, low latency).
+    role = "SUPER_PEER";
   }
 
   // Check quarantine
@@ -72,6 +100,7 @@ export function scorePeer(m: PeerMetrics): PeerScore {
     role,
     quarantined: isQuarantined,
     quarantineReason: quarantine?.reason,
+    isLANPeer,
   };
 }
 
