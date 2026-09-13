@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHmac, createHash } from "node:crypto";
 import { db } from "@/lib/db";
 import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
@@ -7,12 +8,9 @@ import { rateLimit, getClientIP } from "@/lib/rate-limiter";
  *
  * Returns a presigned URL for direct browser → R2 upload.
  * Per v6 spec §21: the browser uploads directly to R2, NOT through Vercel.
- * This avoids Vercel's body limit + serverless function timeout.
  *
- * Flow:
- *   Browser → POST /api/media/presign-upload (gets presigned URL)
- *   Browser → PUT directly to R2 (uploads the file)
- *   Browser → POST /api/media/upload-complete (triggers pipeline)
+ * This implementation uses a manual AWS Signature V4 presigned URL — no
+ * AWS SDK needed (keeps the bundle lean for Vercel).
  *
  * Body: { videoId, filename, contentType, fileSize }
  * Response: { uploadUrl, method, headers, expiresIn }
@@ -24,7 +22,71 @@ const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || "";
 const R2_BUCKET = process.env.R2_BUCKET || "mashahd-media";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2 GB
-const PRESIGN_EXPIRY = 60 * 60; // 1 hour
+const PRESIGN_EXPIRY = 3600; // 1 hour
+
+/**
+ * Generate an AWS Signature V4 presigned URL for R2 (S3-compatible).
+ * No external SDK needed — pure crypto.
+ */
+function presignR2Url(opts: {
+  bucket: string;
+  key: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  accountId: string;
+  contentType: string;
+  expiresIn: number;
+}): string {
+  const { bucket, key, accessKeyId, secretAccessKey, accountId, contentType, expiresIn } = opts;
+  const host = `${accountId}.r2.cloudflarestorage.com`;
+  const endpoint = `https://${host}/${bucket}/${key}`;
+
+  const now = new Date();
+  const dateStamp = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const amzDate = now.toISOString().slice(0, 19).replace(/[-:]/g, "") + "Z";
+  const credentialScope = `${dateStamp}/auto/s3/aws4_request`;
+
+  // Canonical request
+  const canonicalUri = `/${bucket}/${key}`;
+  const canonicalQueryString = [
+    `X-Amz-Algorithm=AWS4-HMAC-SHA256`,
+    `X-Amz-Credential=${encodeURIComponent(accessKeyId + "/" + credentialScope)}`,
+    `X-Amz-Date=${amzDate}`,
+    `X-Amz-Expires=${expiresIn}`,
+    `X-Amz-SignedHeaders=host`,
+  ].join("&");
+
+  const canonicalHeaders = `host:${host}\n`;
+  const signedHeaders = "host";
+  const payloadHash = "UNSIGNED-PAYLOAD";
+
+  const canonicalRequest = [
+    "PUT",
+    canonicalUri,
+    canonicalQueryString,
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash,
+  ].join("\n");
+
+  // String to sign
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    amzDate,
+    credentialScope,
+    createHash("sha256").update(canonicalRequest).digest("hex"),
+  ].join("\n");
+
+  // Signing key
+  const kDate = createHmac("sha256", `AWS4${secretAccessKey}`).update(dateStamp).digest();
+  const kRegion = createHmac("sha256", kDate).update("auto").digest();
+  const kService = createHmac("sha256", kRegion).update("s3").digest();
+  const kSigning = createHmac("sha256", kService).update("aws4_request").digest();
+  const signature = createHmac("sha256", kSigning).update(stringToSign).digest("hex");
+
+  // Build the final presigned URL
+  return `${endpoint}?${canonicalQueryString}&X-Amz-Signature=${signature}`;
+}
 
 export async function POST(req: NextRequest) {
   const ip = getClientIP(req);
@@ -62,42 +124,27 @@ export async function POST(req: NextRequest) {
   const safeName = String(filename).replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 200) || "source.mp4";
   const key = `videos/${videoId}/source/${safeName}`;
 
-  // Dynamic import to keep the bundle lean (AWS SDK is heavy).
-  const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
-  const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
-  const s3 = new S3Client({
-    region: "auto",
-    endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId: R2_ACCESS_KEY_ID,
-      secretAccessKey: R2_SECRET_ACCESS_KEY,
-    },
-    forcePathStyle: true,
+  // Generate presigned URL using pure crypto (no AWS SDK).
+  const uploadUrl = presignR2Url({
+    bucket: R2_BUCKET,
+    key,
+    accessKeyId: R2_ACCESS_KEY_ID,
+    secretAccessKey: R2_SECRET_ACCESS_KEY,
+    accountId: R2_ACCOUNT_ID,
+    contentType: contentType || "video/mp4",
+    expiresIn: PRESIGN_EXPIRY,
   });
 
-  try {
-    const command = new PutObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: key,
-      ContentType: contentType || "video/mp4",
-    });
+  await db.mediaProcessingJob.updateMany({
+    where: { videoId, status: "UPLOADING" },
+    data: { status: "UPLOADING" },
+  });
 
-    const uploadUrl = await getSignedUrl(s3, command, { expiresIn: PRESIGN_EXPIRY });
-
-    await db.mediaProcessingJob.updateMany({
-      where: { videoId, status: "UPLOADING" },
-      data: { status: "UPLOADING" },
-    });
-
-    return NextResponse.json({
-      uploadUrl,
-      method: "PUT",
-      headers: { "Content-Type": contentType || "video/mp4" },
-      key,
-      expiresIn: PRESIGN_EXPIRY,
-    });
-  } catch (e) {
-    console.error("[presign-upload] Failed:", e);
-    return NextResponse.json({ error: "Failed to generate presigned URL" }, { status: 500 });
-  }
+  return NextResponse.json({
+    uploadUrl,
+    method: "PUT",
+    headers: { "Content-Type": contentType || "video/mp4" },
+    key,
+    expiresIn: PRESIGN_EXPIRY,
+  });
 }
