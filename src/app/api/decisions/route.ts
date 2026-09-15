@@ -64,13 +64,13 @@ export async function GET(req: NextRequest) {
         claimedBy: j.claimedBy,
       })),
       deliveryDecision: {
-        source: "R2/HTTP",
+        source: "HTTP/origin",
         reason: "Default fallback — P2P tracker not connected from this host",
         alternatives: [
           { source: "P2P", score: 0.0, rejected: "tracker not available" },
           { source: "WebTransport", score: 0.0, rejected: "not configured" },
           { source: "Edge", score: 0.0, rejected: "no self-hosted edge" },
-          { source: "R2/HTTP", score: 1.0, selected: true },
+          { source: "HTTP/origin", score: 1.0, selected: true },
         ],
       },
     });

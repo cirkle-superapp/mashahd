@@ -8,7 +8,7 @@ import { Client } from "pg";
  *   - Aggregated telemetry analytics (complex queries, GROUP BY, window functions)
  *   - QoE dashboards (startup time percentiles, rebuffer rates over time)
  *   - Content heat history (time-series viewer counts)
- *   - Cost analytics (R2 operations, origin bytes over time)
+ *   - Cost analytics (origin operations, origin bytes over time)
  *
  * Why Neon for analytics (not Turso):
  *   - Postgres has superior query engine for complex aggregations

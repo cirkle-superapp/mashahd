@@ -45,7 +45,7 @@ const TEMP_DIR_PREFIX = "tmp";
  * What it does NOT delete:
  *   - Active video directories (video exists in Turso with status READY)
  *   - Source files (kept per retention policy §150)
- *   - R2/Filebase objects (those need their own reconciliation)
+ *   - cloud storage objects (those need their own reconciliation)
  */
 export async function runGarbageCollection(): Promise<GcReport> {
   const report: GcReport = {

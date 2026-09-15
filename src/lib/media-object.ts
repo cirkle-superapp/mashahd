@@ -9,7 +9,7 @@
  * Per v6 spec §28: content hashing for deduplication, integrity, cache
  * identity, and replication.
  *
- * This type is transport-independent — it doesn't know about R2, Filebase,
+ * This type is transport-independent — it doesn't know about storage,
  * P2P, or HTTP. It's the pure identity of a piece of media.
  */
 

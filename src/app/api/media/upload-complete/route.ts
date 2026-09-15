@@ -13,12 +13,12 @@ import { canStartJob, jobStarted, jobEnded } from "@/lib/resource-governor";
 /**
  * POST /api/media/upload-complete
  *
- * Called by the browser AFTER a direct-to-R2 upload completes.
+ * Called by the browser AFTER a direct-to-storage upload completes.
  * Per v6 spec §22: triggers the media processing pipeline:
- *   download from R2 → ffprobe → validate → transcode → CMAF → publish to R2
+ *   download from storage → ffprobe → validate → transcode → CMAF → publish to storage
  *
  * Body: { videoId, key, sourceHash }
- *   key = the R2 object key where the browser uploaded the file
+ *   key = the storage object key where the browser uploaded the file
  *   sourceHash = SHA-256 hash of the file (computed client-side)
  *
  * This endpoint runs on the self-hosted worker (not Vercel) because it
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     }, { status: 501 });
   }
 
-  // Download the source from storage (Filebase, R2, or local — provider-agnostic).
+  // Download the source from storage (Filebase or local — provider-agnostic).
   const storage = getStorage();
   const sourceBuf = await storage.read(key);
   const computedHash = hashContent(sourceBuf);

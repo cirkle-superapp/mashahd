@@ -33,9 +33,9 @@ export interface ReplicationContext {
   sizeBytes: number;
   // Is this the source/original file? (vs a transcoded rendition)
   isSource: boolean;
-  // Does a primary copy exist? (Filebase or R2)
+  // Does a primary copy exist? (Filebase or local)
   primaryExists: boolean;
-  // Does a backup copy exist? (Filebase if R2 is primary, or vice versa)
+  // Does a backup copy exist? (local if Filebase is primary)
   backupExists: boolean;
   // Days since last access
   daysSinceAccess: number;
@@ -101,7 +101,7 @@ export function decideReplication(ctx: ReplicationContext): ReplicationDecision 
  *
  * ObjectValue = Demand × FutureReuse × Scarcity × PlaybackProximity × CostAvoidance
  *
- * Higher value = more worth keeping in hot storage (R2).
+ * Higher value = more worth keeping in hot storage.
  * Lower value = candidate for archival to Filebase or deletion.
  */
 export function calculateObjectValue(ctx: {

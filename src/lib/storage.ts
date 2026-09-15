@@ -4,11 +4,11 @@ import { createReadStream, createWriteStream, type ReadStream } from "node:fs";
 
 /**
  * StorageProvider — a storage abstraction for the media pipeline.
- * Implementations: LocalFilesystemStorage (default), S3CompatibleStorage (optional).
+ * Implementations: LocalFilesystemStorage (default), FilebaseStorageProvider.
  *
  * The application works with local filesystem storage without any cloud account.
- * S3-compatible support (AWS S3 / Backblaze B2 / MinIO / Cloudflare R2) is
- * optional and only activated when STORAGE_PROVIDER=s3 is set.
+ * Filebase (S3-compatible + IPFS pinning, 5GB free, no payment card) is
+ * activated when STORAGE_PROVIDER=filebase.
  */
 
 export interface StorageProvider {
@@ -102,38 +102,7 @@ export function getStorage(): StorageProvider {
   if (!_instance) {
     const provider = process.env.STORAGE_PROVIDER || "local";
 
-    if (provider === "r2") {
-      // Cloudflare R2 (S3-compatible, zero egress fees).
-      // Requires R2 to be enabled on the Cloudflare dashboard.
-      const accountId = process.env.R2_ACCOUNT_ID;
-      const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-      const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-      const bucket = process.env.R2_BUCKET || "mashahd-media";
-      const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL;
-
-      if (accountId && accessKeyId && secretAccessKey) {
-        try {
-          // Load the R2 provider via eval to completely hide it from the
-          // bundler. The AWS SDK must not be included in the Vercel bundle.
-          const mod = (0, eval)("require")("../server-lib/r2-storage");
-          const { R2StorageProvider } = mod;
-          _instance = new R2StorageProvider({
-            accountId,
-            accessKeyId,
-            secretAccessKey,
-            bucket,
-            publicBaseUrl,
-          });
-          console.log(`[storage] Using Cloudflare R2: bucket=${bucket}`);
-        } catch (e) {
-          console.warn("[storage] R2 init failed, falling back to local:", e);
-          _instance = new LocalFilesystemStorage();
-        }
-      } else {
-        console.warn("[storage] R2 credentials not set, falling back to local");
-        _instance = new LocalFilesystemStorage();
-      }
-    } else if (provider === "filebase") {
+    if (provider === "filebase") {
       // Filebase (S3-compatible with IPFS pinning, 5GB free, no payment card).
       // Requires a bucket to be created via the Filebase dashboard first.
       const accessKeyId = process.env.FILEBASE_ACCESS_KEY_ID;

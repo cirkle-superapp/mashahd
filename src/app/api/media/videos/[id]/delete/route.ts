@@ -81,7 +81,7 @@ export async function DELETE(
         await fs.rm(absDir, { recursive: true, force: true });
         console.log(`[delete] Deleted media files: ${mediaDir}`);
       } else {
-        // For R2/Filebase, we'd need to list + delete objects.
+        // For cloud storage, we'd need to list + delete objects.
         // For safety, we skip this in the API route — a reconciliation
         // job will clean up orphaned objects later (§155).
         console.log(`[delete] Storage is ${process.env.STORAGE_PROVIDER} — orphan cleanup deferred to reconciliation`);

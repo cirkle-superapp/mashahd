@@ -205,11 +205,14 @@ export class WebTransportTransport implements MediaTransport {
       const reader = stream.readable.getReader();
       const chunks: Uint8Array[] = [];
       let totalBytes = 0;
-      while (true) {
+      const MAX_CHUNKS = 10000; // Safety limit — prevents infinite loops (§37)
+      let chunkCount = 0;
+      while (chunkCount < MAX_CHUNKS) {
         const { done, value } = await reader.read();
         if (done) break;
         chunks.push(value);
         totalBytes += value.byteLength;
+        chunkCount++;
       }
 
       const data = new ArrayBuffer(totalBytes);
@@ -300,7 +303,7 @@ export class DeliveryClient {
 
   /**
    * Fetch a media object. The player calls this — it doesn't know about
-   * R2, Filebase, P2P, or HTTP. It just asks for a media object.
+   * storage, P2P, or HTTP. It just asks for a media object.
    */
   async fetch(request: MediaObjectRequest): Promise<MediaObjectHandle> {
     const context: TransportContext = {

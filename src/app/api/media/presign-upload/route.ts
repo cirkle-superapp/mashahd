@@ -10,10 +10,9 @@ import { rateLimit, getClientIP } from "@/lib/rate-limiter";
  * Per v6 spec §21: the browser uploads directly to the storage backend,
  * NOT through Vercel. This avoids Vercel's body limit + serverless timeout.
  *
- * Works with ANY S3-compatible provider: Filebase, R2, Backblaze B2, MinIO.
+ * Works with ANY S3-compatible provider: Filebase, MinIO, Backblaze B2.
  * The provider is selected by STORAGE_PROVIDER env var:
  *   - filebase → https://s3.filebase.io (no payment card)
- *   - r2 → https://{accountId}.r2.cloudflarestorage.com (needs payment card)
  *
  * Uses manual AWS Signature V4 — no AWS SDK needed (keeps bundle lean).
  *
@@ -41,15 +40,6 @@ function getS3Config(): S3Config | null {
     const bucket = process.env.FILEBASE_BUCKET || "mashahd";
     if (!accessKeyId || !secretAccessKey) return null;
     return { endpoint: "https://s3.filebase.io", accessKeyId, secretAccessKey, bucket, region: "auto" };
-  }
-
-  if (provider === "r2") {
-    const accountId = process.env.R2_ACCOUNT_ID;
-    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-    const bucket = process.env.R2_BUCKET || "mashahd-media";
-    if (!accountId || !accessKeyId || !secretAccessKey) return null;
-    return { endpoint: `https://${accountId}.r2.cloudflarestorage.com`, accessKeyId, secretAccessKey, bucket, region: "auto" };
   }
 
   // Generic S3 (MinIO, Backblaze, etc.)

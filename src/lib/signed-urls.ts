@@ -10,7 +10,7 @@ import { createHmac } from "node:crypto";
  *   1. The client requests a playback token from /api/media/videos/[id]/playback
  *   2. The server checks authorization (is the video public? is the user allowed?)
  *   3. If private, the server issues a signed token with an expiry
- *   4. The client uses the token to fetch media from R2/origin
+ *   4. The client uses the token to fetch media from origin
  *   5. The origin verifies the token before serving the media
  *
  * The token is HMAC-signed with MEDIA_SIGNING_KEY (env var). It contains:
@@ -79,7 +79,7 @@ export function verifyPlaybackToken(token: string): TokenPayload | null {
 
 /**
  * Check if a video is private (requires a token).
- * Public videos don't need signed URLs — they can be served directly from R2.
+ * Public videos don't need signed URLs — they can be served directly from origin.
  *
  * For now, all videos are public. When private videos are added (e.g.
  * membership-only content), this function will check the video's visibility

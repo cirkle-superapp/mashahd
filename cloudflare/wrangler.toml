@@ -12,6 +12,3 @@ ORIGIN_URL = "https://mashahd.vercel.app"
 # ORIGIN_URL = "https://your-domain.com"
 
 # Optional: R2 bucket binding (when R2 is enabled)
-# [[r2_buckets]]
-# binding = "MEDIA_BUCKET"
-# bucket_name = "mashahd-media"

@@ -119,7 +119,7 @@ export async function reconcileMedia(): Promise<ReconciliationReport> {
   }
 
   // 5. Orphan detection — objects in storage not referenced by Turso.
-  // (Only check local filesystem — R2/Filebase listing would be expensive.)
+  // (Only check local filesystem — cloud storage listing would be expensive.)
   if (process.env.STORAGE_PROVIDER === "local" || !process.env.STORAGE_PROVIDER) {
     try {
       const storageRoot = process.env.MEDIA_STORAGE_PATH || path.join(process.cwd(), "storage");
