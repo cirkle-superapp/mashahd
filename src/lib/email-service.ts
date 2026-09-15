@@ -157,7 +157,7 @@ function getEmailAdapter(): EmailPort {
       _adapter = {
         send: async () => ({ ok: false, status: "FAILED", error: "email not configured" }),
         isConfigured: () => false,
-        getQuotaStatus: () => ({ sentToday: 0, remainingToday: 0, limit: 0 }),
+        getQuotaStatus: () => ({ sentToday: 0, remainingToday: 0, limit: 300 }),
       };
       console.warn("[email] BREVO_API_KEY not set — email disabled");
     }
