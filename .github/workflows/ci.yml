@@ -8,7 +8,7 @@ on:
 
 jobs:
   quality:
-    name: Lint + TypeCheck + Build
+    name: Lint + TypeCheck + Build + Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,7 +27,7 @@ jobs:
         run: bun run lint
 
       - name: TypeCheck
-        run: npx tsc --noEmit || true  # Don't fail on type errors in scripts/examples
+        run: npx tsc --noEmit || true
 
       - name: Build
         run: bun run build
@@ -35,3 +35,9 @@ jobs:
           DATABASE_URL: "file::memory:"
           TURSO_URL: ""
           TURSO_AUTH_TOKEN: ""
+
+      - name: Basic tests
+        run: npx tsx tests/basic.test.ts
+
+      - name: Chaos tests
+        run: npx tsx tests/chaos.test.ts
