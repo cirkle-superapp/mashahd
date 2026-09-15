@@ -59,11 +59,25 @@ export async function GET(
 
   const isSegment = ext === ".m4s" || ext === ".mp4" || ext === ".ts";
   const isPoster = ext === ".jpg" || ext === ".jpeg" || ext === ".png" || ext === ".webp";
-  // Segments and poster images are immutable — cache forever.
-  // Manifests are mutable — never cache.
+
+  // Per §27: Cache architecture with ETag + stale-while-revalidate.
+  // Segments + posters: immutable, 1 year cache (never change).
+  // Manifests: mutable, short cache + stale-while-revalidate (allows edge
+  // to serve stale while fetching fresh — per §27).
   const cacheControl = isSegment || isPoster
     ? "public, max-age=31536000, immutable"
-    : "no-cache";
+    : "public, max-age=10, stale-while-revalidate=60"; // manifests: 10s fresh, 60s stale
+
+  // ETag for conditional requests (§27).
+  const etag = `"${stat.size}-${Math.floor(stat.mtime.getTime() / 1000)}"`;
+  const ifNoneMatch = req.headers.get("if-none-match");
+  if (ifNoneMatch === etag) {
+    return new NextResponse(null, {
+      status: 304,
+      headers: { ETag: etag, "Cache-Control": cacheControl },
+    });
+  }
+
   const corsOrigin = getCorsOrigin(req);
 
   const range = req.headers.get("range");
@@ -84,6 +98,7 @@ export async function GET(
         "Accept-Ranges": "bytes",
         "Cache-Control": cacheControl,
         "Access-Control-Allow-Origin": corsOrigin,
+        ETag: etag,
       },
     });
   }
@@ -96,6 +111,7 @@ export async function GET(
       "Accept-Ranges": "bytes",
       "Cache-Control": cacheControl,
       "Access-Control-Allow-Origin": corsOrigin,
+      ETag: etag,
     },
   });
 }
