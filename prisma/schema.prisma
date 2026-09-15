@@ -312,3 +312,28 @@ model PlaybackTelemetry {
   @@index([sessionId])
   @@index([videoId])
 }
+
+// ── Transactional Outbox (§20) ──
+// Every critical business mutation requiring downstream effects writes
+// BUSINESS DATA + OUTBOX EVENT in the same Turso transaction.
+// Inngest processes the outbox asynchronously.
+model OutboxEvent {
+  id              String   @id @default(cuid())
+  aggregateType   String   // e.g. "User", "Video", "Comment"
+  aggregateId     String   // e.g. the user/video/comment ID
+  eventType       String   // e.g. "user.registered", "video.uploaded"
+  schemaVersion   Int      @default(1)
+  payload         String   // JSON-encoded event payload
+  tenantId        String   @default("default")
+  createdAt       DateTime @default(now())
+  processedAt     DateTime?
+  attemptCount    Int      @default(0)
+  status          String   @default("PENDING") // PENDING | PROCESSING | PROCESSED | FAILED | DEAD_LETTER
+  lastError       String   @default("")
+  idempotencyKey  String?  @unique
+  correlationId   String?
+  causationId     String?
+
+  @@index([status, createdAt])
+  @@index([aggregateType, aggregateId])
+}

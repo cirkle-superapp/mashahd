@@ -98,12 +98,42 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Send welcome email (best-effort — doesn't block registration).
+  // Per §6: Email is asynchronous — via Inngest, not in the request path.
+  // Per §20: Write an outbox event in the same transaction as user creation.
   if (email) {
     try {
-      const { sendWelcomeEmail } = await import("@/lib/email-service");
-      sendWelcomeEmail({ email, username, displayName }).catch(() => {});
-    } catch { /* email service not available */ }
+      // Write outbox event (durable — survives restarts).
+      await db.outboxEvent.create({
+        data: {
+          aggregateType: "User",
+          aggregateId: user.id,
+          eventType: "user.registered",
+          payload: JSON.stringify({ email, username, displayName, userId: user.id }),
+          idempotencyKey: `welcome-email-${user.id}`,
+          correlationId: user.id,
+        },
+      });
+
+      // Trigger async notification via Inngest (or fall back to sync).
+      const { sendNotification } = await import("@/lib/notification-service");
+      sendNotification({
+        email,
+        subject: `Welcome to Mashahd, ${displayName}!`,
+        htmlBody: `
+          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+            <h1 style="color: #1a4a5a;">Welcome to Mashahd</h1>
+            <p>Hi ${displayName},</p>
+            <p>Your Mashahd account is ready. Your username is <strong>@${username}</strong>.</p>
+            <p>Start watching at <a href="https://mashahd.vercel.app">mashahd.vercel.app</a></p>
+          </div>
+        `,
+        textBody: `Welcome to Mashahd! Your username is @${username}.`,
+        priority: "P1", // Authentication email
+        channel: "email",
+        correlationId: user.id,
+        idempotencyKey: `welcome-email-${user.id}`,
+      }).catch(() => {}); // Never block registration on email.
+    } catch { /* email/outbox not available — registration still succeeds */ }
   }
 
   return NextResponse.json({
