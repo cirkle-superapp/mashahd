@@ -15,6 +15,7 @@ import {
 import type { Video } from "@/lib/types";
 import { useAppStore } from "@/store/app-store";
 import { useBrowserId } from "@/hooks/use-browser-id";
+import { SmartPlaylistCreator } from "./smart-playlist-creator";
 
 // Spec §12 — deterministic search sort options. The backend /api/videos
 // endpoint supports all of these. `relevance` is the default for searches;
@@ -380,6 +381,10 @@ export function LibraryView() {
         <LibraryCard title="Favorites" count={favs} view={{ kind: "favorites" }} />
         <LibraryCard title="Watch Later" count={wl} view={{ kind: "watchLater" }} />
       </div>
+
+      {/* Smart playlists (§30) — rule-based dynamic playlists.
+          Rendered above regular playlists per task spec. */}
+      <SmartPlaylistCreator />
 
       {/* Playlists — Mashahd's user-created video collections */}
       <div className="space-y-4">

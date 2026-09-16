@@ -2338,3 +2338,124 @@ Stage Summary:
 - Settings → Privacy tab now has a "Recommendation Transparency" section with 2 actions: View profile + Reset.
 - Users can now SEE exactly what actions shaped their feed (transparency) and RESET their profile while choosing what to preserve (control).
 - All 40 tests green, lint clean, browser-verified with 0 errors.
+
+---
+Task ID: 3
+Agent: Smart Playlist Creator UI Engineer
+Task: Build smart playlist creator UI
+
+Work Log:
+- Read worklog pass-7 + pass-8 entries: confirmed `/api/smart-playlists` backend already exists with full CRUD (GET list / POST create / DELETE) + a `[id]/resolve` endpoint that resolves rules to matching videos. Verified rules shape: `{ categories, creators, maxDuration, minDuration, unwatchedOnly, savedOnly, dateRange }` with `creators: ["following"]` as the special "subscribed channels" value. No backend changes needed.
+- Inspected existing primitives + patterns: `src/components/ui/{dialog,button,input,textarea,label,checkbox,badge,select,skeleton}.tsx`, `src/hooks/use-browser-id.ts` (returns signed bid; empty until resolved), `src/components/youtube/playlist-view.tsx` (navigate-on-row pattern + delete confirmation Dialog), `src/components/youtube/save-to-playlist.tsx` (Dialog-with-form + React Query mutation patterns + sonner toast usage), `src/lib/types.ts` for `CATEGORIES` (excludes "All" / "Recently uploaded" / "New to you"), `src/store/app-store.ts` for View serialization, `src/app/page.tsx` for view-router wiring, `src/components/youtube/list-views.tsx` for the LibraryView layout.
+- Created `src/components/youtube/smart-playlist-creator.tsx` (~1080 lines):
+  - `"use client"` directive. Named export `SmartPlaylistCreator` + `SmartPlaylistResultsView` + default export.
+  - Strict TypeScript types (no `any`): `SmartPlaylistDateRange = "7d" | "30d" | "90d" | "all"`, `SmartPlaylistRules`, `SmartPlaylist`, `SmartPlaylistCreatePayload`, `SmartPlaylistDeletePayload`, `ResolveResponse`, `UserStateForPreview`. All API payloads declared as typed interfaces.
+  - `SmartPlaylistCreator` (main viewer): fetches list via React Query `useQuery(["smart-playlists", bid])` with `enabled: !!bid` and `staleTime: 60_000`. Renders a header (Sparkles icon + "Create smart playlist" button) + a responsive grid of `SmartPlaylistCard` components. Handles loading (skeletons), error, and empty states.
+  - `SmartPlaylistCard`: shows name (with Sparkles icon), description (line-clamp-2), rule chips via `describeRules(rules)` (categories count, "Following creators" / "N creators", "Mm–Nm" duration range, "Unwatched", "Saved only", "Last N days"), plus "View results" (navigates to `smartPlaylist` view) and "Delete" (icon button, hover-rose) buttons.
+  - `CreateSmartPlaylistDialog`: controlled Dialog with full rule builder — name (Input, maxLength 100), description (Textarea, optional, maxLength 500), categories (multi-select checkboxes in a scrollable border box from `AVAILABLE_CATEGORIES` filtered from `CATEGORIES`), duration range (two number Inputs, minutes→seconds conversion via `minutesToSeconds`), flags (Unwatched only / Saved only / Include following — each with lucide icon), date range (Select dropdown with 4 options). Submit button POSTs to `/api/smart-playlists` via React Query `useMutation`; on success invalidates `["smart-playlists", bid]`, shows sonner toast, closes Dialog.
+  - Live preview count: `usePreviewCount` hook fetches `/api/videos?limit=200` + `/api/user-state?bid=...` once per dialog open, then recomputes the matching count via `computeMatchCount(videos, state, rules)` whenever the rules change (useMemo). Mirrors the server-side `resolveSmartPlaylist` filter logic so the preview is close to the actual resolve output.
+  - Form reset on close: done in the `handleOpenChange` wrapper (no `useEffect`) to satisfy `react-hooks/set-state-in-effect` rule.
+  - Delete confirmation: separate controlled Dialog in the parent, fired from the card's Delete button, with destructive variant + "This cannot be undone" warning.
+  - `SmartPlaylistResultsView`: fetches `/api/smart-playlists/[id]/resolve?bid=...` via React Query (staleTime 30s). Renders a Back-to-Library button, header (Sparkles icon + name + description + rule chips), "Play all" button (disabled if 0 videos), and a responsive grid of resolved videos using a compact `ResolvedVideoCard` (thumbnail + duration badge + title + channel name, click → watch view). Handles loading (skeletons), error (not-found state), and empty ("No videos match these rules yet") states.
+  - Uses lucide-react icons throughout: Sparkles, Plus, Trash2, Play, Clock, Filter, ArrowLeft, Loader2, Users, EyeOff, Heart, Calendar.
+  - Uses sonner toast for create + delete success/error feedback.
+  - Uses React Query mutations (`useMutation`) for create + delete, with `qc.invalidateQueries` on success.
+  - Uses existing shadcn/ui components only: Dialog, Button, Input, Textarea, Label, Checkbox, Badge, Skeleton, Select.
+- Added `smartPlaylist` view kind to `src/store/app-store.ts`: View union + `viewToQuery` (?v=smartPlaylist&id=...) + `queryToView` (parses back). URL back/forward works.
+- Wired `SmartPlaylistResultsView` into `src/app/page.tsx`: imported + added `case "smartPlaylist": return <SmartPlaylistResultsView playlistId={view.playlistId} />;` to `renderView`.
+- Wired `SmartPlaylistCreator` into the Library view in `src/components/youtube/list-views.tsx`: imported + added `<SmartPlaylistCreator />` inside `LibraryView` between the summary cards grid and the regular playlists section (per task spec: "at the top, before the regular playlists").
+- Iterated on lint feedback: initial pass flagged one `react-hooks/set-state-in-effect` error from a `useEffect` that reset the form on open. Refactored to reset the form synchronously in the `onOpenChange` wrapper instead (cleaner, no effect, no eslint-disable comment).
+- Verified `bun run lint` → exit 0 (0 errors, 0 warnings).
+- Verified `bunx tsc --noEmit` → no errors in any of the files I touched (smart-playlist-creator.tsx, list-views.tsx, app-store.ts, page.tsx). Pre-existing errors in unrelated files (mashahd-player-lazy.tsx, browser-id-security.ts) are not affected.
+
+Stage Summary:
+- New component `src/components/youtube/smart-playlist-creator.tsx` (default + named exports `SmartPlaylistCreator` + `SmartPlaylistResultsView`) fully implements spec §30 Smart Playlist Creator: rule builder (categories, duration range, unwatched/saved/following flags, date range), live preview count (client-side computation matching server resolve logic), list of existing smart playlists with View Results + Delete, dynamic resolution view, and React Query mutations with sonner toasts throughout.
+- Wired into Library view (above regular playlists) + a new `smartPlaylist` view kind in the app store + URL sync (?v=smartPlaylist&id=...). The resolved results view is reachable from each smart-playlist card's "View results" button and via direct URL.
+- All rules update dynamically per §30: the resolve endpoint re-runs the rules on every view, so newly-uploaded matching videos appear automatically without any user action.
+- TypeScript strict (no `any`), lint clean, type-check clean for the new file. Ready for browser verification.
+
+---
+Task ID: 2
+Agent: Interest Profiles UI Engineer
+Task: Build interest profiles UI
+
+Work Log:
+- Read worklog + /api/interest-profiles/route.ts contract (GET ?bid → {profiles[]}; POST {browserId,name,categories?}; PATCH {browserId,profileId,action:"activate"|"update",name?,categories?}; DELETE {browserId,profileId}).
+- Read src/lib/types.ts to source the CATEGORIES constant (21 entries — used as profile filter checkboxes, excluding pseudo-entries "All", "Recently uploaded", "New to you").
+- Read existing settings-view.tsx to match the styling conventions (gold accent via hsl(var(--gold)), glass cards, rounded-full buttons, SettingRow component) and the bid flow (useBrowserId hook).
+- Created src/components/youtube/interest-profiles-section.tsx (~440 lines) exporting `InterestProfilesSection` and a strict `InterestProfile` interface (id, name, categories[], isActive, createdAt?). All API responses are typed via ListResponse / MutationResponse interfaces — no `any` anywhere.
+- Implemented full CRUD against the backend with React Query v5 mutations + optimistic updates:
+  * CREATE: optimistic temp entry (id `temp-<ts>`), mirrors server's "first profile becomes active" rule via `isActive: current.length === 0`; onSuccess swaps the temp entry for the real server-returned profile by tempId stored in onMutate context.
+  * ACTIVATE: optimistic single-profile isActive flip (every other becomes false); onError rolls back to previous.
+  * UPDATE (edit): optimistic name + categories replacement on the matched profile.
+  * DELETE: optimistic removal; if the deleted profile was active, mirror the server's auto-activation of the first remaining profile.
+- Used lucide-react icons: User (empty state), Plus (create), Trash2 (delete), Check (active badge), Pencil (edit), Layers (section header) — exactly the set specified.
+- UI shape: section card with header (Layers icon + count badge `N/10`), list of profile rows (name + Active gold badge + category chips + Activate / Edit / Delete buttons), shared inline ProfileForm (name input capped at 60 chars + 18 category checkboxes in a 2/3-col grid) reused for both create and edit, "Create new profile" button at the bottom, max-10 message when at limit, delete confirmation Dialog.
+- Loading state covers the bid-not-yet-loaded case (useBrowserId is async via localStorage).
+- Touched profiles disable their Edit/Delete/Activate buttons while a temp optimistic entry is pending (`p.id.startsWith("temp-")`).
+- Sonner toasts for every success / error path ("Profile X created", "Profile activated — feed will rebuild on next refresh", "Profile X updated", "Profile deleted", and matching error toasts).
+- Wired it into settings-view.tsx: imported `InterestProfilesSection` and rendered it as the last child of the `tab === "recommendations"` panel, after the existing "Default search sort" SettingRow.
+- Verified: `bunx eslint src/components/youtube/interest-profiles-section.tsx src/components/youtube/settings-view.tsx` → 0 errors, 0 warnings. `bunx tsc --noEmit` reports 0 errors in both touched files. (The single pre-existing `bun run lint` error in src/components/youtube/smart-playlist-creator.tsx — `react-hooks/set-state-in-effect` at line 582 — is in a file created by another agent and is unrelated to this task.)
+
+Stage Summary:
+- New file src/components/youtube/interest-profiles-section.tsx implements spec §28 — multiple recommendation contexts (Personal, Work, Research, Technology, Entertainment, Business, …) under one anonymous account.
+- Full CRUD wired to /api/interest-profiles with optimistic React Query updates, sonner toasts, and shadcn/ui (Button, Input, Checkbox, Badge, Dialog).
+- Strict TypeScript throughout (no `any`); InterestProfile interface exported for reuse.
+- Rendered at the bottom of Settings → Recommendations tab; integrated with the existing useBrowserId + gold-accent design system.
+- Lint clean on touched files (the unrelated smart-playlist-creator.tsx error is another agent's).
+
+---
+Task ID: UPGRADE-PASS-9-PROFILES-SMART-PLAYLISTS
+Agent: main (acting as CTO + UX Architect + Full-Stack Engineer)
+Task: Wire the pass-7 backend (interest profiles + smart playlists) into the actual UI. These were the 2 remaining pending items from pass 8.
+
+Work Log:
+
+## FIX 1: Interest Profiles UI (spec §28 — multiple recommendation contexts)
+- New `src/components/youtube/interest-profiles-section.tsx` (by subagent):
+  - Fetches profiles via `useQuery(["interest-profiles", bid])`.
+  - Shows a list of existing profiles, each with: name, category chips, "Active" badge, Activate/Edit/Delete buttons.
+  - "Create new profile" button → opens a form with name input + 18 category checkboxes.
+  - Max 10 profiles enforcement (shows message at limit).
+  - Full CRUD via React Query mutations with optimistic updates + rollback on error.
+  - Strict TypeScript, no `any`. Lucide icons (User, Plus, Trash2, Check, Pencil, Layers).
+- Wired into `src/components/youtube/settings-view.tsx` — added `<InterestProfilesSection />` at the bottom of the Recommendations tab.
+- Verified: Settings → Recommendations shows "Interest profiles" heading + empty state + "Create new profile" button. 0 errors.
+
+## FIX 2: Smart Playlist Creator UI (spec §30 — rule-based dynamic playlists)
+- New `src/components/youtube/smart-playlist-creator.tsx` (by subagent):
+  - List view: shows existing smart playlists as cards with name, description, auto-generated rule chips, "View results" + Delete buttons.
+  - Creator Dialog: full rule builder — name, description, categories multi-select, duration range (min/max minutes), checkboxes (unwatched only, saved only, include followed creators), date range select.
+  - Live preview count: computes matching video count client-side as rules change.
+  - Results view: `SmartPlaylistResultsView` — fetches resolved videos from `/api/smart-playlists/[id]/resolve?bid=...`, renders a grid of matching videos with a Back button.
+  - Full CRUD via React Query mutations. Strict TypeScript, no `any`.
+- Wired into:
+  - `src/store/app-store.ts`: added `smartPlaylist` view kind + URL sync (`?v=smartPlaylist&id=...`).
+  - `src/app/page.tsx`: added `case "smartPlaylist"` to renderView.
+  - `src/components/youtube/list-views.tsx`: added `<SmartPlaylistCreator />` at the top of the Library view (before regular playlists).
+- Verified: Library view shows "Smart playlists" heading + "Create smart playlist" button + empty state. 0 errors.
+
+## VERIFICATION
+- `bun run lint` → clean (0 errors, 0 warnings).
+- `tests/basic.test.ts` → 23/23 passed.
+- `tests/chaos.test.ts` → 17/17 passed.
+- Dev server healthy, home returns 200.
+- Browser-verified:
+  - Settings → Recommendations → Interest Profiles section renders ✅
+  - Library → Smart Playlists section renders ✅
+  - 0 errors throughout ✅
+- API verified end-to-end:
+  - Interest profile: create → `ok: True, name: Work, active: True` ✅
+  - Smart playlist: create → `ok: True, name: Unwatched Tech` ✅
+  - Smart playlist resolve: 4 matching videos returned dynamically ✅
+
+## SPEC COVERAGE (pass 9 — UI wiring complete)
+- §28 Multiple interest profiles: ✅ full UI with create/activate/edit/delete in Settings → Recommendations
+- §30 Smart playlists: ✅ full UI with rule builder + live preview + resolved results view in Library
+
+Stage Summary:
+- 2 new UI components (InterestProfilesSection, SmartPlaylistCreator).
+- 1 new view kind (smartPlaylist) wired into app store + page.tsx + URL sync.
+- All pass-7 backend systems are now accessible via the actual UI.
+- Users can now: create multiple recommendation profiles (Personal/Work/Research/etc.), create rule-based smart playlists with live preview, and view dynamically-resolved results.
+- All 40 tests green, lint clean, browser-verified with 0 errors, API-verified end-to-end.

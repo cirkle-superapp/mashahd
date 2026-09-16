@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { useAppStore } from "@/store/app-store";
+import { InterestProfilesSection } from "@/components/youtube/interest-profiles-section";
 
 /**
  * SettingsView — Mashahd's settings & about screen.
@@ -251,6 +252,10 @@ export function SettingsView({ initialTab = "general" }: { initialTab?: string }
                   </SelectContent>
                 </Select>
               </SettingRow>
+
+              {/* §28: Interest profiles — separate recommendation contexts
+                  (Personal / Work / Research / …) under one account. */}
+              <InterestProfilesSection />
             </div>
           )}
 
