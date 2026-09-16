@@ -18,6 +18,12 @@ import path from "node:path";
  * Per §155: delete only objects that are obsolete, unreferenced, outside
  * retention, and only after safety checks.
  *
+ * SECURITY (deep audit pass 2): this endpoint is DESTRUCTIVE — it wipes
+ * swarms, cancels jobs, deletes media files, and clears video URLs.
+ * It now requires an admin token (MEDIA_ADMIN_TOKEN env var) in the
+ * `x-admin-token` header or request body. In dev (NODE_ENV != production)
+ * the token check is skipped for local development convenience.
+ *
  * This endpoint:
  *   1. Marks the video as DELETED in Turso (soft delete — keeps metadata)
  *   2. Marks all swarms as DRAINING (peers stop sharing)
@@ -31,6 +37,35 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  // ── Auth gate (deep audit pass 2: was unauthenticated) ──
+  const isProd = process.env.NODE_ENV === "production";
+  if (isProd) {
+    const adminToken = process.env.MEDIA_ADMIN_TOKEN;
+    if (!adminToken) {
+      return NextResponse.json(
+        { error: "Video deletion is disabled. Set MEDIA_ADMIN_TOKEN to enable admin-only deletion." },
+        { status: 403 }
+      );
+    }
+    let providedToken: string | undefined;
+    providedToken = req.headers.get("x-admin-token") || undefined;
+    if (!providedToken) {
+      try {
+        const body = await req.clone().json().catch(() => ({}));
+        providedToken = body?.adminToken;
+      } catch {
+        providedToken = undefined;
+      }
+    }
+    if (providedToken !== adminToken) {
+      return NextResponse.json(
+        { error: "Unauthorized — admin token required for video deletion." },
+        { status: 403 }
+      );
+    }
+  }
+
   const ip = getClientIP(req);
   const rl = await rateLimit(`delete-video:${ip}`, 3, 60_000);
   if (rl.limited) {

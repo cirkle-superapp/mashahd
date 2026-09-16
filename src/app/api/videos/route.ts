@@ -9,6 +9,11 @@ import { db } from "@/lib/db";
  *   - sort: "recent" (default) | "popular" | "trending"
  *   - channelId: limit to a single channel
  *   - ids: pipe-separated list of video ids (for "liked"/"history" lists)
+ *   - limit: max results (default 100, max 200) — pagination guard
+ *   - offset: skip N results (for infinite scroll / pagination)
+ *
+ * SECURITY/perf (deep audit pass 2): added `limit` + `take` to prevent
+ * unbounded queries returning thousands of rows.
  */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -17,6 +22,8 @@ export async function GET(req: NextRequest) {
   const sort = url.searchParams.get("sort") || "recent";
   const channelId = url.searchParams.get("channelId") || "";
   const idsParam = url.searchParams.get("ids") || "";
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "100", 10) || 100, 1), 200);
+  const offset = Math.max(parseInt(url.searchParams.get("offset") || "0", 10) || 0, 0);
 
   const videos = await db.video.findMany({
     where: {
@@ -27,6 +34,7 @@ export async function GET(req: NextRequest) {
         : {}),
     },
     include: { channel: true },
+    take: limit + 100, // fetch a bit more for client-side filtering/sorting, then slice
   });
 
   let filtered = videos;
@@ -74,7 +82,16 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ videos: filtered });
+  // Apply pagination AFTER sort/filter.
+  const paginated = filtered.slice(offset, offset + limit);
+
+  return NextResponse.json({
+    videos: paginated,
+    total: filtered.length,
+    limit,
+    offset,
+    hasMore: offset + limit < filtered.length,
+  });
 }
 
 function scoreTrending(views: number, createdAt: number, now: number) {

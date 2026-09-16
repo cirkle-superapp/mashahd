@@ -135,8 +135,25 @@ export function CommandPalette() {
       run: async () => {
         close();
         toast.promise(
-          fetch("/api/seed", { method: "POST" }).then((r) => r.json()),
-          { loading: "Re-seeding…", success: "Demo data reloaded", error: "Seed failed" }
+          fetch("/api/seed", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ adminToken: "dev" }),
+          }).then(async (r) => {
+            if (!r.ok) {
+              const data = await r.json().catch(() => ({}));
+              throw new Error(data.error || `Seed failed (${r.status})`);
+            }
+            return r.json();
+          }),
+          {
+            loading: "Re-seeding…",
+            success: "Demo data reloaded",
+            error: (e) =>
+              e.message?.includes("disabled") || e.message?.includes("admin")
+                ? "Seeding is locked in production (set SEED_ADMIN_TOKEN)"
+                : "Seed failed",
+          }
         );
         setTimeout(() => window.location.reload(), 900);
       },

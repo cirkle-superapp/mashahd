@@ -104,6 +104,9 @@ export function MashahdPlayer({
   const [controlsVisible, setControlsVisible] = useState(true);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [showHud, setShowHud] = useState(false);
+  // PiP support flag — computed after mount to avoid hydration mismatch
+  // (document.pictureInPictureEnabled is undefined on the server).
+  const [pipSupported, setPipSupported] = useState(false);
   const [hudStats, setHudStats] = useState<P2PStats>({
     p2pBytes: 0,
     cdnBytes: 0,
@@ -125,6 +128,14 @@ export function MashahdPlayer({
     const video = videoRef.current;
     if (!video) return;
 
+    // Detect PiP support after mount (avoids hydration mismatch —
+    // document.pictureInPictureEnabled is undefined on the server).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPipSupported(
+      typeof document !== "undefined" &&
+      document.pictureInPictureEnabled !== undefined
+    );
+
     startTimeRef.current = performance.now();
     sessionIdRef.current = `s_${Math.random().toString(36).slice(2, 12)}`;
 
@@ -134,7 +145,6 @@ export function MashahdPlayer({
       pageVisible: document.visibilityState === "visible",
       userOptOut: false,
     });
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setP2pPolicy(policy);
 
     let hls: Hls;
@@ -503,7 +513,7 @@ export function MashahdPlayer({
               </div>
             )}
           </div>
-          {document.pictureInPictureEnabled !== undefined && (
+          {pipSupported && (
             <button onClick={togglePiP} className="grid place-items-center h-8 w-8 rounded-full hover:bg-white/15 text-white" aria-label="Picture in picture">
               <PictureInPicture2 className="h-4 w-4" />
             </button>

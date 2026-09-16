@@ -81,6 +81,8 @@ export function WatchParty({
       setCopied(true);
       toast.success("Party link copied — share it with friends");
       setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      toast.error("Couldn't copy — copy the link manually");
     });
   };
 

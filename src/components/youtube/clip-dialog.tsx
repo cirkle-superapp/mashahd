@@ -107,7 +107,7 @@ export function ClipDialog({
   const copyLink = () => {
     if (!createdId) return;
     const url = `${window.location.origin}/?v=watch&id=${videoId}&clip=${createdId}`;
-    navigator.clipboard.writeText(url).then(() => toast.success("Clip link copied"));
+    navigator.clipboard.writeText(url).then(() => toast.success("Clip link copied")).catch(() => toast.error("Couldn't copy link"));
   };
 
   const clipLen = end - start;

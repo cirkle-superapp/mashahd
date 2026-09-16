@@ -32,6 +32,25 @@ interface TranscriptResponse {
 
 const _cache = new Map<string, { at: number; data: TranscriptSegment[] }>();
 const CACHE_TTL_MS = 10 * 60 * 1000;
+// Bounded cache — evict oldest entries when the cache exceeds this size.
+// Prevents unbounded memory growth in long-running server processes
+// (deep audit pass 2 flagged the previous unbounded Map).
+const CACHE_MAX_ENTRIES = 200;
+
+function cacheSet(key: string, data: TranscriptSegment[]) {
+  _cache.set(key, { at: Date.now(), data });
+  // Evict oldest entries if over capacity.
+  if (_cache.size > CACHE_MAX_ENTRIES) {
+    // Map preserves insertion order — delete the first entries.
+    const toDelete = _cache.size - CACHE_MAX_ENTRIES;
+    let deleted = 0;
+    for (const k of _cache.keys()) {
+      if (deleted >= toDelete) break;
+      _cache.delete(k);
+      deleted++;
+    }
+  }
+}
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -131,7 +150,7 @@ The first segment MUST start at 0. The last segment MUST end at or before ${dura
     }
   }
 
-  _cache.set(videoId, { at: Date.now(), data: transcript });
+  cacheSet(videoId, transcript);
 
   return NextResponse.json({
     transcript,

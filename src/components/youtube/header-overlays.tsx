@@ -348,10 +348,12 @@ export function ShareButton({
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const url =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/?v=watch&id=${videoId}`
-      : `/?v=watch&id=${videoId}`;
+  // Build the share URL safely — use a state + effect to avoid hydration
+  // mismatch (server renders a relative URL, client renders the full origin).
+  const [url, setUrl] = useState<string>(`/?v=watch&id=${videoId}`);
+  useEffect(() => {
+    setUrl(`${window.location.origin}/?v=watch&id=${videoId}`);
+  }, [videoId]);
 
   const copy = async () => {
     try {
