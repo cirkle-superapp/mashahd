@@ -7,6 +7,7 @@ import { CategoryChips } from "./category-chips";
 import { MoodFilter, moodToCategory, type MoodId } from "./mood-filter";
 import { ShortsShelf } from "./shorts-shelf";
 import { TrendingDigest } from "./trending-digest";
+import { ContinueWatchingShelf } from "./continue-watching-shelf";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import type { Video } from "@/lib/types";
@@ -23,12 +24,21 @@ async function fetchVideos(params: { category?: string; sort?: string }) {
 
 // Pass 4 upgrade: personalized "For You" feed via /api/feed/for-you.
 // Uses the signed browserId to build a category + channel affinity profile.
-async function fetchForYou(bid: string): Promise<Video[]> {
-  if (!bid) return [];
+// Pass 5 upgrade: also surfaces the `reasons` array per video (§8 transparency).
+interface ForYouPayload {
+  videos: Video[];
+  reasons: string[][];
+}
+
+async function fetchForYou(bid: string): Promise<ForYouPayload> {
+  if (!bid) return { videos: [], reasons: [] };
   const res = await fetch(`/api/feed/for-you?bid=${encodeURIComponent(bid)}&limit=24`);
-  if (!res.ok) return [];
+  if (!res.ok) return { videos: [], reasons: [] };
   const data = await res.json();
-  return data.videos as Video[];
+  return {
+    videos: (data.videos as Video[]) || [],
+    reasons: (data.reasons as string[][]) || [],
+  };
 }
 
 export function HomeView() {
@@ -62,8 +72,11 @@ export function HomeView() {
   });
 
   // On the default home, prefer FYP data; otherwise use the category feed.
-  const showFyp = isDefaultHome && fypData && fypData.length > 0;
-  const displayVideos = showFyp ? fypData : data;
+  const showFyp = isDefaultHome && fypData && fypData.videos.length > 0;
+  const displayVideos = showFyp ? fypData.videos : data;
+  // Reasons are only meaningful on the personalized FYP — category/mood
+  // feeds don't return a `reasons` array.
+  const displayReasons = showFyp ? fypData.reasons : undefined;
   const displayLoading = showFyp ? fypLoading : isLoading;
 
   return (
@@ -76,6 +89,9 @@ export function HomeView() {
           reinforces Mashahd's AI-native identity with a curated editorial
           wrap-up of today's trending videos. */}
       {isDefaultHome && <TrendingDigest />}
+      {/* Continue Watching shelf — shows unfinished videos with resume positions.
+          Per spec §32. Only on the default home view. */}
+      {isDefaultHome && <ContinueWatchingShelf />}
       {/* Shorts shelf — only on the default home feed (not when a mood or
           specific category is selected). */}
       {isDefaultHome && <ShortsShelf />}
@@ -104,7 +120,13 @@ export function HomeView() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-x-4 gap-y-6">
           {displayLoading
             ? Array.from({ length: 18 }).map((_, i) => <VideoCardSkeleton key={i} />)
-            : displayVideos?.map((v) => <VideoCard key={v.id} video={v} />)}
+            : displayVideos?.map((v, i) => (
+                <VideoCard
+                  key={v.id}
+                  video={v}
+                  reasons={displayReasons?.[i]}
+                />
+              ))}
         </div>
         {!displayLoading && displayVideos && displayVideos.length === 0 && (
           <div className="text-center py-24 text-muted-foreground">

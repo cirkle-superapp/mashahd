@@ -2029,3 +2029,127 @@ Stage Summary:
 - All user controls affect Home, Search, Up Next, and Discovery (per spec §11).
 - Zero-cost: no new paid dependencies, all built on existing Turso + Prisma stack.
 - All 40 tests green, lint clean, browser-verified, API-verified end-to-end.
+
+---
+Task ID: 3
+Agent: Recommendation Controls UI Engineer
+Task: Build the recommendation controls UI
+
+Work Log:
+- Read worklog pass-5 entry: confirmed backend APIs already exist for /api/recommendation-feedback (11 reasons, also creates blocks for dont_like_creator + wrong_topic), /api/blocks (6 block types), and /api/feed/for-you (returns `reasons` array per video for §8 transparency). No backend changes needed.
+- Inspected existing UI primitives: src/components/ui/dropdown-menu.tsx, popover.tsx, select.tsx — all standard shadcn/Radix components. Confirmed deps installed (sonner 2.0.6, lucide-react 0.525.0, @radix-ui/* ^2.x).
+- src/components/youtube/video-card.tsx (Task §1 + §2):
+  - Added `reasons?: string[]` prop to `VideoCard`.
+  - Added `hidden` state; when true the card returns `null` (disappears from the feed).
+  - Wired a "..." (MoreHorizontal) icon button (h-8 w-8) inside the meta section next to the title, NOT on the thumbnail (so it doesn't overlap Favorite/Watch Later). It uses opacity-0 → group-hover/focus/data-[state=open]:opacity-100 so it appears on hover and stays visible while open.
+  - Trigger stopPropagation so opening the menu doesn't navigate to the watch page.
+  - Dropdown has 4 options using the required lucide icons: ThumbsDown (not_interested), Eye (already_watched), Ban (dont_like_creator), Tag (wrong_topic). Each POSTs {browserId, videoId, reason} to /api/recommendation-feedback.
+  - For "dont_like_creator" also POSTs {browserId, blockType:"creator", blockValue:video.channelId} to /api/blocks. For "wrong_topic" also POSTs {browserId, blockType:"topic", blockValue:video.category} to /api/blocks. Both are idempotent upserts (the backend also creates these blocks from the feedback endpoint — the explicit second call is per the task spec).
+  - On success: optimistically setHidden(true) + toast.success with a message confirming the action AND its effect ("Video hidden from recommendations"). On network failure the card is unhidden and an error toast is shown.
+  - Added §8 "Why am I seeing this?" info badge: small Info icon + "Why am I seeing this?" text below the title, opening a Popover (w-72) listing the reasons as gold-bulleted lines.
+  - Added types: `FeedbackReason` (literal union) and `FeedbackOption`. No `any`.
+- src/components/youtube/home-view.tsx (Task §2):
+  - Changed fetchForYou return type from Video[] to `{ videos: Video[]; reasons: string[][] }` (new ForYouPayload interface). The API already returns `reasons` as an array of arrays.
+  - Pass `reasons={displayReasons?.[i]}` to each VideoCard only when the FYP is the active source (category/mood feeds don't return reasons).
+- src/components/youtube/list-views.tsx (Task §3):
+  - Replaced the 2-button "Sort" filter (recent/popular) in SearchView with a shadcn `Select` dropdown labeled "Sort:".
+  - Added SearchSort union type covering all 7 deterministic search sorts: relevance (default), newest, oldest, most_viewed, least_viewed, longest, shortest. SEARCH_SORTS array drives both the items and the type.
+  - Default sort for searches is now "relevance" (the API's relevance scorer ranks title > tag > channel > description matches, weighted by popularity). Non-search list views still use `sort: "recent"` (unchanged).
+  - Removed now-unused `cn` import.
+- Verified `bun run lint` → exit 0 (0 errors, 0 warnings).
+- Verified `tsc --noEmit` produces zero errors in the three modified files (3 pre-existing errors in unrelated files: mashahd-player-lazy.tsx + browser-id-security.ts).
+
+Stage Summary:
+- Recommendation controls UI is fully wired to the existing pass-5 backend APIs.
+- §10 Negative controls: 4 dropdown options on every VideoCard ("..."). Each calls /api/recommendation-feedback with the right reason, hides the card locally, and shows a sonner toast describing both the action and its effect. "Don't recommend this channel" + "Wrong topic" also explicitly POST to /api/blocks.
+- §8 Transparency: FYP now fetches the per-video `reasons` array and VideoCard renders an Info-icon Popover ("Why am I seeing this?") below the title with the explanation bullets.
+- §12 Search determinism: SearchView replaced its 2-button filter with a 7-option Select dropdown (relevance/newest/oldest/most_viewed/least_viewed/longest/shortest), defaulting to relevance.
+- All existing functionality preserved (favorite, watch later, navigation, mood filter, category chips, FYP fallback to category feed, etc.).
+- Lint clean, TypeScript clean in modified files. No new dependencies. No backend changes.
+
+---
+Task ID: UPGRADE-PASS-6-UI-WIRING
+Agent: main (acting as CTO + UX Architect + Full-Stack Engineer)
+Task: Wire the pass-5 backend upgrades (preferences, blocks, feedback, continue-watching) into the actual UI so users can access these powerful controls.
+
+Work Log:
+
+## FIX 1: Settings page wired to /api/preferences (spec §69)
+- `src/components/youtube/settings-view.tsx` completely rewritten:
+  - Replaced cosmetic `useState` toggles with React Query mutations that POST to `/api/preferences`.
+  - Added 3 new tabs: **Recommendations**, **Playback**, **Accessibility** (in addition to General, Notifications, Privacy, Report, Help, Feedback).
+  - **Recommendations tab** (spec §9): Home feed mode dropdown (6 modes: smart/following/chronological/discovery/focus/random), Discovery mix sliders (3 sliders for familiar/new/unexpected %), Disable Shorts toggle, AI-content filter dropdown (4 levels), Default search sort dropdown (7 options).
+  - **Playback tab** (spec §33-36): Default quality (9 options), Default speed (6 options), Preferred subtitle language, Preferred audio language.
+  - **Accessibility tab** (spec §58): Reduced motion, High contrast, Large controls toggles.
+  - **Privacy tab**: Pause recommendation learning toggle (spec §26) — wired to the real preference.
+  - All changes persist to DB immediately via optimistic React Query mutations.
+  - Discovery mix sliders show a live total (should sum to ~100).
+
+## FIX 2: Video card "..." menu + "Why am I seeing this?" (spec §10, §8)
+- `src/components/youtube/video-card.tsx` (by subagent):
+  - Added MoreHorizontal "..." button that opens a DropdownMenu with 4 recommendation feedback options.
+  - Each option POSTs to `/api/recommendation-feedback` with the correct reason.
+  - "Don't recommend this channel" + "Wrong topic" also POST to `/api/blocks`.
+  - On success: card hides + toast confirms the action + its effect.
+  - Added optional `reasons?: string[]` prop + Info icon Popover showing "Why am I seeing this?" reasons.
+- `src/components/youtube/home-view.tsx`:
+  - FYP fetch now returns `reasons` array (one per video).
+  - Passes `reasons={displayReasons?.[i]}` to each VideoCard.
+
+## FIX 3: Search sort dropdown (spec §12)
+- `src/components/youtube/list-views.tsx` (by subagent):
+  - Replaced 2-button filter with a Select dropdown.
+  - 7 deterministic sorts: relevance, newest, oldest, most_viewed, least_viewed, longest, shortest.
+  - Default for searches is now `relevance` (was `recent`).
+
+## FIX 4: Continue Watching shelf + playback position saving (spec §32)
+- New `src/components/youtube/continue-watching-shelf.tsx`:
+  - Fetches from `/api/continue-watching?bid=...`.
+  - Horizontal scroll shelf with resume position badges + progress bars.
+  - Play overlay on hover.
+  - Only renders when there are unfinished videos (returns null otherwise).
+- `src/components/youtube/home-view.tsx`:
+  - Added `<ContinueWatchingShelf />` between TrendingDigest and ShortsShelf.
+  - Only on the default home view.
+- `src/components/youtube/watch-view.tsx`:
+  - Added debounced position saving: every 10s while playing + once on unmount.
+  - POSTs to `/api/continue-watching` with `{browserId, videoId, position, completed}`.
+  - Only saves if position changed by >= 3s (avoids spamming).
+
+## VERIFICATION
+- `bun run lint` → clean (0 errors, 0 warnings).
+- `tests/basic.test.ts` → 23/23 passed.
+- `tests/chaos.test.ts` → 17/17 passed.
+- Dev server healthy, home returns 200.
+- Browser-verified:
+  - Settings page renders all 9 tabs including Recommendations, Playback, Accessibility ✅
+  - Recommendations tab shows: Home feed mode dropdown, Discovery mix sliders, Disable Shorts, AI-content filter, Default search sort ✅
+  - Home page shows "For You" badge ✅
+  - 0 errors throughout ✅
+- API verified:
+  - Preferences GET + POST update ✅
+  - Continue-watching seed + fetch ✅
+  - All preferences persist to DB ✅
+
+## SPEC COVERAGE (pass 6 — UI wiring)
+- §6 Home feed modes: ✅ user-selectable in Settings → Recommendations
+- §8 "Why am I seeing this?": ✅ Info popover on video cards
+- §9 Recommendation control center: ✅ discovery mix sliders in Settings
+- §10 Negative controls: ✅ "..." menu on video cards (4 feedback options)
+- §12 Search sorts: ✅ 7-option dropdown in search
+- §16 Disable Shorts: ✅ toggle in Settings
+- §18 AI-content filter: ✅ 4-level dropdown in Settings
+- §26 Pause recommendation learning: ✅ toggle in Settings → Privacy
+- §32 Continue watching: ✅ shelf on home + position saving in watch view
+- §33-36 Player defaults: ✅ quality, speed, subtitle, audio prefs in Settings → Playback
+- §58 Accessibility: ✅ 3 toggles in Settings → Accessibility
+- §69 User defaults: ✅ all 17 preferences persisted to DB
+
+Stage Summary:
+- 4 UI-to-backend wiring gaps closed (settings, video card menu, search sort, continue watching).
+- Users can now access ALL the powerful controls from pass 5 via the actual UI.
+- Settings page has 9 tabs with real DB-backed persistence (was cosmetic useState).
+- Video cards have a "..." menu with 4 recommendation feedback options + "Why am I seeing this?" popover.
+- Search has 7 deterministic sort options (was 2).
+- Continue Watching shelf shows on home + playback position saves every 10s.
+- All 40 tests green, lint clean, browser-verified, 0 errors.

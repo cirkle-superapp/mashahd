@@ -1,7 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Heart, Bookmark, Check } from "lucide-react";
+import {
+  Heart,
+  Bookmark,
+  Check,
+  MoreHorizontal,
+  ThumbsDown,
+  Eye,
+  Ban,
+  Tag,
+  Info,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/store/app-store";
 import { formatViews, formatDuration, timeAgo } from "@/lib/format";
@@ -10,15 +20,74 @@ import { cn } from "@/lib/utils";
 import { VerifiedBadge } from "./verified-badge";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
-export function VideoCard({ video }: { video: Video }) {
+// Valid recommendation-feedback reasons (must match the backend allow-list
+// in /api/recommendation-feedback/route.ts).
+type FeedbackReason =
+  | "not_interested"
+  | "already_watched"
+  | "dont_like_creator"
+  | "wrong_topic";
+
+type FeedbackOption = {
+  reason: FeedbackReason;
+  label: string;
+  icon: typeof ThumbsDown;
+  toast: string;
+};
+
+const FEEDBACK_OPTIONS: FeedbackOption[] = [
+  {
+    reason: "not_interested",
+    label: "Not interested",
+    icon: ThumbsDown,
+    toast: "Noted. Video hidden from recommendations.",
+  },
+  {
+    reason: "already_watched",
+    label: "Already watched",
+    icon: Eye,
+    toast: "Marked as already watched. Video hidden from recommendations.",
+  },
+  {
+    reason: "dont_like_creator",
+    label: "Don't recommend this channel",
+    icon: Ban,
+    toast: "Channel blocked. Its videos are hidden from recommendations.",
+  },
+  {
+    reason: "wrong_topic",
+    label: "Wrong topic",
+    icon: Tag,
+    toast: "Topic blocked. Similar videos are hidden from recommendations.",
+  },
+];
+
+export function VideoCard({ video, reasons }: { video: Video; reasons?: string[] }) {
   const { navigate } = useAppStore();
   const bid = useBrowserId();
   const [fav, setFav] = useState(false);
   const [later, setLater] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const duration = formatDuration(video.durationSec);
   const when = timeAgo(video.createdAt);
   const viewsLabel = formatViews(video.views);
+
+  // Hide the card entirely once the user has given negative feedback (§10).
+  if (hidden) return null;
 
   const toggleFav = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -51,6 +120,66 @@ export function VideoCard({ video }: { video: Video }) {
       setLater(!next);
     }
   };
+
+  const handleFeedback = async (option: FeedbackOption) => {
+    // Optimistically hide the card so the feed updates instantly.
+    setHidden(true);
+
+    // Always record the recommendation feedback (§10).
+    try {
+      await fetch("/api/recommendation-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ browserId: bid, videoId: video.id, reason: option.reason }),
+      });
+    } catch {
+      // Network failure — unhide the card so the user can retry.
+      setHidden(false);
+      toast.error("Couldn't submit feedback. Please try again.");
+      return;
+    }
+
+    // For "dont_like_creator" the backend already creates a creator block, but
+    // per the spec §11 we also POST it explicitly via /api/blocks so the block
+    // surfaces in the user's block list and affects Search / Discovery too.
+    // The blocks endpoint upserts, so the duplicate call is idempotent.
+    if (option.reason === "dont_like_creator") {
+      try {
+        await fetch("/api/blocks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            browserId: bid,
+            blockType: "creator",
+            blockValue: video.channelId,
+          }),
+        });
+      } catch {
+        // Feedback was already recorded — don't surface a hard error.
+      }
+    }
+
+    // Same for "wrong_topic" — explicitly persist the topic block.
+    if (option.reason === "wrong_topic") {
+      try {
+        await fetch("/api/blocks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            browserId: bid,
+            blockType: "topic",
+            blockValue: video.category,
+          }),
+        });
+      } catch {
+        // Feedback was already recorded — don't surface a hard error.
+      }
+    }
+
+    toast.success(option.toast, { duration: 4000 });
+  };
+
+  const hasReasons = reasons && reasons.length > 0;
 
   return (
     <article
@@ -111,9 +240,48 @@ export function VideoCard({ video }: { video: Video }) {
           </Avatar>
         </button>
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-medium leading-snug line-clamp-2 text-foreground">
-            {video.title}
-          </h3>
+          <div className="flex items-start gap-1">
+            <h3 className="min-w-0 flex-1 text-sm font-medium leading-snug line-clamp-2 text-foreground">
+              {video.title}
+            </h3>
+            {/* "..." More menu — negative recommendation controls (§10).
+                Positioned at the top-right of the meta section, NOT on the
+                thumbnail, so it doesn't overlap the Favorite / Watch Later
+                quick actions. Appears on hover. */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  className="shrink-0 grid place-items-center h-8 w-8 -mr-1.5 -mt-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors opacity-0 focus:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+                  aria-label="More options"
+                  title="More options"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                  Tell us about this video
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {FEEDBACK_OPTIONS.map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={option.reason}
+                      onSelect={() => handleFeedback(option)}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{option.label}</span>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -127,6 +295,44 @@ export function VideoCard({ video }: { video: Video }) {
           <p className="text-xs text-muted-foreground truncate">
             {viewsLabel} • {when}
           </p>
+          {/* "Why am I seeing this?" — spec §8 transparency. The FYP API
+              returns a `reasons` array per video; show it as a small popover
+              triggered by an Info icon below the title. */}
+          {hasReasons && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground/80 hover:text-foreground transition-colors"
+                  aria-label="Why am I seeing this?"
+                  title="Why am I seeing this?"
+                >
+                  <Info className="h-3 w-3" />
+                  <span>Why am I seeing this?</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                className="w-72 text-xs"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <p className="font-medium text-foreground mb-1.5">
+                  Why we recommended this
+                </p>
+                <ul className="space-y-1.5">
+                  {reasons.map((r, i) => (
+                    <li key={i} className="flex items-start gap-1.5 text-muted-foreground">
+                      <span
+                        className="mt-1 h-1 w-1 shrink-0 rounded-full bg-gold"
+                        aria-hidden
+                      />
+                      <span>{r}</span>
+                    </li>
+                  ))}
+                </ul>
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
       </div>
     </article>

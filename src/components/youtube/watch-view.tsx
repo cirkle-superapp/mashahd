@@ -111,6 +111,51 @@ export function WatchView({ videoId }: { videoId: string }) {
     }).catch(() => {});
   }, [bid, videoId]);
 
+  // Save continue-watching position (§32) — debounced via a ref + interval.
+  // Saves every 10s while the video is playing, + once on unmount.
+  const lastSavedPosRef = useRef(0);
+  useEffect(() => {
+    if (!bid || !videoId) return;
+    const interval = setInterval(() => {
+      const v = videoRef.current;
+      if (!v || v.paused || v.ended) return;
+      const pos = Math.floor(v.currentTime || 0);
+      // Only save if position changed by >= 3s (avoid spamming).
+      if (Math.abs(pos - lastSavedPosRef.current) < 3) return;
+      lastSavedPosRef.current = pos;
+      fetch("/api/continue-watching", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          browserId: bid,
+          videoId,
+          position: pos,
+          completed: false,
+        }),
+      }).catch(() => {});
+    }, 10_000);
+    return () => {
+      clearInterval(interval);
+      // Save final position on unmount.
+      const v = videoRef.current;
+      if (v) {
+        const pos = Math.floor(v.currentTime || 0);
+        if (pos > 3) {
+          fetch("/api/continue-watching", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              browserId: bid,
+              videoId,
+              position: pos,
+              completed: v.ended,
+            }),
+          }).catch(() => {});
+        }
+      }
+    };
+  }, [bid, videoId]);
+
   // On unmount, hand the video + current playback position to the mini-player
   // so it can keep playing in the floating corner. We only do this if the
   // video is actually playing (not ended/paused).

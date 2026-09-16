@@ -5,10 +5,38 @@ import { useQuery } from "@tanstack/react-query";
 import { Heart, Bookmark } from "lucide-react";
 import { VideoCardHorizontal, VideoCard } from "./video-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Video } from "@/lib/types";
 import { useAppStore } from "@/store/app-store";
 import { useBrowserId } from "@/hooks/use-browser-id";
-import { cn } from "@/lib/utils";
+
+// Spec §12 — deterministic search sort options. The backend /api/videos
+// endpoint supports all of these. `relevance` is the default for searches;
+// non-search list views keep using `recent` (the API default).
+type SearchSort =
+  | "relevance"
+  | "newest"
+  | "oldest"
+  | "most_viewed"
+  | "least_viewed"
+  | "longest"
+  | "shortest";
+
+const SEARCH_SORTS: { value: SearchSort; label: string }[] = [
+  { value: "relevance", label: "Relevance" },
+  { value: "newest", label: "Newest" },
+  { value: "oldest", label: "Oldest" },
+  { value: "most_viewed", label: "Most viewed" },
+  { value: "least_viewed", label: "Least viewed" },
+  { value: "longest", label: "Longest" },
+  { value: "shortest", label: "Shortest" },
+];
 
 async function fetchVideosRaw(params: Record<string, string>) {
   const sp = new URLSearchParams(params);
@@ -26,16 +54,11 @@ async function fetchUserState(bid: string) {
 }
 
 export function SearchView({ query }: { query: string }) {
-  const [sort, setSort] = useState<"recent" | "popular">("recent");
+  const [sort, setSort] = useState<SearchSort>("relevance");
   const { data, isLoading } = useQuery({
     queryKey: ["videos", "search", query, sort],
     queryFn: () => fetchVideosRaw({ q: query, sort }),
   });
-
-  const FILTERS: { id: "recent" | "popular"; label: string }[] = [
-    { id: "recent", label: "Most recent" },
-    { id: "popular", label: "Most viewed" },
-  ];
 
   return (
     <div className="px-4 sm:px-6 py-6 max-w-[1100px] mx-auto">
@@ -46,21 +69,22 @@ export function SearchView({ query }: { query: string }) {
           <span className="ml-2">— {data.length} video{data.length === 1 ? "" : "s"}</span>
         )}
       </h1>
-      {/* Filter chips — unique to Mashahd, not YouTube's filter row */}
+      {/* Sort dropdown — spec §12 deterministic search sorts. Replaces the
+          old 2-button filter with the full 7-option set backed by /api/videos. */}
       <div className="flex items-center gap-2 mb-4">
         <span className="text-xs text-muted-foreground">Sort:</span>
-        {FILTERS.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setSort(f.id)}
-            className={cn(
-              "px-3 py-1 rounded-full text-xs font-medium transition-colors",
-              sort === f.id ? "bg-gradient-gold text-charcoal" : "brand-chip"
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
+        <Select value={sort} onValueChange={(v) => setSort(v as SearchSort)}>
+          <SelectTrigger size="sm" className="h-8 w-[160px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SEARCH_SORTS.map((s) => (
+              <SelectItem key={s.value} value={s.value}>
+                {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="flex flex-col gap-4">
         {isLoading
