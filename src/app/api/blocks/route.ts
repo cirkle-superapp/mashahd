@@ -80,6 +80,17 @@ export async function POST(req: NextRequest) {
     update: {},
   });
 
+  // Log to the recommendation changelog (§70).
+  const eventType = blockType === "creator" ? "blocked_creator" : "blocked_topic";
+  await db.recommendationChangelog.create({
+    data: {
+      userId: verification.id,
+      eventType,
+      description: `Blocked ${blockType}: ${blockValue}`,
+      metadata: JSON.stringify({ blockType, blockValue }),
+    },
+  }).catch(() => {});
+
   return NextResponse.json({
     ok: true,
     blockId: block.id,

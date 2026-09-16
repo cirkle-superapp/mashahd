@@ -534,3 +534,56 @@ model ContentProvenance {
 
   @@index([origin])
 }
+
+// ── Interest Profiles (§28 — multiple recommendation contexts) ──
+// Users can have separate recommendation contexts (Personal, Work, Research,
+// Entertainment, etc.) WITHOUT separate accounts. Each profile has its own
+// affinity + feedback + blocks, but shares subscriptions + playlists.
+model InterestProfile {
+  id          String   @id @default(cuid())
+  userId      String   // signed browserId or userId
+  name        String   // e.g. "Personal", "Work", "Research"
+  // Pipe-separated categories this profile is interested in (§28).
+  categories  String   @default("")
+  // Whether this is the active profile (only one active per user at a time).
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ── Smart Playlists (§30 — rule-based dynamic playlists) ──
+// Playlists that update dynamically based on rules. E.g. "All unwatched
+// videos under 20 minutes from followed creators" or "All videos about
+// technology saved during the last 30 days."
+model SmartPlaylist {
+  id          String   @id @default(cuid())
+  userId      String   // signed browserId or userId
+  name        String
+  description String   @default("")
+  // JSON-encoded rules: { categories: [], creators: [], maxDuration: N,
+  //   minDuration: N, unwatchedOnly: bool, savedOnly: bool, dateRange: "7d|30d|all" }
+  rules       String   @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ── Recommendation Changelog (§70 — "My Recommendation Profile") ──
+// Records meaningful events that shaped the user's recommendation profile.
+// Shows the user WHY their feed looks the way it does (transparency).
+model RecommendationChangelog {
+  id          String   @id @default(cuid())
+  userId      String   // signed browserId or userId
+  // The type of event (§70).
+  eventType   String   // followed_creator | blocked_topic | watched_repeated_topic | negative_feedback | positive_feedback | reset_profile | preference_changed
+  // Human-readable description of what happened.
+  description String
+  // Optional metadata (JSON-encoded: videoId, category, reason, etc.)
+  metadata    String   @default("{}")
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+}

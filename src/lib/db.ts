@@ -27,8 +27,9 @@ function createDb(): any {
 
 // Create a fresh client if none cached, OR if the cached client is missing
 // newer models (happens after schema changes without a full process restart).
+// We check for the most recently added model — if it's missing, the client is stale.
 function getDb(): any {
-  if (globalForPrisma.prisma && typeof globalForPrisma.prisma.userPreference === 'object') {
+  if (globalForPrisma.prisma && typeof globalForPrisma.prisma.recommendationChangelog === 'object') {
     return globalForPrisma.prisma;
   }
   const client = createDb();

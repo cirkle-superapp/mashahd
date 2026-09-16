@@ -87,6 +87,17 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // Log to the recommendation changelog (§70 — "My Recommendation Profile").
+  const isNegative = ["not_interested", "already_watched", "wrong_topic", "too_repetitive", "low_quality", "clickbait", "misleading", "wrong_language", "wrong_format", "ai_generated", "dont_like_creator"].includes(reason);
+  await db.recommendationChangelog.create({
+    data: {
+      userId: verification.id,
+      eventType: isNegative ? "negative_feedback" : "positive_feedback",
+      description: `Marked a video as "${reason.replace(/_/g, " ")}"`,
+      metadata: JSON.stringify({ videoId, reason }),
+    },
+  }).catch(() => {});
+
   return NextResponse.json({
     ok: true,
     feedbackId: feedback.id,

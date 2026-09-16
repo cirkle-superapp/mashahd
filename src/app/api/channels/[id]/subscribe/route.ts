@@ -67,6 +67,15 @@ export async function POST(
       where: { id },
       data: { subscribers: { increment: 1 } },
     });
+    // Log to the recommendation changelog (§70).
+    await db.recommendationChangelog.create({
+      data: {
+        userId: verification.id,
+        eventType: "followed_creator",
+        description: `Subscribed to ${channel.name}`,
+        metadata: JSON.stringify({ channelId: id, channelName: channel.name }),
+      },
+    }).catch(() => {});
   } else if (action === "unsubscribe" && subs.includes(id)) {
     const idx = subs.indexOf(id);
     subs.splice(idx, 1);

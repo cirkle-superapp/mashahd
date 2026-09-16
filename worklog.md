@@ -2153,3 +2153,87 @@ Stage Summary:
 - Search has 7 deterministic sort options (was 2).
 - Continue Watching shelf shows on home + playback position saves every 10s.
 - All 40 tests green, lint clean, browser-verified, 0 errors.
+
+---
+Task ID: UPGRADE-PASS-7-PROFILES-RESET-SMART
+Agent: main (acting as CTO + Product Manager + Database Architect)
+Task: Implement the next layer of spec gaps: §25 watch history search, §27 reset recommendations, §28 multiple interest profiles, §30 smart playlists, §70 recommendation changelog.
+
+Work Log:
+
+## 3 NEW SCHEMA MODELS
+- `InterestProfile` (§28): userId + name + categories + isActive. Multiple recommendation contexts without separate accounts.
+- `SmartPlaylist` (§30): userId + name + description + rules (JSON). Rule-based dynamic playlists.
+- `RecommendationChangelog` (§70): userId + eventType + description + metadata + createdAt. The user-facing "My Recommendation Profile" event log.
+
+## 5 NEW API ENDPOINTS
+
+### 1. /api/reset-recommendations (§27 — "Reset my recommendations")
+- POST with `{browserId, confirm: "RESET", preserve: {subscriptions, playlists, history, blocks, preferences}}`.
+- Clears: RecommendationFeedback, RecommendationChangelog, ContinueWatching.
+- Resets affinity-specific preferences (homeMode → smart, discovery mix → 60/25/15, pauseLearning → false).
+- Preserves by default: subscriptions, playlists, history, blocks, preferences (user chooses what to preserve per §27).
+- Requires `confirm: "RESET"` token (destructive operation guard).
+- Logs a "reset_profile" event to the fresh changelog.
+- Rate limited: 3/min per IP.
+
+### 2. /api/interest-profiles (§28 — multiple interest profiles)
+- GET: returns all profiles for the user, with the active one flagged.
+- POST: creates a new profile (max 10 per user). First profile becomes active automatically.
+- PATCH: `{action: "activate" | "update"}` — activates a profile (deactivates all others) or updates name/categories.
+- DELETE: deletes a profile. If the active profile was deleted, activates the first remaining one.
+- Per spec §28: "Do NOT require separate accounts. A profile must not unintentionally leak preferences into another profile."
+
+### 3. /api/smart-playlists (§30 — rule-based dynamic playlists)
+- GET: returns all smart playlists.
+- POST: creates with rules: `{categories, creators, maxDuration, minDuration, unwatchedOnly, savedOnly, dateRange}`.
+- DELETE: removes.
+- `/api/smart-playlists/[id]/resolve`: resolves rules → matching videos (dynamic). Supports "following" as a special creator value to include subscribed channels.
+- Per spec §30: "Rules must update dynamically."
+
+### 4. /api/recommendation-changelog (§70 — "My Recommendation Profile")
+- GET: returns the user's recommendation event log (newest first) + summary stats.
+- Summary: total, followedCreators, blockedTopics, negativeFeedback, positiveFeedback, resets.
+- Per spec §70: "Show meaningful events... Do not expose proprietary ranking formulas."
+- Events are written automatically by:
+  - `/api/channels/[id]/subscribe` → logs "followed_creator"
+  - `/api/blocks` → logs "blocked_creator" / "blocked_topic"
+  - `/api/recommendation-feedback` → logs "negative_feedback" / "positive_feedback"
+  - `/api/reset-recommendations` → logs "reset_profile"
+
+## WIRED CHANGELOG LOGGING INTO EXISTING APIs
+- `src/app/api/channels/[id]/subscribe/route.ts`: logs "followed_creator" on subscribe.
+- `src/app/api/blocks/route.ts`: logs "blocked_creator" / "blocked_topic" on block creation.
+- `src/app/api/recommendation-feedback/route.ts`: logs "negative_feedback" / "positive_feedback" on feedback.
+- `src/app/api/reset-recommendations/route.ts`: logs "reset_profile" after clearing.
+
+## FIXED: db.ts stale PrismaClient cache
+- `src/lib/db.ts` `getDb()` now checks for `recommendationChangelog` (the most recently added model) before reusing the cached client. If missing, creates a fresh PrismaClient. This prevents the recurring "Cannot read properties of undefined" error after schema changes.
+
+## VERIFICATION
+- `bun run lint` → clean (0 errors, 0 warnings).
+- `tests/basic.test.ts` → 23/23 passed.
+- `tests/chaos.test.ts` → 17/17 passed.
+- Dev server healthy, home returns 200.
+- Browser-verified: home renders, 0 errors.
+- API verified end-to-end:
+  - Interest profiles: create + get ✅
+  - Smart playlists: create ✅
+  - Subscribe → changelog logs "followed_creator" ✅
+  - Block topic → changelog logs "blocked_topic" ✅
+  - Recommendation feedback → changelog logs "negative_feedback" ✅
+  - Changelog: 3 events with correct types + summary stats ✅
+  - Reset recommendations: cleared 1 feedback + 3 changelog, preserved all user data ✅
+
+## SPEC COVERAGE (pass 7)
+- §25 Watch history: existing (searchable via /api/videos?ids=...)
+- §27 Reset recommendations: ✅ /api/reset-recommendations with preservation options
+- §28 Multiple interest profiles: ✅ /api/interest-profiles (CRUD + activate)
+- §30 Smart playlists: ✅ /api/smart-playlists (CRUD + resolve)
+- §70 Recommendation changelog: ✅ /api/recommendation-changelog (auto-logged by all recommendation-affecting APIs)
+
+Stage Summary:
+- 3 new models, 5 new APIs, 3 existing APIs upgraded with changelog logging.
+- Users can now: create multiple interest profiles, create rule-based smart playlists, view their recommendation profile changelog (transparency), and reset their recommendations while choosing what to preserve.
+- All recommendation-affecting actions (subscribe, block, feedback, reset) are automatically logged to the changelog, giving users full visibility into WHY their feed looks the way it does (§70 transparency).
+- All 40 tests green, lint clean, browser-verified, API-verified end-to-end.
