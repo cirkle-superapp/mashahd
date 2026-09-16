@@ -261,12 +261,20 @@ function useQueriesForChannels(channelIds: string[]) {
 
 export function HistoryView() {
   const bid = useBrowserId();
+  // §25 filters: search query, creator, topic, duration, completed, saved.
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [durationFilter, setDurationFilter] = useState("all");
+  const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [sort, setSort] = useState<"recent" | "oldest" | "shortest" | "longest">("recent");
+
   const { data: state, isLoading } = useQuery({
     queryKey: ["user-state", bid],
     queryFn: () => fetchUserState(bid),
     enabled: !!bid,
   });
   const ids = state?.watchedVideoIds || [];
+  const savedIds = new Set(state?.favoriteVideoIds || []);
   const { data, isLoading: vLoading } = useQuery({
     queryKey: ["videos", "history", ids.join("|")],
     queryFn: () =>
@@ -274,9 +282,111 @@ export function HistoryView() {
     enabled: ids.length > 0,
   });
 
+  // Apply client-side filters (§25).
+  let filtered = data || [];
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    filtered = filtered.filter((v) =>
+      v.title.toLowerCase().includes(q) ||
+      v.channel.name.toLowerCase().includes(q) ||
+      v.tags.toLowerCase().includes(q)
+    );
+  }
+  if (categoryFilter !== "all") {
+    filtered = filtered.filter((v) => v.category === categoryFilter);
+  }
+  if (durationFilter !== "all") {
+    filtered = filtered.filter((v) => {
+      const d = v.durationSec;
+      if (durationFilter === "short") return d < 300;
+      if (durationFilter === "medium") return d >= 300 && d <= 900;
+      if (durationFilter === "long") return d > 900;
+      return true;
+    });
+  }
+  if (showSavedOnly) {
+    filtered = filtered.filter((v) => savedIds.has(v.id));
+  }
+  // Sort.
+  if (sort === "oldest") {
+    // History is stored most-recent-first; reverse for oldest.
+    filtered = [...filtered].reverse();
+  } else if (sort === "shortest") {
+    filtered = [...filtered].sort((a, b) => a.durationSec - b.durationSec);
+  } else if (sort === "longest") {
+    filtered = [...filtered].sort((a, b) => b.durationSec - a.durationSec);
+  }
+
+  // Collect unique categories from history for the filter dropdown.
+  const categories = Array.from(new Set((data || []).map((v) => v.category))).filter(Boolean);
+
   return (
     <div className="px-4 sm:px-6 py-6 max-w-[1100px] mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Watch history</h1>
+      <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+        <h1 className="text-2xl font-bold">Watch history</h1>
+        {ids.length > 0 && (
+          <span className="text-sm text-muted-foreground">{filtered.length} of {ids.length} videos</span>
+        )}
+      </div>
+
+      {/* §25: Search + filters */}
+      {ids.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-2 mb-6">
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search watch history..."
+            className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60"
+            aria-label="Search watch history"
+          />
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full sm:w-40 rounded-full">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={durationFilter} onValueChange={setDurationFilter}>
+            <SelectTrigger className="w-full sm:w-36 rounded-full">
+              <SelectValue placeholder="Duration" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Any duration</SelectItem>
+              <SelectItem value="short">Under 5 min</SelectItem>
+              <SelectItem value="medium">5–15 min</SelectItem>
+              <SelectItem value="long">Over 15 min</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sort} onValueChange={(v) => setSort(v as any)}>
+            <SelectTrigger className="w-full sm:w-36 rounded-full">
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Most recent</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="shortest">Shortest first</SelectItem>
+              <SelectItem value="longest">Longest first</SelectItem>
+            </SelectContent>
+          </Select>
+          <button
+            onClick={() => setShowSavedOnly((s) => !s)}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm border transition-colors whitespace-nowrap ${
+              showSavedOnly
+                ? "bg-rose/15 border-rose/40 text-rose"
+                : "border-border hover:bg-muted"
+            }`}
+            aria-pressed={showSavedOnly}
+          >
+            <Heart className={`h-4 w-4 ${showSavedOnly ? "fill-current" : ""}`} />
+            Saved only
+          </button>
+        </div>
+      )}
+
       {isLoading || vLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -294,9 +404,23 @@ export function HistoryView() {
           title="No watch history yet"
           body="Videos you watch will show up here, in the order you watched them."
         />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          title="No videos match your filters"
+          body="Try adjusting your search or filters above."
+        />
       ) : (
         <div className="flex flex-col gap-4">
-          {data?.map((v) => <VideoCardHorizontal key={v.id} video={v} />)}
+          {filtered.map((v) => (
+            <div key={v.id} className="relative">
+              <VideoCardHorizontal video={v} />
+              {savedIds.has(v.id) && (
+                <span className="absolute top-2 right-2 text-rose" title="Saved">
+                  <Heart className="h-4 w-4 fill-current" />
+                </span>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
