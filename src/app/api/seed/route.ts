@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { channels, videos, commentTemplates } from "@/lib/seed-data";
 
@@ -6,8 +6,47 @@ import { channels, videos, commentTemplates } from "@/lib/seed-data";
  * POST /api/seed
  * Idempotently seeds the database with demo channels, videos, and comments.
  * Safe to call multiple times — it wipes existing seed data first.
+ *
+ * SECURITY (hardened): this endpoint is DESTRUCTIVE (it wipes all comments,
+ * videos, and channels). It is now locked down:
+ *
+ *   1. In production (NODE_ENV=production): BLOCKED unless an admin token
+ *      matching SEED_ADMIN_TOKEN env var is provided in the request body
+ *      or the `x-admin-token` header. Without it, returns 403.
+ *
+ *   2. In development: allowed without a token (for local `bun run dev`).
+ *
+ * This closes the previous self-DOS vector where anyone could wipe the DB.
  */
-export async function POST() {
+export async function POST(req: NextRequest) {
+  // ── Auth gate ──
+  const isProd = process.env.NODE_ENV === "production";
+  if (isProd) {
+    const adminToken = process.env.SEED_ADMIN_TOKEN;
+    if (!adminToken) {
+      return NextResponse.json(
+        { error: "Seeding is disabled in production. Set SEED_ADMIN_TOKEN to enable admin-only seeding." },
+        { status: 403 }
+      );
+    }
+    let providedToken: string | undefined;
+    try {
+      const body = await req.clone().json().catch(() => ({}));
+      providedToken = body?.adminToken;
+    } catch {
+      providedToken = undefined;
+    }
+    if (!providedToken) {
+      providedToken = req.headers.get("x-admin-token") || undefined;
+    }
+    if (providedToken !== adminToken) {
+      return NextResponse.json(
+        { error: "Unauthorized — admin token required for production seeding." },
+        { status: 403 }
+      );
+    }
+  }
+
   // Wipe (order matters for FK constraints)
   await db.comment.deleteMany();
   await db.video.deleteMany();

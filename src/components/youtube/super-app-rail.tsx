@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * @deprecated — Dead code (UI audit 2026-09). Mashahd is a standalone video
+ * module; the super-app sibling-module rail was never wired into `page.tsx`.
+ * Kept here per the "nothing deleted or removed" directive. If reviving as
+ * part of the CIRKLE super-app shell, mount in `page.tsx` alongside the Dock.
+ */
+
 import { useEffect, useState } from "react";
 import {
   MessageCircle,

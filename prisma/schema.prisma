@@ -17,11 +17,27 @@ model Channel {
   handle       String   @unique
   avatarUrl    String
   bannerColors String // comma-separated hex colors used to render the gradient banner
+  // Optional custom banner image URL. Falls back to the bannerColors gradient.
+  bannerUrl    String   @default("")
   description  String
   subscribers  Int      @default(0)
-  createdAt     DateTime @default(now())
+  // Verification badge (social-media structuring audit gap). False by default;
+  // set true via admin tooling when a creator is verified.
+  verified     Boolean  @default(false)
+  // Creator economy: link the channel to its owning User. Nullable so existing
+  // seeded/demo channels (created before this field existed) still resolve.
+  ownerId      String?
+  // Pipe-separated social/external links (e.g. "twitter@x|website=https:...").
+  // SQLite can't store a list, so we use a serialized string (project rule).
+  links        String   @default("")
+  // ISO country code for the channel (for localization + recommendations).
+  country      String   @default("")
+  createdAt    DateTime @default(now())
 
   videos       Video[]
+  owner        User?    @relation("ChannelOwner", fields: [ownerId], references: [id])
+
+  @@index([ownerId])
 }
 
 model Video {
@@ -37,6 +53,16 @@ model Video {
   category     String
   tags         String   @default("") // pipe-separated
   channelId    String
+  // Social-media structuring audit: visibility + scheduling + language.
+  // public | unlisted | private | scheduled (default public for back-compat).
+  visibility   String   @default("public")
+  // When the video becomes public. For scheduled premieres this is the future
+  // release time; for immediate uploads it equals createdAt.
+  publishedAt  DateTime @default(now())
+  // ISO 639-1 language code (e.g. "en", "ar"). Empty = unknown.
+  language     String   @default("")
+  // Age restriction flag (audit gap). True = 18+ only.
+  ageGated     Boolean  @default(false)
   createdAt    DateTime @default(now())
 
   channel      Channel  @relation(fields: [channelId], references: [id])
@@ -49,6 +75,7 @@ model Video {
   @@index([category])
   @@index([channelId])
   @@index([createdAt])
+  @@index([visibility])
 }
 
 model Comment {
@@ -80,6 +107,7 @@ model UserState {
   id        String   @id @default(cuid())
   browserId String   @unique
   likedVideoIds      String @default("") // pipe-separated video ids
+  dislikedVideoIds   String @default("") // pipe-separated video ids (audit: wire dislike)
   subscribedChannelIds String @default("") // pipe-separated channel ids
   watchedVideoIds    String @default("") // pipe-separated video ids, most recent first
   favoriteVideoIds   String @default("") // pipe-separated video ids (Favorites / Save)
@@ -168,6 +196,7 @@ model User {
   updatedAt     DateTime @updatedAt
 
   sessions      Session[]
+  ownedChannels Channel[] @relation("ChannelOwner")
 }
 
 model Session {
@@ -336,4 +365,56 @@ model OutboxEvent {
 
   @@index([status, createdAt])
   @@index([aggregateType, aggregateId])
+}
+
+// ── Notifications (social-media structuring audit gap) ──
+// In-app notifications for the bell icon. Replaces the SAMPLE_NOTIFS hardcoded
+// mock. Notifications are created by domain events (new comment on your video,
+// new subscriber, new video from a subscribed channel, tip received) and read
+// via /api/notifications (cursor-paginated).
+model Notification {
+  id          String    @id @default(cuid())
+  // Recipient: a userId (authenticated) or browserId (anonymous).
+  recipientId String
+  // Type of notification for icon + routing.
+  type        String    // new_video | new_comment | new_subscriber | tip_received | system | mention
+  // JSON-encoded payload (title, body, linkUrl, actorAvatarUrl, etc.).
+  payload     String
+  read        Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@index([recipientId, createdAt])
+  @@index([recipientId, read])
+}
+
+// ── Notification preferences (per-user bell settings) ──
+// Persisted notification preference per user. Replaces the stateless React
+// toggles flagged by the audit.
+model NotificationPreference {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  newVideos    Boolean  @default(true)
+  comments     Boolean  @default(true)
+  subscribers  Boolean  @default(true)
+  tips         Boolean  @default(true)
+  mentions     Boolean  @default(true)
+  emailEnabled Boolean  @default(true)
+  pushEnabled  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ── Shares (engagement tracking — audit gap) ──
+// Records when a user shares a video (for virality metrics + recommendations).
+model Share {
+  id          String   @id @default(cuid())
+  videoId     String
+  // The sharer (userId or anonymous browserId).
+  sharerId    String
+  // Where the share went (twitter | facebook | copy_link | email | ...).
+  platform    String   @default("copy_link")
+  createdAt   DateTime @default(now())
+
+  @@index([videoId])
+  @@index([sharerId])
 }

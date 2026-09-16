@@ -24,12 +24,14 @@ export async function GET(
   // browserId for read; absence just means "not liked".
   const bid = new URL(_req.url).searchParams.get("bid") || "";
   let liked = false;
+  let disliked = false;
   let subscribed = false;
   if (bid) {
     const st = await getUserState(bid);
     liked = parseList(st.likedVideoIds).includes(id);
+    disliked = parseList((st as any).dislikedVideoIds ?? "").includes(id);
     subscribed = parseList(st.subscribedChannelIds).includes(video.channelId);
   }
 
-  return NextResponse.json({ video, liked, subscribed });
+  return NextResponse.json({ video, liked, disliked, subscribed });
 }

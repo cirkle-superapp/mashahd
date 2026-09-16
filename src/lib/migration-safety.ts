@@ -8,7 +8,7 @@
  *    Do not silently lose files."
  *
  * Used when migrating objects between storage providers
- * (e.g. local → Filebase, Filebase → Vercel Blob).
+ * (e.g. local filesystem → Filebase).
  */
 
 import { createHash } from "node:crypto";

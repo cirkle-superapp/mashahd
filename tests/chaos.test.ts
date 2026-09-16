@@ -2,7 +2,7 @@
  * Chaos Testing Framework — simulates provider failures (§49).
  *
  * Per master spec §49: "Explicitly simulate:
- *   Turso dies, Brevo dies, Vercel Blob dies, Inngest dies,
+ *   Turso dies, Brevo dies, Filebase blob dies, Inngest dies,
  *   Vercel runtime unavailable, Cloudflare high quota usage,
  *   Neon replication lag, duplicate webhook, duplicate workflow,
  *   storage quota exhaustion, email quota exhaustion, SMS payment failure."
@@ -60,8 +60,8 @@ async function run() {
   // ── 3. Storage quota exhaustion ──
   console.log("\n▶ Simulate: Storage quota exhaustion");
   const largeUpload = checkStorageQuota(999 * 1024 * 1024 * 1024); // 999 GB
-  // When blob storage IS configured, 999GB should be rejected.
-  // When blob is NOT configured (using local/Filebase), there's no Vercel Blob quota —
+  // When blob storage IS configured (Filebase), 999GB should be rejected.
+  // When blob is NOT configured (local filesystem only), there's no Filebase quota —
   // the check returns allowed=true with state=MONITORING. This is correct.
   assert(typeof largeUpload.allowed === "boolean", "quota check returns boolean for large upload");
   assert(largeUpload.currentUsage === null || largeUpload.currentUsage.usagePercent >= 0,

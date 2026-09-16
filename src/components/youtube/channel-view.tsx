@@ -11,6 +11,7 @@ import { formatSubs, formatViews } from "@/lib/format";
 import type { ChannelWithFlags, Video } from "@/lib/types";
 import { SupportCreator } from "./support-creator";
 import { VideoCard } from "./video-card";
+import { VerifiedBadge } from "./verified-badge";
 import { useAppStore } from "@/store/app-store";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -87,6 +88,11 @@ export function ChannelView({ channelId }: { channelId: string }) {
   const subscribed = data?.subscribed;
   const colors = channel.bannerColors.split(",");
   const gradient = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1] || colors[0]} 50%, ${colors[2] || colors[1] || colors[0]} 100%)`;
+  // Social-media structuring audit: prefer a custom banner image if set,
+  // otherwise fall back to the gradient.
+  const bannerStyle = channel.bannerUrl
+    ? { backgroundImage: `url(${channel.bannerUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+    : { background: gradient };
   const popular = [...(videos || [])].sort((a, b) => b.views - a.views);
   const recent = videos || [];
   const totalViewCount = recent.reduce((sum, v) => sum + (v.views || 0), 0);
@@ -96,7 +102,7 @@ export function ChannelView({ channelId }: { channelId: string }) {
   return (
     <div className="pb-12">
       {/* Banner */}
-      <div className="h-32 sm:h-48 lg:h-56 w-full relative" style={{ background: gradient }}>
+      <div className="h-32 sm:h-48 lg:h-56 w-full relative" style={bannerStyle}>
         <div className="absolute inset-0 bg-gradient-to-t from-background/40 to-transparent" />
       </div>
 
@@ -107,7 +113,10 @@ export function ChannelView({ channelId }: { channelId: string }) {
           <AvatarFallback className="text-2xl">{channel.name.slice(0, 1)}</AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold">{channel.name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold">{channel.name}</h1>
+            {channel.verified ? <VerifiedBadge size={20} /> : null}
+          </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
             <span className="font-medium text-foreground">@{channel.handle}</span>
             <span>•</span>

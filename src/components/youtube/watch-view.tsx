@@ -23,7 +23,7 @@ import { SmartChapters } from "./smart-chapters";
 import { CirclePulse } from "./circle-pulse";
 import { BulletComments } from "./bullet-comments";
 import { AiWatchPanel } from "./ai-watch-panel";
-import { MashahdPlayer } from "./mashahd-player";
+import { MashahdPlayerLazy as MashahdPlayer } from "./mashahd-player-lazy";
 import { UserAvatar } from "./user-avatar";
 import { ShareButton } from "./header-overlays";
 import { toast } from "sonner";
@@ -34,7 +34,7 @@ async function fetchVideo(id: string, bid: string) {
   const res = await fetch(`/api/videos/${id}?${sp.toString()}`);
   if (!res.ok) throw new Error("failed");
   const data = await res.json();
-  return data as { video: VideoWithFlags; liked: boolean; subscribed: boolean };
+  return data as { video: VideoWithFlags; liked: boolean; disliked: boolean; subscribed: boolean };
 }
 
 async function fetchRelated(video: VideoWithFlags) {
@@ -165,7 +165,7 @@ export function WatchView({ videoId }: { videoId: string }) {
   }, []);
 
   const likeMutation = useMutation({
-    mutationFn: async (action: "like" | "unlike") => {
+    mutationFn: async (action: "like" | "unlike" | "dislike" | "undislike") => {
       const res = await fetch(`/api/videos/${videoId}/like`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -177,11 +177,33 @@ export function WatchView({ videoId }: { videoId: string }) {
     onSuccess: (_data, action) => {
       qc.setQueryData(["video", videoId, bid], (old: any) => {
         if (!old) return old;
-        const delta = action === "like" ? 1 : -1;
+        // Compute the like/dislike counter deltas based on the previous state.
+        // Like and dislike are mutually exclusive — switching between them
+        // adjusts both counters.
+        let likeDelta = 0;
+        let dislikeDelta = 0;
+        const wasLiked = !!old.liked;
+        const wasDisliked = !!old.disliked;
+        if (action === "like") {
+          if (!wasLiked) likeDelta += 1;
+          if (wasDisliked) dislikeDelta -= 1;
+        } else if (action === "unlike") {
+          if (wasLiked) likeDelta -= 1;
+        } else if (action === "dislike") {
+          if (!wasDisliked) dislikeDelta += 1;
+          if (wasLiked) likeDelta -= 1;
+        } else if (action === "undislike") {
+          if (wasDisliked) dislikeDelta -= 1;
+        }
         return {
           ...old,
-          video: { ...old.video, likes: old.video.likes + delta },
+          video: {
+            ...old.video,
+            likes: Math.max(0, old.video.likes + likeDelta),
+            dislikes: Math.max(0, old.video.dislikes + dislikeDelta),
+          },
           liked: action === "like",
+          disliked: action === "dislike",
         };
       });
     },
@@ -364,11 +386,21 @@ export function WatchView({ videoId }: { videoId: string }) {
                 </button>
                 <div className="w-px h-6 bg-border" />
                 <button
-                  className="flex items-center gap-1 px-4 h-full hover:bg-accent transition-colors text-sm"
+                  onClick={() =>
+                    likeMutation.mutate(
+                      data?.disliked ? "undislike" : "dislike"
+                    )
+                  }
+                  disabled={likeMutation.isPending}
+                  className={cn(
+                    "flex items-center gap-1 px-4 h-full hover:bg-accent transition-colors text-sm",
+                    data?.disliked && "text-rose"
+                  )}
                   aria-label="Dislike"
                   title="Not a fan of this video"
                 >
-                  <ThumbsDown className="h-5 w-5" />
+                  <ThumbsDown className={cn("h-5 w-5", data?.disliked && "fill-current")} />
+                  <span className="tabular-nums">{formatCount(video.dislikes)}</span>
                 </button>
               </div>
               <ShareButton videoId={video.id} title={video.title} />

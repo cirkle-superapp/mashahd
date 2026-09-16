@@ -1,5 +1,5 @@
 /**
- * Storage Quota Governor — protects Vercel Blob Hobby allocation.
+ * Storage Quota Governor — protects the Filebase 5 GB free-tier allocation.
  *
  * Per master spec §16:
  *   70% = monitoring
@@ -8,10 +8,12 @@
  *   95% = emergency storage mode
  *   100% = hard stop for noncritical uploads
  *
- * Per §42: "Vercel Blob is NOT unlimited free storage."
+ * Per §42: "Filebase is NOT unlimited free storage." (5 GB free, no payment card.)
  * Per §18: "Before accepting large uploads: estimate size + check quota."
  *
  * At the hard limit: reject nonessential uploads. Do not create billable usage.
+ * Filebase has no billing surface (no payment card required), but exceeding the
+ * 5 GB free tier would still cause write failures — so we protect the boundary.
  */
 
 import { getBlobStorage, type StorageQuotaStatus } from "./blob-storage";
@@ -34,7 +36,7 @@ export interface QuotaCheckResult {
 export function checkStorageQuota(sizeBytes: number, critical: boolean = false): QuotaCheckResult {
   const blob = getBlobStorage();
   if (!blob) {
-    // No blob storage configured — allow (using local filesystem or Filebase).
+    // No blob storage configured — allow (using local filesystem only).
     return { allowed: true, state: "MONITORING", reason: "blob not configured", currentUsage: null };
   }
 
@@ -45,7 +47,7 @@ export function checkStorageQuota(sizeBytes: number, critical: boolean = false):
     return {
       allowed: false,
       state: "HARD_STOP",
-      reason: `upload would exceed Vercel Blob free tier (${status.usedBytes + sizeBytes} > ${status.limitBytes} bytes)`,
+      reason: `upload would exceed Filebase free tier (${status.usedBytes + sizeBytes} > ${status.limitBytes} bytes)`,
       currentUsage: status,
     };
   }

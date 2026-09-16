@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * @deprecated — Dead code (UI audit 2026-09). The app uses `Dock` (bottom
+ * floating glass navigation) instead of this left sidebar. Kept here per the
+ * "nothing deleted or removed" directive — do NOT mount in production.
+ * If reviving, update the `MORE_LINKS` arrays to match `dock.tsx`.
+ */
+
 import { Home, Flame, ListVideo, Clock, ThumbsUp, Library, Radio, Music2, Gamepad2, Newspaper, Trophy, GraduationCap, Plane, UtensilsCrossed, Dumbbell, Cpu, FlaskConical, Palette, Car, Leaf, Settings, Flag, HelpCircle, MessageSquare } from "lucide-react";
 import { useAppStore, View } from "@/store/app-store";
 import { cn } from "@/lib/utils";

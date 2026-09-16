@@ -9,8 +9,13 @@ export type Channel = {
   handle: string;
   avatarUrl: string;
   bannerColors: string;
+  bannerUrl?: string; // optional custom banner image (falls back to gradient)
   description: string;
   subscribers: number;
+  verified?: boolean; // verification badge (social-media structuring audit)
+  ownerId?: string | null; // owning User (creator economy)
+  links?: string; // pipe-separated social links
+  country?: string; // ISO country code
   createdAt: string;
 };
 
@@ -27,6 +32,10 @@ export type Video = {
   category: string;
   tags: string;
   channelId: string;
+  visibility?: string; // public | unlisted | private | scheduled
+  publishedAt?: string; // ISO date string
+  language?: string; // ISO 639-1 code
+  ageGated?: boolean; // 18+ restriction
   createdAt: string;
   channel: Channel;
 };
@@ -49,6 +58,7 @@ export type Comment = {
 
 export type VideoWithFlags = Video & {
   liked: boolean;
+  disliked?: boolean; // social-media structuring audit: wire dislike
   subscribed: boolean;
 };
 

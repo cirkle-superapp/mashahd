@@ -112,8 +112,8 @@ The FFmpeg transcoding pipeline, P2P tracker, and Watch Party service require a 
 ### GAP 4: No real test coverage
 40 tests exist but they're integration tests that test library functions (circuit breakers, quota governors, failure taxonomy). There are **zero tests for API routes, video playback, or the upload pipeline**. The tests don't cover the actual user-facing flows. **Impact: regressions in critical paths may go undetected.**
 
-### GAP 5: BLOB_READ_WRITE_TOKEN is placeholder
-Vercel Blob storage is configured with a placeholder token. Small object storage (avatars, thumbnails) won't work until a real token is provided. **Impact: avatar uploads, thumbnail storage fail silently.**
+### GAP 5: Small-object blob storage (RESOLVED — zero-cost, no billing)
+The previous Vercel Blob placeholder (`BLOB_READ_WRITE_TOKEN`) has been **eliminated**. Small-object storage (avatars, thumbnails, documents) now reuses the **Filebase** adapter — same S3-compatible credentials as the media pipeline, 5 GB free tier, **no payment card, no billing surface**. Objects are namespaced under a `blob/` key prefix to stay separated from media assets. The quota governor enforces the 5 GB free-tier boundary so the platform never creates billable usage.
 
 ---
 

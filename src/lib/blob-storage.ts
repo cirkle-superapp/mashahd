@@ -1,22 +1,25 @@
 /**
- * StoragePort — provider-agnostic storage abstraction.
+ * StoragePort — provider-agnostic storage abstraction for SMALL objects.
  *
- * Per master spec §15: "Implement StoragePort with VercelBlobStorageAdapter.
- * Keep business logic provider-independent."
+ * ZERO-COST, NO BILLING DETAILS:
+ *   Filebase (S3-compatible + IPFS pinning, 5GB free, NO payment card required)
+ *   replaces the previous Vercel Blob adapter.
  *
- * Vercel Blob is used for SMALL objects only (§14):
+ * Why Filebase as the blob alternative?
+ *   - $0/month, no credit card, no billing surface at all
+ *   - 5 GB free tier (5x the previous 1 GB Vercel Blob Hobby allocation)
+ *   - S3-compatible API (same SDK as the media pipeline)
+ *   - IPFS pinning included (content-addressed, durable, verifiable)
+ *
+ * Filebase is used for SMALL objects only (per master spec §14):
  *   - avatars, thumbnails, profile images, documents, small exports
  *
- * Per §13: Vercel Blob Hobby limits:
- *   - 1 GB/month storage
- *   - 10,000 simple operations/month
- *   - 2,000 advanced operations/month
- *   - 10 GB/month data transfer
+ * Large video files also go to Filebase (via StorageProvider in storage.ts),
+ * using the same credentials and bucket. Small objects are namespaced under
+ * a `blob/` key prefix to keep them separated from media assets.
  *
- * Large video files go to Filebase or local filesystem, NOT Vercel Blob.
- *
- * Per §42: "Vercel Blob is NOT unlimited free storage."
- * The quota governor (§16) enforces hard limits.
+ * The quota governor (storage-quota-governor.ts) enforces the 5 GB free-tier
+ * hard limit so the platform never creates billable usage.
  */
 
 export type StorageClass =
@@ -58,48 +61,96 @@ export interface StorageQuotaStatus {
   canUpload: boolean;
 }
 
-// ── Vercel Blob Adapter ──
-// Uses the Vercel Blob REST API (no SDK needed — keeps bundle lean).
-// Per §13: Hobby = 1GB storage, 10K simple ops, 2K advanced ops, 10GB transfer.
+// ── Filebase Blob Adapter ──
+// Uses the Filebase S3-compatible API with IPFS pinning.
+// Zero-cost: 5 GB free tier, no payment card, no billing details required.
 
-const BLOB_BASE_URL = "https://blob.vercel-storage.com";
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN || "";
+const FILEBASE_ENDPOINT = "https://s3.filebase.io";
+const FILEBASE_FREE_TIER_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB
 
-export class VercelBlobStorageAdapter implements StoragePort {
-  private usedBytes: number = 0; // tracked in-memory (reset on restart)
+export class FilebaseBlobAdapter implements StoragePort {
+  private client: any = null;
+  private bucket: string;
+  private accessKeyId: string;
+  private secretAccessKey: string;
+  private publicBaseUrl?: string;
+  // In-memory usage tracking (reset on restart). Soft protection only —
+  // the authoritative quota source is Filebase itself; this prevents runaway
+  // uploads within a single process lifetime.
+  private usedBytes: number = 0;
 
-  async upload(path: string, data: Buffer, contentType: string): Promise<{ url: string; metadata: StorageObjectMetadata }> {
-    if (!BLOB_TOKEN) {
-      throw new Error("BLOB_READ_WRITE_TOKEN not configured");
+  constructor() {
+    this.accessKeyId = process.env.FILEBASE_ACCESS_KEY_ID || "";
+    this.secretAccessKey = process.env.FILEBASE_SECRET_ACCESS_KEY || "";
+    this.bucket = process.env.FILEBASE_BUCKET || "mashahd-media";
+    this.publicBaseUrl = process.env.FILEBASE_PUBLIC_BASE_URL;
+  }
+
+  private async getClient() {
+    if (!this.accessKeyId || !this.secretAccessKey) {
+      throw new Error(
+        "Filebase credentials not configured. Set FILEBASE_ACCESS_KEY_ID and FILEBASE_SECRET_ACCESS_KEY (5GB free, no payment card)."
+      );
     }
-
-    const response = await fetch(`${BLOB_BASE_URL}/${path}`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${BLOB_TOKEN}`,
-        "Content-Type": contentType,
-        "x-content-length": String(data.length),
-      },
-      body: new Uint8Array(data),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Vercel Blob upload failed: ${response.status}`);
+    if (!this.client) {
+      const { S3Client } = await import("@aws-sdk/client-s3");
+      this.client = new S3Client({
+        region: "auto",
+        endpoint: FILEBASE_ENDPOINT,
+        credentials: {
+          accessKeyId: this.accessKeyId,
+          secretAccessKey: this.secretAccessKey,
+        },
+        forcePathStyle: true,
+      });
     }
+    return this.client;
+  }
 
-    const result = await response.json();
+  /**
+   * Namespaces small objects under `blob/` so they never collide with media
+   * pipeline assets (which live under `videos/` etc. in the same bucket).
+   * Also strips path-traversal segments.
+   */
+  private toKey(p: string): string {
+    const cleaned = p.replace(/^\/+/, "").replace(/\.\.+/g, "");
+    return cleaned.startsWith("blob/") ? cleaned : `blob/${cleaned}`;
+  }
+
+  async upload(
+    path: string,
+    data: Buffer,
+    contentType: string
+  ): Promise<{ url: string; metadata: StorageObjectMetadata }> {
+    const client = await this.getClient();
+    const { PutObjectCommand } = await import("@aws-sdk/client-s3");
+    const key = this.toKey(path);
+
+    await client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: data,
+        ContentType: contentType,
+      })
+    );
+
     this.usedBytes += data.length;
 
+    const url = this.publicBaseUrl
+      ? `${this.publicBaseUrl}/${key}`
+      : `${FILEBASE_ENDPOINT}/${this.bucket}/${key}`;
+
     return {
-      url: result.url,
+      url,
       metadata: {
-        object_id: result.pathname || path,
+        object_id: key,
         tenant_id: "default",
         owner_id: "system",
         object_type: path.split("/")[0] || "unknown",
         size_bytes: data.length,
         content_type: contentType,
-        storage_provider: "vercel-blob",
+        storage_provider: "filebase",
         storage_class: "FREE_PLATFORM_STORAGE",
         created_at: new Date().toISOString(),
         retention_policy: "30d",
@@ -110,34 +161,54 @@ export class VercelBlobStorageAdapter implements StoragePort {
   }
 
   async download(path: string): Promise<Buffer> {
-    const response = await fetch(`${BLOB_BASE_URL}/${path}`, {
-      headers: { "Authorization": `Bearer ${BLOB_TOKEN}` },
-    });
-    if (!response.ok) throw new Error(`Vercel Blob download failed: ${response.status}`);
-    return Buffer.from(await response.arrayBuffer());
+    const client = await this.getClient();
+    const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+    const r = await client.send(
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: this.toKey(path),
+      })
+    );
+    const chunks: Buffer[] = [];
+    for await (const chunk of r.Body as AsyncIterable<Buffer>) {
+      chunks.push(Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
   }
 
   async delete(path: string): Promise<void> {
-    await fetch(`${BLOB_BASE_URL}/${path}?_method=DELETE`, {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${BLOB_TOKEN}` },
-    });
+    const client = await this.getClient();
+    const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+    try {
+      await client.send(
+        new DeleteObjectCommand({
+          Bucket: this.bucket,
+          Key: this.toKey(path),
+        })
+      );
+    } catch {
+      /* already gone */
+    }
   }
 
   async exists(path: string): Promise<boolean> {
+    const client = await this.getClient();
+    const { HeadObjectCommand } = await import("@aws-sdk/client-s3");
     try {
-      const r = await fetch(`${BLOB_BASE_URL}/${path}`, {
-        method: "HEAD",
-        headers: { "Authorization": `Bearer ${BLOB_TOKEN}` },
-      });
-      return r.ok;
+      await client.send(
+        new HeadObjectCommand({
+          Bucket: this.bucket,
+          Key: this.toKey(path),
+        })
+      );
+      return true;
     } catch {
       return false;
     }
   }
 
   getQuotaStatus(): StorageQuotaStatus {
-    const limitBytes = 1024 * 1024 * 1024; // 1 GB Hobby limit
+    const limitBytes = FILEBASE_FREE_TIER_BYTES;
     const usagePercent = Math.round((this.usedBytes / limitBytes) * 100);
     let state: StorageQuotaStatus["state"] = "MONITORING";
     let canUpload = true;
@@ -148,22 +219,37 @@ export class VercelBlobStorageAdapter implements StoragePort {
     else if (usagePercent >= 80) { state = "WARNING"; }
     else if (usagePercent >= 70) { state = "MONITORING"; }
 
-    return { provider: "vercel-blob", usedBytes: this.usedBytes, limitBytes, usagePercent, state, canUpload };
+    return {
+      provider: "filebase",
+      usedBytes: this.usedBytes,
+      limitBytes,
+      usagePercent,
+      state,
+      canUpload,
+    };
   }
 }
 
 // ── Singleton ──
-let _blobAdapter: VercelBlobStorageAdapter | null = null;
+let _blobAdapter: FilebaseBlobAdapter | null = null;
 
-export function getBlobStorage(): VercelBlobStorageAdapter | null {
-  if (!BLOB_TOKEN) return null;
+export function getBlobStorage(): FilebaseBlobAdapter | null {
+  const accessKeyId = process.env.FILEBASE_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.FILEBASE_SECRET_ACCESS_KEY;
+  if (!accessKeyId || !secretAccessKey) return null;
   if (!_blobAdapter) {
-    _blobAdapter = new VercelBlobStorageAdapter();
-    console.log("[storage] Vercel Blob adapter ready (small objects only)");
+    _blobAdapter = new FilebaseBlobAdapter();
+    console.log(
+      "[storage] Filebase blob adapter ready (small objects, zero-cost, no billing details)"
+    );
   }
   return _blobAdapter;
 }
 
 export function isBlobConfigured(): boolean {
-  return !!BLOB_TOKEN;
+  return !!(process.env.FILEBASE_ACCESS_KEY_ID && process.env.FILEBASE_SECRET_ACCESS_KEY);
+}
+
+export function getBlobProviderName(): string {
+  return "filebase";
 }

@@ -123,7 +123,6 @@ Per master spec §59. This report documents the actual implementation state.
 | BREVO_API_KEY | Email (300/day) | No |
 | BREVO_SENDER_EMAIL | Email sender | No |
 | BREVO_SENDER_NAME | Email sender name | No |
-| BLOB_READ_WRITE_TOKEN | Small object storage | No |
 | MEDIA_SIGNING_KEY | Signed media URLs | No |
 | STORAGE_PROVIDER | Storage selection | No |
 
@@ -251,7 +250,8 @@ git push origin main  # auto-deploys
 
 # 7. Configure Vercel env vars (via dashboard or API)
 # Required: TURSO_URL, TURSO_AUTH_TOKEN, FILEBASE_*, GROQ_API_KEY, etc.
-# Optional: BREVO_API_KEY, INNGEST_KEY, NEON_DATABASE_URL, BLOB_READ_WRITE_TOKEN
+# Optional: BREVO_API_KEY, INNGEST_KEY, NEON_DATABASE_URL
+# (small-object blob storage now reuses the Filebase credentials — zero cost, no billing)
 
 # 8. Verify
 curl https://mashahd.vercel.app/api/ready
