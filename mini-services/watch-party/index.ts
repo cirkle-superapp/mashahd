@@ -16,6 +16,7 @@
  */
 
 import { WebSocketServer, WebSocket } from "ws";
+import http from "node:http";
 
 const PORT = 3004;
 const MAX_PAYLOAD = 4096; // 4 KB — sync + chat messages are tiny
@@ -24,6 +25,12 @@ const PEER_TIMEOUT = 60000; // 60s without heartbeat → expire
 const MAX_PARTY_MEMBERS = 12; // a watch party is a small group
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no confusing chars
 const CODE_LEN = 6;
+
+// Allowed origins for WebSocket connections (deep audit pass 2: was missing).
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 interface Member {
   ws: WebSocket;
@@ -57,7 +64,28 @@ interface Party {
 const members = new Map<string, Member>();
 const parties = new Map<string, Party>();
 
-const wss = new WebSocketServer({ port: PORT });
+// ── HTTP + WebSocket server ──
+// The HTTP server handles /health (for monitoring + load balancers) and
+// the WebSocket server shares the same port for watch-party signaling.
+const server = http.createServer((req, res) => {
+  if (req.url === "/health") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      ok: true,
+      service: "watch-party",
+      port: PORT,
+      uptime: process.uptime(),
+      members: members.size,
+      parties: parties.size,
+      timestamp: new Date().toISOString(),
+    }));
+    return;
+  }
+  res.writeHead(404, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ error: "not found" }));
+});
+
+const wss = new WebSocketServer({ server });
 
 function genCode(): string {
   // Generate a unique 6-char code.
@@ -101,6 +129,13 @@ function broadcastPresence(partyCode: string) {
 }
 
 wss.on("connection", (ws, req) => {
+  // ── Origin validation (deep audit pass 2: was missing) ──
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.length > 0 && !ALLOWED_ORIGINS.includes(origin)) {
+    console.warn(`[watch-party] Rejected connection from origin: ${origin}`);
+    ws.close(1008, "Origin not allowed");
+    return;
+  }
   const memberId = `m_${Math.random().toString(36).slice(2, 12)}`;
   const member: Member = {
     ws,
@@ -347,7 +382,7 @@ function leaveParty(member: Member) {
 }
 
 // Heartbeat sweep — expire dead connections.
-setInterval(() => {
+const heartbeatTimer = setInterval(() => {
   const now = Date.now();
   for (const [id, member] of members) {
     if (now - member.lastHeartbeat > PEER_TIMEOUT) {
@@ -371,10 +406,9 @@ setInterval(() => {
 // time and adjust if drift > 2s. This prevents gradual desync over long
 // watch sessions.
 const DRIFT_CHECK_INTERVAL_MS = 30_000;
-setInterval(() => {
+const driftTimer = setInterval(() => {
   for (const [code, party] of parties) {
     if (party.members.size === 0) continue;
-    // Only send drift checks if the party is actively playing.
     if (!party.playing) continue;
     broadcast(code, {
       type: "drift_check",
@@ -386,4 +420,38 @@ setInterval(() => {
   }
 }, DRIFT_CHECK_INTERVAL_MS);
 
-console.log(`[watch-party] listening on ws://localhost:${PORT}`);
+// ── Start the HTTP + WebSocket server ──
+server.listen(PORT, () => {
+  console.log(`[watch-party] listening on http://localhost:${PORT} (ws + /health)`);
+});
+
+// ── Graceful shutdown (deep audit pass 2: was missing) ──
+let shuttingDown = false;
+function shutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[watch-party] ${signal} received, shutting down gracefully…`);
+  clearInterval(heartbeatTimer);
+  clearInterval(driftTimer);
+  // Notify all members to reconnect elsewhere.
+  for (const [id, member] of members) {
+    try {
+      if (member.ws.readyState === WebSocket.OPEN) {
+        member.ws.close(1001, "server shutting down");
+      }
+    } catch { /* ignore */ }
+  }
+  wss.close(() => {
+    server.close(() => {
+      console.log("[watch-party] all connections closed, exiting.");
+      process.exit(0);
+    });
+  });
+  setTimeout(() => {
+    console.warn("[watch-party] graceful shutdown timed out, forcing exit.");
+    process.exit(1);
+  }, 5000).unref();
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

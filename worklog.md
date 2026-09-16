@@ -1793,3 +1793,73 @@ Stage Summary:
   - turso-db.ts N+1 queries for non-collection includes (needs Prisma adapter migration).
   - Mini-services missing SIGTERM + /health endpoint.
   - ~20 unused npm dependencies (cleanup).
+
+---
+Task ID: UPGRADE-PASS-3
+Agent: main (acting as COO + CTO + PM + Social Media Expert — third upgrade pass)
+Task: Implement the deferred upgrades from the audits: HMAC-signed browserId, notifications API, FYP feed, share endpoint, mini-services /health + SIGTERM.
+
+Work Log:
+
+## UPGRADE 1: HMAC-signed browserId (prevents count inflation)
+- Created `src/lib/browser-id-security.ts` — `issueBrowserId()` + `verifyBrowserId()` using HMAC-SHA256. Format: `bid_<base64url(id)>.<base64url(sig)>`. Timing-safe comparison. Zero-cost (no DB lookup — signature is self-validating).
+- Updated `src/hooks/use-browser-id.ts` — client now fetches a signed bid from `/api/user-state` on first use (instead of generating client-side). Falls back to legacy bid on network error.
+- Updated `src/app/api/user-state/route.ts` — issues signed browserIds, migrates legacy state, verifies signature on state-changing POSTs.
+- Updated 3 mutation routes with signature verification + dual rate limiting (per-IP + per-browserId):
+  - `src/app/api/videos/[id]/views/route.ts` — 30/min per IP, 10/min per bid
+  - `src/app/api/videos/[id]/like/route.ts` — 60/min per IP, 20/min per bid
+  - `src/app/api/channels/[id]/subscribe/route.ts` — 60/min per IP, 20/min per bid
+- Verified: valid signed bid → `ok:true`; fabricated bid → `403 invalid browserId signature`. Count inflation attack closed.
+
+## UPGRADE 2: /api/notifications endpoint + bell wiring
+- Created `src/app/api/notifications/route.ts` — GET (cursor-paginated, newest first) + POST (markRead / markAllRead / markUnread). IDOR protection (ownership check before update). Rate limited.
+- Created `src/lib/notify.ts` — `createNotification()` + helpers: `notifySubscribersOfNewVideo`, `notifyVideoOwnerOfComment`, `notifyChannelOwnerOfSubscriber`. Fire-and-forget (non-critical UX, never blocks business data).
+- Verified: `GET /api/notifications?bid=<valid>` → `notifications: 0, unread: 0` (correct — no notifications yet). Replaces the SAMPLE_NOTIFS mock.
+
+## UPGRADE 3: /api/feed/for-you recommendation endpoint (FYP)
+- Created `src/app/api/feed/for-you/route.ts` — personalized "For You" feed. Zero-cost heuristic recommender:
+  - Category affinity (categories from liked/watched videos get a boost)
+  - Channel affinity (subscribed channels get a boost)
+  - Recency (logarithmic — recent but not overwhelming)
+  - Popularity (log10(views) as tiebreaker)
+  - Diversity penalty (max 3 videos per channel in top results)
+  - 20% random exploration slice (prevents echo chamber)
+  - Excludes recently-watched videos
+- Falls back to trending when no bid. Rate limited.
+- Verified: `GET /api/feed/for-you?bid=<valid>&limit=5` → `source: for-you, videos: 5`.
+
+## UPGRADE 4: mini-services /health + SIGTERM graceful shutdown
+- `mini-services/p2p-tracker/index.ts`: added HTTP server with `/health` (returns service, port, uptime, peers, swarms, turso status). Added SIGTERM + SIGINT handlers that: clear the heartbeat timer, notify all peers (close 1001), close the WS server, close the HTTP server, force-exit after 5s if graceful close hangs.
+- `mini-services/watch-party/index.ts`: same /health endpoint + SIGTERM graceful shutdown. Also added origin validation (was missing per audit).
+- Verified: `/health` returns 200 JSON on both services. SIGTERM → log shows `SIGTERM received, shutting down gracefully…` → `all connections closed, exiting.`
+
+## UPGRADE 5: /api/videos/[id]/share endpoint
+- Created `src/app/api/videos/[id]/share/route.ts` — records share events (Share model existed but had no API). Builds platform-specific share URLs (twitter, facebook, whatsapp, telegram, email, copy_link). Whitelist-validates platform. Rate limited. Optional browserId verification.
+- Verified: `POST /api/videos/[id]/share {platform:"twitter"}` → `ok:true, platform:twitter, shareUrl:https://twitter.com/intent/tweet?...`.
+
+## VERIFICATION
+- `bun run lint` → clean (0 errors, 0 warnings).
+- `tests/basic.test.ts` → 23/23 passed.
+- `tests/chaos.test.ts` → 17/17 passed.
+- Dev server healthy on :3000.
+- Browser-verified: home renders (0 errors, title correct).
+- API verified end-to-end:
+  - Signed browserId issued + verified ✅
+  - Fabricated bid rejected (403) ✅
+  - Like/dislike with valid bid works ✅
+  - Notifications endpoint returns empty (correct) ✅
+  - FYP returns 5 personalized videos ✅
+  - Share records event + returns share URL ✅
+  - Mini-services /health returns 200 JSON ✅
+  - SIGTERM graceful shutdown works ✅
+- Added all new files to the protected manifest (pre-commit + verify-protected.sh): browser-id-security.ts, notify.ts, notifications/route.ts, feed/for-you/route.ts, share/route.ts.
+
+Stage Summary:
+- 5 upgrades implemented and verified end-to-end.
+- Count inflation attack structurally closed (HMAC-signed browserId + rate limiting on all 3 mutation routes).
+- Bell icon now has a real DB-backed notification system (replaces SAMPLE_NOTIFS mock).
+- Home feed now has a personalized recommendation engine (category + channel affinity + diversity + exploration).
+- Share events tracked (for virality metrics + recommendations).
+- Both mini-services now have /health endpoints + graceful SIGTERM shutdown + origin validation.
+- All 40 tests green, lint clean, browser-verified, API-verified.
+- Protected manifest expanded to cover all new files.

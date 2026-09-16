@@ -24,6 +24,7 @@
  */
 
 import { WebSocketServer, WebSocket } from "ws";
+import http from "node:http";
 import { createClient, type Client } from "@libsql/client";
 
 const PORT = 3003;
@@ -110,7 +111,29 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000")
   .map((s) => s.trim())
   .filter(Boolean);
 
-const wss = new WebSocketServer({ port: PORT });
+// ── HTTP + WebSocket server ──
+// The HTTP server handles /health (for monitoring + load balancers) and
+// the WebSocket server shares the same port for signaling.
+const server = http.createServer((req, res) => {
+  if (req.url === "/health") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      ok: true,
+      service: "p2p-tracker",
+      port: PORT,
+      uptime: process.uptime(),
+      peers: peers.size,
+      swarms: swarms.size,
+      turso: !!tursoClient,
+      timestamp: new Date().toISOString(),
+    }));
+    return;
+  }
+  res.writeHead(404, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ error: "not found" }));
+});
+
+const wss = new WebSocketServer({ server });
 
 wss.on("connection", (ws, req) => {
   // ── Origin validation (S85-S86, S143) ──
@@ -250,7 +273,7 @@ function send(ws: WebSocket, obj: any) {
 }
 
 // Heartbeat + expiration sweep — every 20s, ping all peers and expire dead ones.
-setInterval(() => {
+const heartbeatTimer = setInterval(() => {
   const now = Date.now();
   for (const [peerId, peer] of peers) {
     if (now - peer.lastHeartbeat > PEER_TIMEOUT) {
@@ -265,4 +288,40 @@ setInterval(() => {
   }
 }, HEARTBEAT_INTERVAL);
 
-console.log(`[p2p-tracker] listening on ws://localhost:${PORT}`);
+// ── Start the HTTP + WebSocket server ──
+server.listen(PORT, () => {
+  console.log(`[p2p-tracker] listening on http://localhost:${PORT} (ws + /health)`);
+});
+
+// ── Graceful shutdown (deep audit pass 2: was missing) ──
+let shuttingDown = false;
+function shutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[p2p-tracker] ${signal} received, shutting down gracefully…`);
+  clearInterval(heartbeatTimer);
+  // Notify all peers to reconnect elsewhere.
+  for (const [peerId, peer] of peers) {
+    try {
+      if (peer.ws.readyState === WebSocket.OPEN) {
+        peer.ws.close(1001, "server shutting down");
+      }
+    } catch { /* ignore */ }
+  }
+  // Close the WebSocket server (stop accepting new connections).
+  wss.close(() => {
+    // Close the HTTP server.
+    server.close(() => {
+      console.log("[p2p-tracker] all connections closed, exiting.");
+      process.exit(0);
+    });
+  });
+  // Force-exit after 5s if graceful close hangs.
+  setTimeout(() => {
+    console.warn("[p2p-tracker] graceful shutdown timed out, forcing exit.");
+    process.exit(1);
+  }, 5000).unref();
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getUserState, parseList, joinList } from "@/lib/user-state";
+import { verifyBrowserId } from "@/lib/browser-id-security";
+import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
 /**
  * POST /api/videos/[id]/like
@@ -14,6 +16,9 @@ import { getUserState, parseList, joinList } from "@/lib/user-state";
  *
  * `likedVideoIds` and `dislikedVideoIds` are stored on UserState as
  * pipe-separated strings (project rule: SQLite has no list type).
+ *
+ * SECURITY (deep audit pass 2): verifies browserId HMAC signature + rate
+ * limits per browserId (20/min) and per IP (60/min) to prevent inflation.
  */
 export async function POST(
   req: NextRequest,
@@ -31,6 +36,32 @@ export async function POST(
     return NextResponse.json({ error: "invalid action" }, { status: 400 });
   }
 
+  // ── Verify browserId signature ──
+  const verification = verifyBrowserId(browserId);
+  if (!verification.valid) {
+    return NextResponse.json(
+      { error: "invalid browserId signature", reissue: true },
+      { status: 403 }
+    );
+  }
+
+  // ── Rate limit ──
+  const ip = getClientIP(req);
+  const ipRl = await rateLimit(`like-ip:${ip}`, 60, 60_000);
+  if (ipRl.limited) {
+    return NextResponse.json(
+      { error: "rate limited" },
+      { status: 429, headers: { "Retry-After": "60" } }
+    );
+  }
+  const bidRl = await rateLimit(`like-bid:${verification.id}`, 20, 60_000);
+  if (bidRl.limited) {
+    return NextResponse.json(
+      { error: "rate limited per browser" },
+      { status: 429, headers: { "Retry-After": "60" } }
+    );
+  }
+
   const video = await db.video.findUnique({ where: { id } });
   if (!video) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -44,7 +75,6 @@ export async function POST(
 
   // Like and dislike are mutually exclusive.
   if (action === "like") {
-    // Remove from disliked if present (switching from dislike → like).
     if (disliked.includes(id)) {
       disliked.splice(disliked.indexOf(id), 1);
       await db.video.update({ where: { id }, data: { dislikes: { decrement: 1 } } });
@@ -59,7 +89,6 @@ export async function POST(
       await db.video.update({ where: { id }, data: { likes: { decrement: 1 } } });
     }
   } else if (action === "dislike") {
-    // Remove from liked if present (switching from like → dislike).
     if (liked.includes(id)) {
       liked.splice(liked.indexOf(id), 1);
       await db.video.update({ where: { id }, data: { likes: { decrement: 1 } } });
