@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, Video as VideoIcon, X, Upload, Link2, Check, Twitter, Facebook, Mail, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,70 +14,71 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
+import { useBrowserId } from "@/hooks/use-browser-id";
 import { timeAgo } from "@/lib/format";
 
 /* ────────────────────────────────────────────────────────────────────────
  * Notifications dropdown — the bell icon in the header opens a popover with
  * a feed of recent activity (new uploads, comment replies, AI recaps ready).
+ *
+ * Pass 4 upgrade: now wired to the real /api/notifications endpoint (was
+ * hardcoded SAMPLE_NOTIFS mock). Uses React Query for caching + the signed
+ * browserId as the recipientId.
  * ──────────────────────────────────────────────────────────────────────── */
 
 type Notif = {
   id: string;
-  kind: "upload" | "reply" | "ai" | "mention";
-  channelName: string;
-  channelAvatar: string;
-  text: string;
-  videoId?: string;
-  ago: string;
+  type: string; // new_video | new_comment | new_subscriber | tip_received | system | mention
   read: boolean;
+  createdAt: string;
+  title: string;
+  body: string;
+  linkUrl?: string;
+  actorAvatarUrl?: string;
+  actorName?: string;
+  thumbnailUrl?: string;
 };
 
-const SAMPLE_NOTIFS: Notif[] = [
-  {
-    id: "n1",
-    kind: "upload",
-    channelName: "Pixel Forge",
-    channelAvatar: "https://api.dicebear.com/7.x/notionists/svg?seed=PixelForge&backgroundColor=ef4444&radius=50",
-    text: "uploaded: Building a YouTube Clone with Next.js 16",
-    videoId: "",
-    ago: "2 hours ago",
-    read: false,
-  },
-  {
-    id: "n2",
-    kind: "ai",
-    channelName: "Mashahd AI",
-    channelAvatar: "https://api.dicebear.com/7.x/notionists/svg?seed=AI&backgroundColor=c2a060&radius=50",
-    text: "Your AI Recap for “Elden Ring — Final Boss” is ready.",
-    ago: "5 hours ago",
-    read: false,
-  },
-  {
-    id: "n3",
-    kind: "reply",
-    channelName: "Maya R.",
-    channelAvatar: "https://api.dicebear.com/7.x/notionists/svg?seed=MayaR&backgroundColor=64748b&radius=50",
-    text: "replied to your comment on The Perfect Crispy Fried Chicken.",
-    ago: "1 day ago",
-    read: true,
-  },
-  {
-    id: "n4",
-    kind: "upload",
-    channelName: "Wander Lens",
-    channelAvatar: "https://api.dicebear.com/7.x/notionists/svg?seed=WanderLens&backgroundColor=0ea5e9&radius=50",
-    text: "uploaded: 48 Hours in Kyoto — A Cinematic Travel Film",
-    ago: "2 days ago",
-    read: true,
-  },
-];
+async function fetchNotifications(bid: string): Promise<{ notifications: Notif[]; unreadCount: number }> {
+  if (!bid) return { notifications: [], unreadCount: 0 };
+  const res = await fetch(`/api/notifications?bid=${encodeURIComponent(bid)}&limit=20`);
+  if (!res.ok) return { notifications: [], unreadCount: 0 };
+  const data = await res.json();
+  return {
+    notifications: (data.notifications || []).map((n: any) => ({
+      id: n.id,
+      type: n.type,
+      read: n.read,
+      createdAt: n.createdAt,
+      title: n.title || "",
+      body: n.body || "",
+      linkUrl: n.linkUrl,
+      actorAvatarUrl: n.actorAvatarUrl,
+      actorName: n.actorName,
+      thumbnailUrl: n.thumbnailUrl,
+    })),
+    unreadCount: data.unreadCount || 0,
+  };
+}
 
 export function NotificationsButton() {
   const [open, setOpen] = useState(false);
-  const [notifs, setNotifs] = useState<Notif[]>(SAMPLE_NOTIFS);
   const ref = useRef<HTMLDivElement>(null);
   const { navigate } = useAppStore();
+  const bid = useBrowserId();
+  const qc = useQueryClient();
 
+  const { data } = useQuery({
+    queryKey: ["notifications", bid],
+    queryFn: () => fetchNotifications(bid),
+    enabled: !!bid,
+    staleTime: 30_000, // refresh every 30s when stale
+  });
+
+  const notifs = data?.notifications ?? [];
+  const unread = data?.unreadCount ?? 0;
+
+  // Close on outside click.
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -85,10 +87,45 @@ export function NotificationsButton() {
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  const unread = notifs.filter((n) => !n.read).length;
+  const markAllRead = useMutation({
+    mutationFn: async () => {
+      if (!bid) return;
+      await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ browserId: bid, action: "markAllRead" }),
+      });
+    },
+    onSuccess: () => {
+      qc.setQueryData(["notifications", bid], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          notifications: old.notifications.map((n: Notif) => ({ ...n, read: true })),
+          unreadCount: 0,
+        };
+      });
+    },
+  });
 
-  const markAllRead = () =>
-    setNotifs((ns) => ns.map((n) => ({ ...n, read: true })));
+  const markRead = useCallback((id: string) => {
+    if (!bid) return;
+    fetch("/api/notifications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ browserId: bid, action: "markRead", notificationId: id }),
+    }).catch(() => {});
+    qc.setQueryData(["notifications", bid], (old: any) => {
+      if (!old) return old;
+      return {
+        ...old,
+        notifications: old.notifications.map((n: Notif) =>
+          n.id === id ? { ...n, read: true } : n
+        ),
+        unreadCount: Math.max(0, (old.unreadCount || 0) - 1),
+      };
+    });
+  }, [bid, qc]);
 
   return (
     <div className="relative" ref={ref}>
@@ -111,38 +148,53 @@ export function NotificationsButton() {
         <div className="absolute right-0 top-12 w-[min(92vw,380px)] glass-strong rounded-2xl shadow-float border border-gold/15 overflow-hidden z-50">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <p className="text-sm font-semibold">Notifications</p>
-            <button
-              onClick={markAllRead}
-              className="text-xs text-muted-foreground hover:text-foreground"
-            >
-              Mark all read
-            </button>
+            {unread > 0 && (
+              <button
+                onClick={() => markAllRead.mutate()}
+                disabled={markAllRead.isPending}
+                className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+              >
+                Mark all read
+              </button>
+            )}
           </div>
           <div className="max-h-96 overflow-y-auto custom-scroll">
             {notifs.length === 0 ? (
-              <p className="px-4 py-12 text-center text-sm text-muted-foreground">
-                You&apos;re all caught up.
-              </p>
+              <div className="px-4 py-12 text-center text-sm text-muted-foreground">
+                <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" aria-hidden />
+                <p>You&apos;re all caught up.</p>
+                <p className="text-xs mt-1 opacity-70">New activity will appear here.</p>
+              </div>
             ) : (
               notifs.map((n) => (
                 <button
                   key={n.id}
                   onClick={() => {
-                    if (n.videoId) navigate({ kind: "watch", videoId: n.videoId });
+                    markRead(n.id);
+                    // Navigate if there's a linkUrl with a video id.
+                    if (n.linkUrl) {
+                      const match = n.linkUrl.match(/[?&]id=([^&]+)/);
+                      if (match) navigate({ kind: "watch", videoId: match[1] });
+                    }
                     setOpen(false);
                   }}
-                  className="w-full flex gap-3 px-4 py-3 hover:bg-gold/5 text-left transition-colors border-b border-border/40 last:border-0"
+                  className={cn(
+                    "w-full flex gap-3 px-4 py-3 hover:bg-gold/5 text-left transition-colors border-b border-border/40 last:border-0",
+                    !n.read && "bg-gold/5"
+                  )}
                 >
                   <Avatar className="h-9 w-9 rounded-full shrink-0">
-                    <AvatarImage src={n.channelAvatar} alt="" />
-                    <AvatarFallback>{n.channelName.slice(0, 1)}</AvatarFallback>
+                    <AvatarImage src={n.actorAvatarUrl || ""} alt="" />
+                    <AvatarFallback>{(n.actorName || "M").slice(0, 1)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm leading-snug">
-                      <span className="font-medium">{n.channelName}</span>{" "}
-                      <span className="text-muted-foreground">{n.text}</span>
+                      <span className="font-medium">{n.actorName || "Mashahd"}</span>{" "}
+                      <span className="text-muted-foreground">{n.body}</span>
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{n.ago}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {n.createdAt ? timeAgo(new Date(n.createdAt)) : ""}
+                    </p>
                   </div>
                   {!n.read && (
                     <span className="self-center h-2 w-2 rounded-full bg-gold shrink-0" />
@@ -348,6 +400,7 @@ export function ShareButton({
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const bid = useBrowserId();
   // Build the share URL safely — use a state + effect to avoid hydration
   // mismatch (server renders a relative URL, client renders the full origin).
   const [url, setUrl] = useState<string>(`/?v=watch&id=${videoId}`);
@@ -355,10 +408,21 @@ export function ShareButton({
     setUrl(`${window.location.origin}/?v=watch&id=${videoId}`);
   }, [videoId]);
 
+  // Pass 4 upgrade: record share events to /api/videos/[id]/share so we can
+  // track virality + power recommendations. Fire-and-forget (non-blocking).
+  const recordShare = (platform: string) => {
+    fetch(`/api/videos/${videoId}/share`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ browserId: bid, platform }),
+    }).catch(() => {/* non-critical */});
+  };
+
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      recordShare("copy_link");
       toast.success("Link copied to clipboard");
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -366,10 +430,10 @@ export function ShareButton({
     }
   };
 
-  const socials: { label: string; icon: React.ComponentType<{ className?: string }>; tint: string; href: string }[] = [
-    { label: "Twitter", icon: Twitter, tint: "hover:bg-sky-500/10 hover:text-sky-500", href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}` },
-    { label: "Facebook", icon: Facebook, tint: "hover:bg-blue-600/10 hover:text-blue-600", href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}` },
-    { label: "Email", icon: Mail, tint: "hover:bg-rose-500/10 hover:text-rose-500", href: `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(url)}` },
+  const socials: { label: string; icon: React.ComponentType<{ className?: string }>; tint: string; href: string; platform: string }[] = [
+    { label: "Twitter", icon: Twitter, tint: "hover:bg-sky-500/10 hover:text-sky-500", href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`, platform: "twitter" },
+    { label: "Facebook", icon: Facebook, tint: "hover:bg-blue-600/10 hover:text-blue-600", href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, platform: "facebook" },
+    { label: "Email", icon: Mail, tint: "hover:bg-rose-500/10 hover:text-rose-500", href: `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(url)}`, platform: "email" },
   ];
 
   return (
@@ -415,6 +479,7 @@ export function ShareButton({
                   href={s.href}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => recordShare(s.platform)}
                   className={cn(
                     "flex flex-col items-center gap-1.5 py-3 rounded-xl border border-border bg-surface transition-colors",
                     s.tint

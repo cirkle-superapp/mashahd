@@ -100,7 +100,11 @@ export function verifyBrowserId(bid: string): { valid: boolean; id: string; lega
     const b = Buffer.from(expectedSig, "base64url");
     if (a.length !== b.length) return { valid: false, id: "", legacy: false };
     if (!timingSafeEqual(a, b)) return { valid: false, id: "", legacy: false };
-    return { valid: true, id: fullId, legacy: false };
+    // Return the FULL bid (including signature) as the id — this is what's
+    // stored in UserState.browserId and used as the Notification.recipientId.
+    // The signature is stable as long as BROWSER_ID_SECRET doesn't change,
+    // so this is a stable identifier for the user.
+    return { valid: true, id: bid, legacy: false };
   } catch {
     return { valid: false, id: "", legacy: false };
   }

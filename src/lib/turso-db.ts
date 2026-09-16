@@ -203,21 +203,38 @@ function createModel(client: Client, table: string) {
             }
             rows = rows.map((r: any) => ({ ...r, [relName]: byParent[r.id] || [] }));
           } else {
-            // For single relations, fetch the related row for each parent
+            // For single relations (e.g. video.channel), batch-fetch all related
+            // rows in ONE query instead of N queries (deep audit pass 2: this
+            // was an N+1 — 50 videos → 50 separate Channel queries).
             const fk = rel.fk;
-            for (const row of rows) {
-              if (row[fk]) {
-                const relResult = await client.execute({
-                  sql: `SELECT * FROM ${rel.table} WHERE id = ?`,
-                  args: [row[fk]],
-                });
-                if (relResult.rows.length > 0) {
-                  row[relName] = castRow(relResult.rows[0] as Record<string, any>, relResult.columns);
-                } else {
-                  row[relName] = null;
-                }
-              } else {
-                row[relName] = null;
+            const fkIds = [
+              ...new Set(
+                rows
+                  .map((r: any) => r[fk])
+                  .filter((id: any) => id != null && id !== "")
+              ),
+            ];
+            if (fkIds.length === 0) {
+              // No foreign keys to resolve — set all to null.
+              for (const row of rows) row[relName] = null;
+            } else {
+              const placeholders = fkIds.map(() => "?").join(",");
+              const relResult = await client.execute({
+                sql: `SELECT * FROM ${rel.table} WHERE id IN (${placeholders})`,
+                args: fkIds,
+              });
+              const relCols = relResult.columns;
+              const relRows = relResult.rows.map((r: any) =>
+                castRow(r as Record<string, any>, relCols)
+              );
+              // Build a lookup map: id → row.
+              const byId: Record<string, any> = {};
+              for (const rr of relRows) {
+                byId[rr.id] = rr;
+              }
+              // Assign to each parent row.
+              for (const row of rows) {
+                row[relName] = row[fk] ? (byId[row[fk]] || null) : null;
               }
             }
           }

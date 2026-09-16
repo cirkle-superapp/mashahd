@@ -1863,3 +1863,72 @@ Stage Summary:
 - Both mini-services now have /health endpoints + graceful SIGTERM shutdown + origin validation.
 - All 40 tests green, lint clean, browser-verified, API-verified.
 - Protected manifest expanded to cover all new files.
+
+---
+Task ID: UPGRADE-PASS-4
+Agent: main (acting as COO + CTO + PM — fourth upgrade pass)
+Task: Wire the backend upgrades from pass 3 into the actual UI (bell, share button, FYP home feed) + fix the turso-db N+1 query.
+
+Work Log:
+
+## FIX 1: Bell icon wired to /api/notifications (replaced SAMPLE_NOTIFS)
+- `src/components/youtube/header-overlays.tsx` NotificationsButton:
+  - Removed the 4 hardcoded `SAMPLE_NOTIFS` mock entries.
+  - Added `useQuery(["notifications", bid])` → `GET /api/notifications?bid=...` (30s staleTime).
+  - Added `useMutation` for `markAllRead` (optimistic update via `qc.setQueryData`).
+  - Added `markRead(id)` callback for individual notifications.
+  - Unread count now comes from the real DB (`data.unreadCount`), not `notifs.filter(!read).length`.
+  - Empty state shows a bell icon + "You're all caught up" instead of a blank list.
+  - Unread notifications get a subtle `bg-gold/5` highlight + a gold dot.
+  - Clicking a notification marks it read + navigates via `linkUrl` (parses videoId).
+- Verified: seeded a notification → `GET /api/notifications` returns `notifications: 1, unread: 1` with the correct actorName + body. `markAllRead` → `unread=0`.
+
+## FIX 2: ShareButton records share events to /api/videos/[id]/share
+- `src/components/youtube/header-overlays.tsx` ShareButton:
+  - Added `recordShare(platform)` — fire-and-forget POST to `/api/videos/[id]/share` with the signed browserId + platform.
+  - Copy button now calls `recordShare("copy_link")` after copying.
+  - Each social link (Twitter, Facebook, Email) has `onClick={() => recordShare(s.platform)}`.
+  - Share events are now tracked in the `Share` model for virality metrics + recommendation signals.
+- Verified: `POST /api/videos/[id]/share {platform:"twitter"}` → `ok:true, platform:twitter`.
+
+## FIX 3: Home view uses FYP feed (personalized recommendations)
+- `src/components/youtube/home-view.tsx`:
+  - Added `fetchForYou(bid)` → `GET /api/feed/for-you?bid=...&limit=24`.
+  - Added a second `useQuery(["feed","for-you",bid])` that's enabled only on the default home (no mood, "All" category).
+  - The home view now prefers FYP data when available, falls back to the category feed.
+  - Added a "For You — personalized recommendations" badge with a pulsing gold dot, shown when FYP is active.
+  - Category feed is still used when a category chip or mood is active.
+- Verified: browser snapshot shows `StaticText "For You — personalized recommendations"` on the home page.
+
+## FIX 4: turso-db N+1 query for non-collection includes
+- `src/lib/turso-db.ts` (lines 205-240): replaced the per-row `for (const row of rows) { await client.execute(...) }` loop with a single batched `SELECT * FROM ${rel.table} WHERE id IN (...)` query + a lookup map.
+  - Before: 50 videos with `include: { channel: true }` → 50 separate Channel queries.
+  - After: 1 Channel query with `WHERE id IN (50 ids)` → 1 query.
+  - Same pattern as the existing collection-include branch.
+- This is a significant performance improvement for the Turso-backed production path.
+
+## FIX 5: browserId verification.id returns full bid (stable identifier)
+- `src/lib/browser-id-security.ts` `verifyBrowserId()`: changed `id: fullId` (which was `bid_<idPart>` without signature) to `id: bid` (the full bid including signature).
+  - Reason: the full bid is what's stored in `UserState.browserId` and used as `Notification.recipientId`. Returning the partial id caused a mismatch where seeded notifications weren't found.
+  - The signature is stable as long as `BROWSER_ID_SECRET` doesn't change, so the full bid is a stable user identifier.
+- Added `BROWSER_ID_SECRET="mashahd-dev-secret-2026"` to `.env` for stable local dev (in production, set this as a Vercel env var).
+
+## VERIFICATION
+- `bun run lint` → clean (0 errors, 0 warnings).
+- `tests/basic.test.ts` → 23/23 passed.
+- `tests/chaos.test.ts` → 17/17 passed.
+- Dev server healthy, home returns 200, both mini-services /health return 200.
+- Browser-verified: home renders with "For You" badge, 0 errors, watch view shows Share button, bell icon present.
+- API verified end-to-end:
+  - Notifications: seeded → fetched → `notifications:1, unread:1` → markAllRead → `unread:0` ✅
+  - FYP: `source: for-you, videos: 5` ✅
+  - Share: `ok:true, platform:twitter` ✅
+  - Signed browserId: issues + verifies ✅
+
+Stage Summary:
+- 4 UI-to-backend wiring gaps closed (bell, share, FYP home, N+1 query).
+- The bell icon is now a REAL notification system (was 4 hardcoded mocks).
+- Share events are tracked (for virality + recommendations).
+- The home feed is now personalized (category affinity + channel affinity + diversity + exploration).
+- The turso-db N+1 query is fixed (50 queries → 1 for non-collection includes).
+- All 40 tests green, lint clean, browser-verified, API-verified.
