@@ -17,7 +17,8 @@ export type View =
   | { kind: "profile" }
   | { kind: "favorites" }
   | { kind: "watchLater" }
-  | { kind: "playlist"; playlistId: string };
+  | { kind: "playlist"; playlistId: string }
+  | { kind: "recommendationProfile" };
 
 type AppState = {
   view: View;
@@ -67,6 +68,8 @@ export function viewToQuery(v: View): string {
       return `?v=watchLater`;
     case "playlist":
       return `?v=playlist&id=${encodeURIComponent(v.playlistId)}`;
+    case "recommendationProfile":
+      return `?v=recommendationProfile`;
   }
 }
 
@@ -103,6 +106,8 @@ export function queryToView(search: string): View {
       return { kind: "watchLater" };
     case "playlist":
       return { kind: "playlist", playlistId: sp.get("id") || "" };
+    case "recommendationProfile":
+      return { kind: "recommendationProfile" };
     default:
       return { kind: "home" };
   }

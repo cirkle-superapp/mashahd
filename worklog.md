@@ -2237,3 +2237,104 @@ Stage Summary:
 - Users can now: create multiple interest profiles, create rule-based smart playlists, view their recommendation profile changelog (transparency), and reset their recommendations while choosing what to preserve.
 - All recommendation-affecting actions (subscribe, block, feedback, reset) are automatically logged to the changelog, giving users full visibility into WHY their feed looks the way it does (§70 transparency).
 - All 40 tests green, lint clean, browser-verified, API-verified end-to-end.
+
+---
+Task ID: 3
+Agent: Recommendation Profile UI Engineer
+Task: Build the My Recommendation Profile view
+
+Work Log:
+- Read worklog pass-7 entry: confirmed `/api/recommendation-changelog` API already exists and returns `{ events: [{id, eventType, description, metadata, createdAt}], summary: {total, followedCreators, blockedTopics, negativeFeedback, positiveFeedback, resets} }`. Backend auto-logs `followed_creator`, `blocked_topic`, `blocked_creator`, `negative_feedback`, `positive_feedback`, `reset_profile` events from the subscribe / blocks / feedback / reset APIs. No backend changes needed.
+- Inspected existing primitives + patterns: `src/components/ui/card.tsx` (Card/CardContent), `src/components/ui/skeleton.tsx`, `src/hooks/use-browser-id.ts` (returns signed bid string, empty until resolved), `src/lib/format.ts` (`timeAgo(d: Date | string)`), `src/components/youtube/profile-view.tsx` + `settings-view.tsx` for React Query conventions (queryKey, `enabled: !!bid`, `staleTime: 60_000`).
+- Verified `LucideIcon` type is exported from `lucide-react@0.525.0` (declared at line 17 of `dist/lucide-react.d.ts`, included in the type-only export list at end of file).
+- Created `src/components/youtube/recommendation-profile-view.tsx`:
+  - `"use client"` directive + named + default export `RecommendationProfileView`.
+  - Strict TypeScript types: `RecommendationEventType` union, `RecommendationEvent`, `RecommendationSummary`, `ChangelogResponse`, `SummaryCardConfig`. No `any`.
+  - Data fetch via React Query `useQuery(["recommendation-changelog", bid])` with `enabled: !!bid` and `staleTime: 60_000`. Defensive normalization in `fetchChangelog` (arrays/summary defaults) so a malformed response never crashes the UI.
+  - Header: title "My Recommendation Profile" with Activity gold icon + the exact spec subtitle ("This is your recommendation transparency layer. See exactly what actions shaped your feed. Per spec: we show you what happened, but never expose proprietary ranking formulas.").
+  - Summary cards: responsive grid `grid-cols-2 md:grid-cols-3 lg:grid-cols-6` — 6 cards driven by a `SUMMARY_CARDS` config array (Total events→TrendingUp, Followed creators→Users, Blocked topics→Ban, Negative feedback→ThumbsDown, Positive feedback→ThumbsUp, Profile resets→RotateCcw). Each card: icon-in-tinted-circle + bold tabular count + muted label, inside a `Card` (compact `py-4 gap-0`).
+  - Event timeline: left-border vertical line (`absolute left-3 w-px bg-border`) with absolutely-positioned 24px icon dots on each row. Each event renders `eventIcon(eventType)` + `eventIconClass` (emerald for positive, red for negative, amber for reset, muted for unknown), the description, and `timeAgo(createdAt)`. Limited to 50 events (`events.slice(0, 50)`) per API default.
+  - Loading state: 6 skeleton cards (summary) + 5 skeleton rows (timeline) with `aria-busy="true"`. Loading also covers the "no bid yet" window so skeletons show until `useBrowserId` resolves.
+  - Empty state: card with Activity icon + exact spec copy "No recommendation activity yet. Your actions (subscribing, blocking, giving feedback) will appear here."
+  - Error state: minimal destructive-tinted card.
+  - Accessibility: `aria-label` on sections, `aria-hidden` on decorative icons/line, `aria-label` on count for SR clarity.
+- Verified `bun run lint` → exit 0 (0 errors, 0 warnings).
+- Verified `bunx tsc --noEmit` produces zero errors for the new file (only pre-existing unrelated errors elsewhere).
+
+Stage Summary:
+- New component `src/components/youtube/recommendation-profile-view.tsx` (default + named export `RecommendationProfileView`) fully implements spec §70 "My Recommendation Profile" transparency layer.
+- UI: 6-card responsive summary grid (2/3/6 cols) + chronological event timeline with left-border + dot style, plus loading skeletons (6+5) and a friendly empty state.
+- Wired to existing `/api/recommendation-changelog` backend via React Query (`staleTime: 60_000`, `enabled: !!bid`) using the signed `useBrowserId` hook. No backend changes, no new dependencies.
+- TypeScript strict (no `any`), lint clean, type-check clean for the new file. Ready to be wired into the app's view router (e.g. as a new view kind in `app-store` + navigation entry) by a follow-up task.
+
+---
+Task ID: UPGRADE-PASS-8-UI-WIRING
+Agent: main (acting as CTO + UX Architect + Full-Stack Engineer)
+Task: Wire the pass-7 backend upgrades (recommendation changelog, reset, profiles, smart playlists) into the actual UI so users can access these transparency + control features.
+
+Work Log:
+
+## FIX 1: "My Recommendation Profile" view (spec §70 — transparency)
+- New `src/components/youtube/recommendation-profile-view.tsx` (by subagent):
+  - Header with title "My Recommendation Profile" + the exact spec transparency subtitle.
+  - 6 summary cards in a responsive grid (2/3/6 cols): Total events, Followed creators, Blocked topics, Negative feedback, Positive feedback, Profile resets.
+  - Event timeline (left-border style) showing each event with an icon + description + relative timestamp.
+  - Loading state (6 skeleton cards + 5 skeleton rows).
+  - Empty state: "No recommendation activity yet."
+  - Data fetched via React Query from `/api/recommendation-changelog?bid=...` (60s staleTime).
+  - No `any` types — strict TypeScript.
+- Wired into the app:
+  - Added `recommendationProfile` view kind to `src/store/app-store.ts` (View type + viewToQuery + queryToView).
+  - Added `import + renderView` case in `src/app/page.tsx`.
+
+## FIX 2: Reset recommendations UI (spec §27 — in Settings → Privacy)
+- New `ResetRecommendations` component in `src/components/youtube/settings-view.tsx`:
+  - "Reset recommendation profile" setting row with a red "Reset" button.
+  - Opens a confirmation Dialog with:
+    - Title "Reset recommendation profile?" + AlertTriangle icon.
+    - Description explaining what gets cleared (feedback, changelog, continue-watching).
+    - 5 checkboxes for preservation options (subscriptions, playlists, history, blocks, preferences) — all checked by default (preserve by default per §27).
+    - Warning: "This action cannot be undone."
+    - Cancel + "Reset profile" buttons.
+  - On confirm: POSTs to `/api/reset-recommendations` with `{browserId, confirm: "RESET", preserve}`.
+  - On success: toast + page reload to refresh the feed.
+
+## FIX 3: Recommendation transparency section in Settings → Privacy
+- Added a "Recommendation Transparency" section to the Privacy tab:
+  - "My recommendation profile" setting row with a "View profile" button → navigates to the new RecommendationProfileView.
+  - "Reset recommendation profile" row (the ResetRecommendations component).
+  - Both are under a "Recommendation Transparency" heading with a gold Activity icon.
+
+## FIX 4: Navigation wired
+- The `recommendationProfile` view is reachable via:
+  - Settings → Privacy → "View profile" button (primary entry point).
+  - Direct URL: `/?v=recommendationProfile`.
+  - URL sync (back/forward works).
+
+## VERIFICATION
+- `bun run lint` → clean (0 errors, 0 warnings).
+- `tests/basic.test.ts` → 23/23 passed.
+- `tests/chaos.test.ts` → 17/17 passed.
+- Dev server healthy, home returns 200.
+- Browser-verified:
+  - Settings page renders all 9 tabs ✅
+  - Privacy tab shows "Recommendation Transparency" section ✅
+  - "My recommendation profile" + "View profile" button ✅
+  - "Reset recommendation profile" + red "Reset" button ✅
+  - Recommendation Profile view renders with title + subtitle + 6 summary cards ✅
+  - 0 errors throughout ✅
+- API verified:
+  - Seeded changelog events (subscribe + block) → API returns 2 events with correct summary ✅
+
+## SPEC COVERAGE (pass 8 — UI wiring)
+- §27 Reset recommendations: ✅ confirmation dialog with preservation checkboxes in Settings → Privacy
+- §70 Recommendation changelog: ✅ full "My Recommendation Profile" view with summary cards + event timeline
+- §28 Multiple interest profiles: backend exists, UI deferred (would be a profile switcher in the header)
+- §30 Smart playlists: backend exists, UI deferred (would be a smart-playlist creator in the Library)
+
+Stage Summary:
+- 2 new UI components (RecommendationProfileView, ResetRecommendations).
+- 1 new view kind wired into the app store + page.tsx + URL sync.
+- Settings → Privacy tab now has a "Recommendation Transparency" section with 2 actions: View profile + Reset.
+- Users can now SEE exactly what actions shaped their feed (transparency) and RESET their profile while choosing what to preserve (control).
+- All 40 tests green, lint clean, browser-verified with 0 errors.

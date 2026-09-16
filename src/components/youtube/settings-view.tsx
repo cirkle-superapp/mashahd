@@ -2,14 +2,19 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Settings as SettingsIcon, Flag, HelpCircle, MessageSquare, Bell, Globe, Moon, Sun, Shield, Info, Sliders, Ban, Eye, Sparkles } from "lucide-react";
+import { Settings as SettingsIcon, Flag, HelpCircle, MessageSquare, Bell, Globe, Moon, Sun, Shield, Info, Sliders, Ban, Eye, Sparkles, RotateCcw, Activity, AlertTriangle } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useBrowserId } from "@/hooks/use-browser-id";
+import { useAppStore } from "@/store/app-store";
 
 /**
  * SettingsView — Mashahd's settings & about screen.
@@ -65,6 +70,7 @@ export function SettingsView({ initialTab = "general" }: { initialTab?: string }
   const { theme, setTheme } = useTheme();
   const bid = useBrowserId();
   const qc = useQueryClient();
+  const { navigate } = useAppStore();
 
   const { data: prefs } = useQuery({
     queryKey: ["preferences", bid],
@@ -339,6 +345,29 @@ export function SettingsView({ initialTab = "general" }: { initialTab?: string }
                 </Button>
               </SettingRow>
 
+              {/* §70: My Recommendation Profile — transparency link */}
+              <div className="pt-4 border-t border-border">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-[hsl(var(--gold))]" />
+                  Recommendation Transparency
+                </h3>
+                <SettingRow
+                  title="My recommendation profile"
+                  desc="See exactly what actions shaped your feed — subscriptions, blocks, feedback, and resets. We show you what happened, never proprietary ranking formulas."
+                >
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => navigate({ kind: "recommendationProfile" })}
+                  >
+                    <Activity className="h-4 w-4 mr-1.5" />
+                    View profile
+                  </Button>
+                </SettingRow>
+                <ResetRecommendations bid={bid} />
+              </div>
+
               {/* §47: User P2P Control — transparent opt-out */}
               <div className="pt-4 border-t border-border">
                 <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -489,5 +518,116 @@ function FeedbackForm() {
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * ResetRecommendations — §27 "Reset my recommendations".
+ * Opens a confirmation dialog where the user chooses what to preserve,
+ * then POSTs to /api/reset-recommendations with { confirm: "RESET" }.
+ */
+function ResetRecommendations({ bid }: { bid: string }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [preserve, setPreserve] = useState({
+    subscriptions: true,
+    playlists: true,
+    history: true,
+    blocks: true,
+    preferences: true,
+  });
+
+  const doReset = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/reset-recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ browserId: bid, confirm: "RESET", preserve }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Reset failed");
+      toast.success("Recommendation profile reset. Your feed will rebuild from scratch.");
+      setOpen(false);
+      // Reload to refresh the feed.
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (e: any) {
+      toast.error(e.message || "Reset failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <SettingRow
+      title="Reset recommendation profile"
+      desc="Clear all recommendation affinity signals (feedback, changelog, continue-watching). Your feed will rebuild from scratch. You choose what to preserve."
+    >
+      <Button
+        variant="outline"
+        size="sm"
+        className="rounded-full text-rose border-rose/30 hover:bg-rose/10"
+        onClick={() => setOpen(true)}
+      >
+        <RotateCcw className="h-4 w-4 mr-1.5" />
+        Reset
+      </Button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-rose" />
+            Reset recommendation profile?
+          </DialogTitle>
+          <DialogDescription>
+            This clears all the signals Mashahd uses to personalize your feed —
+            your &quot;not interested&quot; feedback, recommendation changelog,
+            and continue-watching progress. Your feed will rebuild from scratch.
+          </DialogDescription>
+
+          <div className="space-y-3 mt-2">
+            <p className="text-sm font-medium">Choose what to preserve:</p>
+            {([
+              ["subscriptions", "Subscriptions / follows"],
+              ["playlists", "Playlists (including smart playlists)"],
+              ["history", "Watch history"],
+              ["blocks", "Blocked topics, creators, keywords"],
+              ["preferences", "All preferences (home mode, discovery mix, etc.)"],
+            ] as const).map(([key, label]) => (
+              <label key={key} className="flex items-center gap-2.5 cursor-pointer">
+                <Checkbox
+                  checked={preserve[key]}
+                  onCheckedChange={(v) => setPreserve((p) => ({ ...p, [key]: !!v }))}
+                />
+                <span className="text-sm">{label}</span>
+              </label>
+            ))}
+          </div>
+
+          <div className="rounded-lg bg-rose/5 border border-rose/20 p-3 mt-2">
+            <p className="text-xs text-rose flex items-start gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span>
+                This action cannot be undone. All cleared affinity signals are gone permanently.
+              </span>
+            </p>
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button variant="ghost" size="sm" className="rounded-full" onClick={() => setOpen(false)} disabled={loading}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="rounded-full bg-rose text-white hover:bg-rose/90"
+              onClick={doReset}
+              disabled={loading}
+            >
+              {loading ? "Resetting…" : "Reset profile"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </SettingRow>
   );
 }
