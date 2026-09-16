@@ -25,6 +25,15 @@ function createDb(): any {
   return new PrismaClient({ log: ['error', 'warn'] })
 }
 
-export const db = globalForPrisma.prisma ?? createDb()
+// Create a fresh client if none cached, OR if the cached client is missing
+// newer models (happens after schema changes without a full process restart).
+function getDb(): any {
+  if (globalForPrisma.prisma && typeof globalForPrisma.prisma.userPreference === 'object') {
+    return globalForPrisma.prisma;
+  }
+  const client = createDb();
+  globalForPrisma.prisma = client;
+  return client;
+}
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+export const db = getDb()

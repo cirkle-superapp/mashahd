@@ -418,3 +418,119 @@ model Share {
   @@index([videoId])
   @@index([sharerId])
 }
+
+// ── User Preferences (§69 — user defaults) ──
+// Persists user-controlled preferences so the user doesn't reconfigure the
+// experience every visit. Quality, speed, Shorts, AI-content, home mode,
+// discovery mix, search sort, etc.
+model UserPreference {
+  id              String   @id @default(cuid())
+  // The signed browserId (anonymous) or userId (authenticated).
+  ownerId         String   @unique
+  // ── Player defaults (§33-36) ──
+  preferredQuality String  @default("auto") // auto | 144p | 240p | 360p | 480p | 720p | 1080p | 1440p | 2160p
+  preferredSpeed   Float    @default(1) // 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2
+  preferredVolume  Int      @default(100) // 0-100
+  // ── Subtitle + audio preferences (§35-36) ──
+  preferredSubtitleLang String @default("") // ISO 639-1, empty = off
+  preferredAudioLang String  @default("") // empty = original
+  // ── Content preferences (§16-18) ──
+  disableShorts    Boolean  @default(false) // §16: persistent "disable Shorts"
+  aiContentFilter  String   @default("show_all") // show_all | prefer_human | reduce_ai | hide_ai
+  // ── Home feed preferences (§6) ──
+  homeMode         String   @default("smart") // focus | following | chronological | discovery | smart | random
+  // Discovery mix percentages (§9) — must sum to ~100.
+  discoveryFamiliar Int     @default(60) // % familiar content
+  discoveryNewCreators Int  @default(25) // % new creators
+  discoveryUnexpected Int   @default(15) // % unexpected subjects
+  // ── Search defaults (§12) ──
+  searchSort       String   @default("relevance") // relevance | newest | oldest | most_viewed | least_viewed | longest | shortest
+  // ── Privacy (§26, §55) ──
+  pauseRecommendationLearning Boolean @default(false) // §26: pause rec learning
+  // ── Accessibility (§58) ──
+  reducedMotion    Boolean  @default(false)
+  highContrast     Boolean  @default(false)
+  largeControls    Boolean  @default(false)
+  // ── Continue Watching (§32) ──
+  continueWatchingEnabled Boolean @default(true)
+  autoplayNext     Boolean  @default(false)
+  // Timestamps.
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ── Recommendation Feedback (§10 — negative controls) ──
+// Records explicit user feedback on recommendations. Each feedback has a
+// real, persistent effect on the recommendation engine.
+model RecommendationFeedback {
+  id          String   @id @default(cuid())
+  userId      String   // signed browserId or userId
+  videoId     String
+  // The reason the user gave (§10).
+  reason      String   // not_interested | already_watched | wrong_topic | too_repetitive | low_quality | clickbait | misleading | wrong_language | wrong_format | ai_generated | dont_like_creator
+  // Optional free-text note from the user.
+  note        String   @default("")
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, videoId]) // one feedback per user+video
+  @@index([userId])
+  @@index([videoId])
+}
+
+// ── User Blocks (§11 — topic/keyword/creator blocking) ──
+// Persistent blocks that affect Home, Search, Up Next, Discovery, and
+// Notifications (§11). The FYP and search must filter these out.
+model UserBlock {
+  id          String   @id @default(cuid())
+  userId      String   // signed browserId or userId
+  // The type of block (§11).
+  blockType   String   // topic | keyword | creator | content_type | language | ai_content
+  // The value being blocked (e.g. "technology" for topic, "@spammer" for creator).
+  blockValue  String
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, blockType, blockValue])
+  @@index([userId])
+  @@index([blockType])
+}
+
+// ── Continue Watching (§32 — cross-device playback state) ──
+// Persists where the user left off so they can resume on any device.
+model ContinueWatching {
+  id          String   @id @default(cuid())
+  userId      String   // signed browserId or userId
+  videoId     String
+  // Where the user stopped (seconds into the video).
+  position    Float    @default(0)
+  // Whether the video was completed.
+  completed   Boolean  @default(false)
+  // Playback state to restore (§32).
+  playbackSpeed Float  @default(1)
+  qualityPref String   @default("auto")
+  audioLang   String   @default("")
+  subtitleLang String  @default("")
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, videoId])
+  @@index([userId])
+  @@index([updatedAt])
+}
+
+// ── Content Provenance (§17 — AI-content labeling) ──
+// Records the origin of a video so users can make informed choices (§18).
+model ContentProvenance {
+  id          String   @id @default(cuid())
+  videoId     String   @unique
+  // The overall origin (§17).
+  origin      String   @default("unknown") // human | ai_assisted | ai_generated | mixed | unknown
+  // Component-level origin (§17) — JSON-encoded: { voice, visuals, script, music, translation, dubbing }
+  components  String   @default("{}")
+  // Creator-declared source/provenance metadata.
+  sourceNote  String   @default("")
+  // Whether the provenance was creator-declared or platform-detected.
+  declared    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([origin])
+}

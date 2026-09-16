@@ -1,0 +1,2108 @@
+# MASHAHD — EXISTING PLATFORM AUDIT, COMPETITIVE GAP ANALYSIS & FULL VIEWER-CONTROLLED MEDIA UPGRADE
+
+## ROLE
+
+Act as the combined:
+
+* CTO
+* Principal Software Architect
+* Product Manager
+* COO
+* Senior Full-Stack Engineer
+* AI/ML Architect
+* Media Streaming Architect
+* Database Architect
+* Security Engineer
+* UX/UI Architect
+* QA/Testing Lead
+* DevOps/Infrastructure Engineer
+* Product Research Analyst
+
+You are working on an **already-developed production-oriented platform called Mashahd**.
+
+Your job is NOT to rebuild Mashahd from scratch.
+
+Your job is to:
+
+1. Inspect the CURRENT Mashahd platform first.
+2. Understand what already exists.
+3. Compare existing functionality against the complete requirements below.
+4. Identify what is missing, incomplete, weak, duplicated, technically inferior, or architecturally unsafe.
+5. Preserve working functionality.
+6. Implement only the required improvements and missing capabilities.
+7. Improve existing implementations where the new specification is materially better.
+8. Run comprehensive tests after implementation.
+9. Verify that no existing feature, API, database flow, media playback, authentication, deployment configuration, or production behavior has been broken.
+
+---
+
+# 1. ABSOLUTE RULE: CHECK BEFORE CHANGING
+
+Before creating, renaming, deleting, replacing, or restructuring anything:
+
+### INSPECT THE CURRENT PLATFORM.
+
+Do not assume a feature is missing because it is not obvious from the UI.
+
+Search the entire repository for:
+
+* routes
+* API endpoints
+* server actions
+* services
+* database schema
+* migrations
+* models
+* components
+* hooks
+* utilities
+* AI services
+* recommendation logic
+* media processing
+* streaming
+* HLS/CMAF
+* WebRTC/P2P
+* WebTransport
+* caching
+* playlists
+* watch history
+* search
+* comments
+* notifications
+* creator functionality
+* analytics
+* authentication
+* authorization
+* moderation
+* subscriptions/follows
+* downloads
+* subtitles
+* transcripts
+* localization
+* ad-related functionality
+* admin functionality
+* feature flags
+* environment variables
+* deployment configuration
+* tests
+* monitoring
+* error handling
+
+Do not duplicate an API or service that already exists.
+
+Do not create alternate implementations of the same functionality.
+
+Do not rename working services merely for stylistic reasons.
+
+Do not replace a working architecture simply because another architecture is theoretically cleaner.
+
+---
+
+# 2. CURRENT PLATFORM BASELINE
+
+Treat the current Mashahd codebase as the source of truth for what already exists.
+
+Known platform context includes:
+
+* Next.js
+* TypeScript
+* Turso
+* Tailwind
+* shadcn-style UI
+* standalone deployment architecture
+* current media/video functionality
+* existing AI functionality
+* existing P2P/media infrastructure
+* existing APIs and database
+* existing production/deployment configuration
+
+However, DO NOT trust this summary blindly.
+
+Verify the actual repository.
+
+---
+
+# 3. CREATE A CURRENT-STATE AUDIT FIRST
+
+Before implementation, produce an internal audit table:
+
+| Area            | Current Implementation | Status                   | Quality | Keep/Modify/Replace | Evidence |
+| --------------- | ---------------------- | ------------------------ | ------- | ------------------- | -------- |
+| Authentication  | ...                    | Complete/Partial/Missing | 1–5     | ...                 | file/API |
+| Search          | ...                    | ...                      | ...     | ...                 | ...      |
+| Recommendations | ...                    | ...                      | ...     | ...                 | ...      |
+| Shorts          | ...                    | ...                      | ...     | ...                 | ...      |
+| Video playback  | ...                    | ...                      | ...     | ...                 | ...      |
+| Playlists       | ...                    | ...                      | ...     | ...                 | ...      |
+| Watch history   | ...                    | ...                      | ...     | ...                 | ...      |
+| AI              | ...                    | ...                      | ...     | ...                 | ...      |
+| Creator tools   | ...                    | ...                      | ...     | ...                 | ...      |
+| Moderation      | ...                    | ...                      | ...     | ...                 | ...      |
+| Analytics       | ...                    | ...                      | ...     | ...                 | ...      |
+| Rights          | ...                    | ...                      | ...     | ...                 | ...      |
+| Notifications   | ...                    | ...                      | ...     | ...                 | ...      |
+| Accessibility   | ...                    | ...                      | ...     | ...                 | ...      |
+| Privacy         | ...                    | ...                      | ...     | ...                 | ...      |
+| Media delivery  | ...                    | ...                      | ...     | ...                 | ...      |
+
+Do not begin major implementation until you have mapped the existing system.
+
+---
+
+# 4. SECOND STAGE: COMPETITIVE PRODUCT GAP ANALYSIS
+
+Compare the current Mashahd implementation against two targets:
+
+### A. USER-CONTROLLED MEDIA PLATFORM REQUIREMENTS
+
+The detailed requirements in this prompt.
+
+### B. CURRENT YOUTUBE USER EXPERIENCE
+
+Use current, reliable public information where external verification is required.
+
+Do NOT blindly copy YouTube.
+
+Instead identify:
+
+* capabilities Mashahd already does better
+* capabilities YouTube currently does better
+* capabilities neither handles well
+* areas where Mashahd can differentiate
+* features that should not be copied
+* features that should be modified rather than duplicated
+
+Create:
+
+| Capability | Mashahd Current | YouTube Current | Required Mashahd Target | Action |
+| ---------- | --------------- | --------------- | ----------------------- | ------ |
+
+IMPORTANT:
+
+Never conclude that Mashahd should implement something merely because YouTube has it.
+
+The objective is to satisfy users better, not to become a clone.
+
+---
+
+# 5. REQUIRED PRODUCT PRINCIPLE
+
+The central Mashahd product principle must be:
+
+## THE USER CONTROLS THE MEDIA EXPERIENCE.
+
+The system may recommend, assist, explain, optimize and personalize.
+
+It must NOT unnecessarily override explicit user intent.
+
+Prioritize:
+
+USER INTENT
+
+>
+
+USER CONTROL
+
+>
+
+TRANSPARENCY
+
+>
+
+QUALITY / SATISFACTION
+
+>
+
+DISCOVERY
+
+>
+
+ENGAGEMENT
+
+Do not optimize the entire system around raw watch time.
+
+---
+
+# 6. HOME / DISCOVERY SYSTEM
+
+Audit and implement missing capabilities.
+
+Users must be able to configure their homepage.
+
+Supported sections should include:
+
+* Following/Subscribed creators
+* New uploads
+* Continue watching
+* Recommended
+* Discovery
+* Live
+* Saved
+* Playlists
+* Shorts
+* Trending
+* Community/posts
+* Other future modules
+
+Users must be able to enable/disable sections where appropriate.
+
+Create distinct modes:
+
+### FOCUS MODE
+
+Only explicitly relevant content.
+
+### FOLLOWING MODE
+
+Primarily content from followed creators.
+
+### CHRONOLOGICAL MODE
+
+Newest content first.
+
+### DISCOVERY MODE
+
+Higher exposure to unfamiliar creators and topics.
+
+### SMART MODE
+
+AI-driven personalized recommendations.
+
+### RANDOM DISCOVERY / SURPRISE ME
+
+Deliberately introduces unexpected content.
+
+Do not force users into a single feed strategy.
+
+---
+
+# 7. RECOMMENDATION ENGINE
+
+Audit the current recommendation system.
+
+It must support:
+
+* explicit interests
+* topic preferences
+* creator preferences
+* format preferences
+* freshness
+* diversity
+* novelty
+* user feedback
+* satisfaction
+* repeated-content suppression
+* watched-content suppression
+* blocked topics
+* blocked keywords
+* blocked creators
+* language preferences
+* AI-content preferences
+
+Do not optimize solely for:
+
+* watch time
+* clicks
+* impressions
+* session length
+
+Add appropriate weighting for:
+
+* satisfaction
+* completion
+* repeat usefulness
+* saves
+* shares
+* explicit positive feedback
+* explicit negative feedback
+* content diversity
+* creator diversity
+* discovery value
+
+---
+
+# 8. RECOMMENDATION TRANSPARENCY
+
+Every recommendation should have a user-facing:
+
+## "WHY AM I SEEING THIS?"
+
+Example:
+
+* You watched similar videos.
+* You follow this creator.
+* You recently searched this topic.
+* You saved related content.
+* This is part of your discovery mix.
+
+Do not expose confidential model internals.
+
+Do expose understandable reasons.
+
+---
+
+# 9. RECOMMENDATION CONTROL CENTER
+
+Implement a real user-facing recommendation control system.
+
+Users must be able to adjust:
+
+### TOPIC INTEREST
+
+Technology
+Business
+Entertainment
+Sports
+Education
+News
+etc.
+
+### DISCOVERY MIX
+
+Example:
+
+* Familiar content: 60%
+* New creators: 25%
+* Unexpected subjects: 15%
+
+These values should be configurable rather than hard-coded.
+
+### FORMAT MIX
+
+Long-form
+Short-form
+Live
+Podcasts
+Courses
+etc.
+
+### CREATOR PREFERENCE
+
+Following
+Known creators
+New creators
+
+### FRESHNESS
+
+Recent
+Evergreen
+Archived
+
+---
+
+# 10. NEGATIVE RECOMMENDATION CONTROLS
+
+The following actions must have real persistent effects:
+
+* Not interested
+* Already watched
+* Wrong topic
+* Too repetitive
+* Low quality
+* Clickbait
+* Misleading
+* Wrong language
+* Wrong format
+* AI-generated
+* Don't like this creator
+* Block this topic
+* Block this keyword
+* Don't recommend this channel
+
+Do NOT implement these as cosmetic UI buttons that do not materially alter the recommendation profile.
+
+---
+
+# 11. TOPIC / KEYWORD / CREATOR BLOCKING
+
+Implement persistent user controls for:
+
+* topic blocks
+* keyword blocks
+* creator/channel blocks
+* content-type blocks
+* language blocks
+* AI-content blocks where technically appropriate
+
+The controls should affect:
+
+* Home
+* Search
+* Up Next
+* Discovery
+* Notifications
+* Suggestions
+
+---
+
+# 12. SEARCH SYSTEM
+
+Audit the current Mashahd search.
+
+The final system must support both:
+
+## ALGORITHMIC SEARCH
+
+and
+
+## DETERMINISTIC SEARCH
+
+Never remove deterministic search capability merely to simplify the interface.
+
+Provide:
+
+* relevance
+* newest
+* oldest
+* most viewed
+* least viewed
+* highest quality/reviewer-defined quality signals
+* longest
+* shortest
+* most discussed
+* creator
+* duration
+* date
+
+---
+
+# 13. ADVANCED SEARCH
+
+Implement natural-language filtering such as:
+
+> Show videos about logistics uploaded in Egypt during the last 30 days, longer than 15 minutes, excluding Shorts.
+
+The search parser should transform natural language into structured filters.
+
+Support filters for:
+
+### Date
+
+Last hour
+Today
+7 days
+30 days
+Custom range
+
+### Duration
+
+<5 minutes
+5–15
+15–60
+60+
+
+### Format
+
+Long-form
+Shorts
+Live
+Podcast
+Course
+Documentary
+
+### Resolution
+
+HD
+Full HD
+4K
+8K where supported
+
+### Language
+
+Original
+Arabic
+English
+etc.
+
+### Content provenance
+
+Human
+AI-assisted
+AI-generated
+Mixed
+Unknown
+
+---
+
+# 14. SEARCH MUST RESPECT USER INTENT
+
+Do not manipulate explicit search queries merely to increase engagement.
+
+Do not replace:
+
+"Newest"
+
+with:
+
+"Best performing."
+
+When the user explicitly chooses a deterministic operation, honor it.
+
+---
+
+# 15. SEARCH RESULT TRANSPARENCY
+
+Clearly separate:
+
+* organic results
+* sponsored content
+* creator promotions
+* recommendation modules
+
+Never make paid placements look identical to organic search results.
+
+---
+
+# 16. SHORT-FORM / LONG-FORM SEPARATION
+
+Create distinct experiences for:
+
+* Videos
+* Shorts
+* Live
+* Podcasts
+* Courses
+* Documentaries
+
+A user browsing long-form videos should not be continuously forced into Shorts.
+
+Implement:
+
+## DISABLE SHORTS
+
+as a persistent user preference.
+
+Do not stop at "show fewer Shorts."
+
+---
+
+# 17. AI-GENERATED CONTENT PROVENANCE
+
+Implement a content provenance model.
+
+Every eligible upload should support:
+
+### CONTENT ORIGIN
+
+* Human-created
+* AI-assisted
+* AI-generated
+* Mixed
+* Unknown
+
+### COMPONENT ORIGIN
+
+Voice
+Visuals
+Script
+Music
+Translation
+Dubbing
+
+Where possible record source/provenance metadata.
+
+Do not falsely label content when the platform cannot establish provenance.
+
+---
+
+# 18. USER AI-CONTENT FILTER
+
+Users should control:
+
+* Show all
+* Prefer human-created
+* Reduce AI-generated
+* Hide AI-generated
+
+This should be integrated into:
+
+* Home
+* Search
+* Recommendations
+* Discovery
+
+---
+
+# 19. AI MUST NOT BE PRESENTED AS AN AUTHORITY
+
+AI-generated summaries and classifications must clearly be presented as AI outputs.
+
+Do not convert an AI confidence estimate into a factual guarantee.
+
+Where appropriate, distinguish:
+
+SOURCE CONTENT
+from
+AI INTERPRETATION.
+
+---
+
+# 20. CLICKBAIT / METADATA QUALITY
+
+Audit whether Mashahd currently detects:
+
+* misleading titles
+* misleading thumbnails
+* inaccurate descriptions
+* repetitive metadata
+* spam metadata
+
+Build quality signals carefully.
+
+Avoid opaque punishment mechanisms.
+
+Where possible provide actionable creator feedback.
+
+---
+
+# 21. QUALITY SIGNALS
+
+Do not rely solely on:
+
+* views
+* likes
+* watch time
+
+Support differentiated signals such as:
+
+* useful
+* informative
+* entertaining
+* accurate
+* original
+* misleading
+* repetitive
+* clickbait
+
+Separate "I don't like this" from "this content has a quality/problem report."
+
+---
+
+# 22. COMMENTS
+
+Audit comments and moderation.
+
+Implement:
+
+* sort by top
+* newest
+* creator replies
+* questions
+* unanswered
+* most discussed
+
+Provide moderation transparency:
+
+### PLATFORM MODERATION
+
+versus
+
+### CREATOR MODERATION
+
+Users should understand which entity removed a comment where appropriate.
+
+---
+
+# 23. MODERATION EXPLANATIONS
+
+For meaningful moderation actions show:
+
+* action
+* reason
+* whether automated/human
+* appeal availability
+* appeal status
+* final result
+
+Do not make enforcement unnecessarily opaque.
+
+---
+
+# 24. APPEALS
+
+Implement an appeal workflow for meaningful moderation and rights decisions.
+
+Track:
+
+* submitted
+* under review
+* additional information requested
+* accepted
+* rejected
+* closed
+
+---
+
+# 25. WATCH HISTORY
+
+Implement searchable watch history.
+
+Filters:
+
+* date
+* creator
+* topic
+* duration
+* completed
+* partially watched
+* saved
+
+Allow removing individual history items without requiring full history deletion.
+
+---
+
+# 26. PAUSE RECOMMENDATIONS
+
+Implement:
+
+## PAUSE RECOMMENDATION LEARNING
+
+During a paused session:
+
+* viewing should not affect recommendation interests
+* searches should not contaminate normal personalization
+* temporary exploration should not permanently alter the feed
+
+This should be clearly visible to the user.
+
+---
+
+# 27. RESET RECOMMENDATIONS
+
+Implement:
+
+## RESET MY RECOMMENDATIONS
+
+Ask which data to preserve:
+
+* subscriptions/follows
+* playlists
+* history
+* blocked creators
+* blocked topics
+* preferences
+
+The user decides what gets reset.
+
+---
+
+# 28. MULTIPLE INTEREST PROFILES
+
+Where architecturally appropriate, support separate recommendation contexts such as:
+
+* Personal
+* Work
+* Research
+* Technology
+* Entertainment
+* Business
+
+Do NOT require separate accounts.
+
+A profile must not unintentionally leak preferences into another profile.
+
+---
+
+# 29. PLAYLISTS
+
+Audit current playlists.
+
+Add missing:
+
+* search
+* folders
+* collections
+* sorting
+* bulk editing
+* duplicate detection
+* watched/unwatched filtering
+* remove watched
+* remove unavailable
+* smart playlists
+
+---
+
+# 30. SMART PLAYLISTS
+
+Allow rules such as:
+
+> All unwatched videos under 20 minutes from followed creators.
+
+Or:
+
+> All videos about technology saved during the last 30 days.
+
+Rules must update dynamically.
+
+---
+
+# 31. WATCH LATER
+
+Audit current Watch Later.
+
+Support:
+
+* unread
+* started
+* completed
+* long-form
+* Shorts
+* live
+* duration
+* search
+* sorting
+* bulk operations
+
+---
+
+# 32. CONTINUE WATCHING
+
+Synchronize playback state across devices.
+
+Persist where appropriate:
+
+* timestamp
+* playback speed
+* quality preference
+* audio track
+* subtitle selection
+
+---
+
+# 33. PLAYER
+
+Audit the existing player before changing it.
+
+Do not replace a working player unnecessarily.
+
+Required controls:
+
+* play/pause
+* progress
+* volume
+* captions
+* audio
+* speed
+* quality
+* theater
+* fullscreen
+* save
+* share
+* download where rights permit
+
+Advanced controls should remain available even if hidden behind an advanced menu.
+
+---
+
+# 34. PLAYBACK SPEED
+
+Support flexible playback speed where technically feasible.
+
+Remember user preferences appropriately.
+
+---
+
+# 35. AUDIO / LANGUAGE
+
+Original audio must remain available where rights and source permit.
+
+Implement persistent preferences for:
+
+* original language
+* preferred language
+* automatic dubbing
+* subtitles
+
+Never silently replace original audio with an AI-generated track.
+
+---
+
+# 36. SUBTITLES
+
+Support:
+
+* original subtitles
+* translated subtitles
+* automatic captions
+* user preference
+* language selection
+
+---
+
+# 37. TRANSCRIPTS
+
+Implement searchable transcripts where technically and legally possible.
+
+Allow users to:
+
+* search transcript
+* jump to timestamp
+* save timestamp
+* share timestamp
+* copy selected text where rights permit
+
+---
+
+# 38. SEARCH INSIDE VIDEO
+
+Implement AI/search functionality that can find where a topic is discussed.
+
+Example:
+
+User asks:
+
+> Where does this video discuss customs clearance?
+
+Return timestamp(s).
+
+The answer must link to the relevant point in the source video.
+
+---
+
+# 39. ASK THIS VIDEO
+
+Where AI capability exists, implement:
+
+* summarize video
+* explain topic
+* answer questions
+* identify sections
+* identify mentioned entities
+* extract references
+
+Every answer must distinguish source-derived information from AI interpretation.
+
+---
+
+# 40. MULTI-VIDEO RESEARCH
+
+Allow users to select multiple videos and ask Mashahd AI to:
+
+* compare
+* summarize
+* identify agreements
+* identify differences
+* organize claims
+* surface referenced sources
+* identify contradictions
+
+Do not manufacture consensus.
+
+---
+
+# 41. VIDEO RELATIONSHIP GRAPH
+
+Where useful, associate videos with:
+
+* earlier videos
+* later updates
+* responses
+* corrections
+* source materials
+* related tutorials
+* same topic
+* same creator
+* other relevant perspectives
+
+---
+
+# 42. CHAPTERS
+
+Support:
+
+* creator chapters
+* automatic chapter suggestions
+* chapter navigation
+* timestamp sharing
+
+---
+
+# 43. CLIPS
+
+Where rights permit:
+
+* start time
+* end time
+* title
+* attribution
+* shareable link
+
+Creators must be able to control clipping behavior.
+
+---
+
+# 44. SHARING
+
+Support:
+
+* full video
+* timestamp
+* clip
+* chapter
+* playlist
+* transcript location where legally appropriate
+
+---
+
+# 45. LIVE STREAMING
+
+Audit current live functionality.
+
+Support where applicable:
+
+* low latency
+* chat
+* moderation
+* slow mode
+* subscriber/follower mode
+* polls
+* Q&A
+* replay
+* DVR
+* clips
+* chapters
+
+---
+
+# 46. LIVE → VOD
+
+Where technically feasible automatically produce:
+
+* replay
+* transcript
+* chapters
+* highlights
+* clips
+* searchable moments
+
+---
+
+# 47. NOTIFICATIONS
+
+Implement granular notification controls.
+
+Users should control notifications for:
+
+* uploads
+* live streams
+* creator activity
+* comments/replies
+* recommendations
+* system messages
+
+Do not spam users.
+
+---
+
+# 48. SUBSCRIPTIONS / FOLLOWING
+
+Subscriptions/follows must actually provide value.
+
+Support filtering:
+
+* all
+* new
+* unwatched
+* live
+* long-form
+* Shorts
+
+---
+
+# 49. CREATOR STUDIO
+
+Audit the current creator experience.
+
+Provide:
+
+* content
+* analytics
+* audience
+* monetization
+* rights
+* moderation
+* distribution diagnostics
+* AI tools
+* live
+* notifications
+* API
+* exports
+
+---
+
+# 50. CREATOR DISTRIBUTION DIAGNOSTICS
+
+Creators need actionable explanation.
+
+Show signals such as:
+
+* impressions
+* CTR
+* audience match
+* retention
+* satisfaction
+* search discovery
+* recommendation discovery
+* external discovery
+* topic demand
+* competition
+
+Do not falsely claim deterministic causation when the evidence is probabilistic.
+
+---
+
+# 51. CREATOR REVENUE TRANSPARENCY
+
+Where monetization exists, show:
+
+* gross
+* platform fees
+* taxes where applicable
+* rights costs where applicable
+* creator earnings
+* pending amounts
+* payout status
+
+Every deduction must be explainable.
+
+---
+
+# 52. CREATOR DATA PORTABILITY
+
+Provide export functionality for creator-owned data where legally and technically possible:
+
+* uploaded content
+* metadata
+* playlists
+* analytics
+* comments where appropriate
+* audience/subscriber information where legally transferable
+
+---
+
+# 53. CONTENT RIGHTS SYSTEM
+
+Audit rights architecture.
+
+Support where relevant:
+
+* ownership metadata
+* licenses
+* territorial restrictions
+* audio rights
+* music rights
+* claims
+* disputes
+* evidence
+* counter-notices
+* enforcement records
+
+---
+
+# 54. RIGHTS TRANSPARENCY
+
+A rights claim should expose sufficient understandable information, such as:
+
+* matched material
+* approximate location/timestamp
+* claimant
+* claim type
+* action
+* dispute pathway
+
+---
+
+# 55. DATA PRIVACY
+
+Audit current privacy functionality.
+
+Users should be able to control visibility for:
+
+* videos
+* playlists
+* likes
+* subscriptions/follows
+* activity
+* watch history
+* comments
+
+Support:
+
+* public
+* followers/friends where applicable
+* private
+* unlisted
+
+---
+
+# 56. DATA EXPORT
+
+Where legally required/appropriate, provide export for:
+
+* watch history
+* search history
+* subscriptions/follows
+* playlists
+* likes
+* saved content
+* preferences
+* comments
+* user-created content
+
+Use structured machine-readable formats.
+
+---
+
+# 57. ACCOUNT SECURITY
+
+Audit and strengthen:
+
+* MFA
+* passkeys where supported
+* active sessions
+* device management
+* login detection
+* account recovery
+* creator account recovery
+* API key management
+* audit logs
+
+---
+
+# 58. ACCESSIBILITY
+
+Audit all UI.
+
+Support:
+
+* keyboard navigation
+* screen readers
+* captions
+* audio descriptions where available
+* large controls
+* high contrast
+* reduced motion
+* accessible focus states
+* semantic HTML
+* accessible forms
+* non-color-only status indicators
+
+---
+
+# 59. MULTI-DEVICE EXPERIENCE
+
+Ensure continuity between:
+
+* mobile
+* desktop
+* tablet
+* TV
+
+Synchronize where appropriate:
+
+* playback
+* preferences
+* history
+* library
+* language
+* captions
+* speed
+
+---
+
+# 60. TV EXPERIENCE
+
+If Mashahd supports TV/large-screen interfaces, treat it as a dedicated experience.
+
+Do not merely enlarge the desktop/mobile layout.
+
+Support:
+
+* remote navigation
+* large targets
+* simplified hierarchy
+* profiles
+* voice search where supported
+* queue
+* autoplay controls
+
+---
+
+# 61. ADVERTISING
+
+Where Mashahd currently has or will have advertising:
+
+Design around user respect.
+
+Separate:
+
+* platform advertising
+* creator sponsorship
+* affiliate content
+* paid placement
+
+Never make paid content deceptive.
+
+Do not intentionally make the free experience unusable merely to force Premium conversion.
+
+---
+
+# 62. PREMIUM
+
+Premium must provide genuine value.
+
+Potential value:
+
+* higher quality
+* offline features where licensed
+* expanded AI capability
+* creator tools
+* enhanced analytics
+* additional storage
+* premium content
+
+Do not artificially disable essential usability simply to manufacture subscription pressure.
+
+---
+
+# 63. DISCOVERY / SERENDIPITY
+
+Implement intentional discovery.
+
+Users should be able to define:
+
+* familiar content
+* adjacent interests
+* completely new subjects
+* new creators
+* international content
+* archived content
+* random
+
+The recommendation system should not become an endless loop of almost-identical content.
+
+---
+
+# 64. DIVERSITY ENGINE
+
+Add recommendation diversity across:
+
+* creators
+* topics
+* formats
+* publication dates
+* geography
+* popularity
+* new creators
+* established creators
+
+Avoid recommending twenty near-duplicates.
+
+---
+
+# 65. INFORMATION CONTEXT
+
+For factual/current content where appropriate, provide:
+
+* publication date
+* update date
+* creator-provided sources
+* corrections
+* provenance
+
+Do not present AI classification as a substitute for evidence.
+
+---
+
+# 66. CORRECTIONS
+
+Creators should be able to mark and publish corrections.
+
+Where appropriate notify viewers who watched the affected content.
+
+---
+
+# 67. PLATFORM CHANGE MANAGEMENT
+
+Create a platform-level principle:
+
+## DO NOT REMOVE POWER FEATURES WITHOUT A REPLACEMENT.
+
+For significant product changes:
+
+* announce
+* explain
+* document
+* migrate
+* preserve existing workflows where practical
+* provide alternatives
+
+Do not silently remove important user capabilities.
+
+---
+
+# 68. SIMPLE MODE + ADVANCED MODE
+
+The UI may be simplified for normal users.
+
+But advanced users must not lose capabilities.
+
+Use:
+
+### SIMPLE MODE
+
+clean defaults
+
+### ADVANCED MODE
+
+full controls
+
+Advanced functionality should remain discoverable.
+
+---
+
+# 69. USER DEFAULTS
+
+Persist user preferences such as:
+
+* quality
+* audio
+* subtitles
+* speed
+* Shorts
+* search sort
+* home mode
+* discovery mix
+* AI-content preference
+
+Do not force the user to repeatedly configure the same experience.
+
+---
+
+# 70. RECOMMENDATION CHANGE LOG
+
+Implement a user-facing explanation layer where useful:
+
+## MY RECOMMENDATION PROFILE
+
+Show meaningful events such as:
+
+* followed creator
+* blocked topic
+* watched repeated topic
+* explicit negative feedback
+* explicit positive feedback
+* reset recommendation profile
+
+Do not expose proprietary ranking formulas.
+
+---
+
+# 71. ARCHITECTURE REQUIREMENT
+
+Every major capability should have a modular boundary/API.
+
+Potential domains:
+
+```text
+Auth API
+User API
+Profile API
+Video API
+Playback API
+Search API
+Recommendation API
+Discovery API
+Playlist API
+Library API
+Comment API
+Moderation API
+Creator API
+Live API
+Analytics API
+Rights API
+Transcript API
+Subtitle API
+AI API
+Notification API
+Advertising API
+Payment API
+Media Delivery API
+```
+
+Before creating any API, inspect whether an equivalent API already exists.
+
+Reuse and extend rather than duplicate.
+
+---
+
+# 72. MEDIA DELIVERY ARCHITECTURE
+
+Preserve and improve Mashahd's existing distributed-media direction.
+
+Where already implemented, do NOT replace unnecessarily.
+
+Preferred architecture should remain compatible with:
+
+* CMAF
+* HLS
+* WebRTC/P2P where appropriate
+* WebTransport where appropriate
+* edge/cache
+* cooperative browser caching where feasible
+* intelligent delivery scheduling
+* demand-driven transcoding
+* request coalescing
+* peer scoring
+* rarest-piece scheduling
+* predictive/cooperative prefetch
+* adaptive hedged requests
+* hot-content promotion
+* swarm generations
+* dynamic node roles
+* cost-aware controls
+
+Cellular/network constraints and user privacy must be respected.
+
+---
+
+# 73. EVENT-DRIVEN DESIGN
+
+Where appropriate use events rather than tightly coupling everything.
+
+Examples:
+
+VIDEO_UPLOADED
+VIDEO_PROCESSED
+VIDEO_PUBLISHED
+VIDEO_VIEWED
+VIDEO_COMPLETED
+VIDEO_SAVED
+VIDEO_SHARED
+VIDEO_RATED
+RECOMMENDATION_FEEDBACK
+COMMENT_CREATED
+COMMENT_MODERATED
+FOLLOW_CREATED
+LIVE_STARTED
+LIVE_ENDED
+DOWNLOAD_STARTED
+DOWNLOAD_COMPLETED
+TRANSCRIPT_CREATED
+AI_ANALYSIS_COMPLETED
+RIGHTS_CLAIM_CREATED
+MODERATION_ACTION_CREATED
+
+First inspect the current event architecture before introducing another event system.
+
+---
+
+# 74. AI ARCHITECTURE
+
+Do not hardcode Mashahd around one AI provider/model.
+
+Create abstraction layers where practical.
+
+AI functionality should be replaceable.
+
+Examples:
+
+AI provider
+↓
+AI service abstraction
+↓
+Mashahd feature
+↓
+User
+
+Do not make a model provider inseparable from the application.
+
+---
+
+# 75. DATABASE
+
+Audit the current Turso/schema architecture.
+
+Do NOT rewrite migrations or database structure unnecessarily.
+
+Before adding tables/columns:
+
+* check current schema
+* check existing migrations
+* check indexes
+* check constraints
+* check existing naming conventions
+* check data relationships
+* check production compatibility
+
+No destructive schema changes without migration strategy and rollback considerations.
+
+---
+
+# 76. PERFORMANCE
+
+All implemented functionality must be evaluated for:
+
+* page load
+* Time to Interactive
+* video startup
+* search latency
+* recommendation latency
+* database latency
+* API latency
+* mobile performance
+* memory usage
+* bandwidth usage
+* cache efficiency
+
+Do not sacrifice core playback performance for unnecessary UI functionality.
+
+---
+
+# 77. COST CONTROL
+
+Respect the existing Mashahd goal of minimizing user cost and infrastructure cost.
+
+Prefer:
+
+* caching
+* deduplication
+* request coalescing
+* efficient database access
+* edge delivery
+* demand-driven processing
+* asynchronous jobs
+* batching
+
+Do not introduce a paid infrastructure dependency without first checking whether the existing architecture or a genuinely free/local option can satisfy the requirement.
+
+Do not introduce Cloudflare R2 merely because it is commonly used; it is a paid service and must not be assumed to be part of the zero-cost architecture.
+
+---
+
+# 78. TESTING REQUIREMENT
+
+After implementation, perform comprehensive testing.
+
+### UNIT TESTS
+
+For:
+
+* recommendation rules
+* search filtering
+* preference persistence
+* blocking
+* playlist logic
+* AI-content filtering
+* moderation
+* rights
+* API behavior
+
+### INTEGRATION TESTS
+
+Test:
+
+UI
+→ API
+→ database
+→ AI
+→ media systems
+
+### E2E TESTS
+
+Test real user flows:
+
+1. New account
+2. Search
+3. Watch
+4. Save
+5. Follow creator
+6. Change recommendation settings
+7. Block creator
+8. Disable Shorts
+9. Search newest-first
+10. Reset feed
+11. Pause recommendations
+12. Create playlist
+13. Continue watching
+14. Use captions
+15. Change audio
+16. AI-assisted video discovery
+17. Comment
+18. Moderation
+19. Appeal
+20. Creator upload
+21. Creator analytics
+22. Live
+23. Playback across devices
+24. Error recovery
+
+---
+
+# 79. REGRESSION TESTING
+
+This is mandatory.
+
+After every major change verify that existing functionality still works.
+
+Especially verify:
+
+* current video playback
+* MP4/HLS detection
+* existing media URLs
+* existing AI route
+* Turso rate limiting
+* existing authentication
+* existing APIs
+* P2P/media systems
+* deployment
+* mobile UI
+* desktop UI
+
+DO NOT declare success merely because the new feature works.
+
+---
+
+# 80. PRODUCTION SAFETY
+
+Before changing production-sensitive behavior:
+
+* inspect current environment variables
+* inspect deployment configuration
+* inspect database migrations
+* inspect API dependencies
+* inspect build settings
+* inspect existing production errors
+* inspect logging
+* inspect rate limiting
+* inspect security configuration
+
+Do not delete or rename environment variables unless you have verified all consumers.
+
+---
+
+# 81. NO PLACEHOLDER IMPLEMENTATION
+
+Do not create:
+
+* fake APIs
+* mocked production logic
+* cosmetic toggles
+* empty preference panels
+* nonfunctional buttons
+* TODO-only features presented as complete
+* fake recommendation controls
+* fake moderation explanations
+
+A feature is complete only when its underlying system works.
+
+---
+
+# 82. NO DUPLICATION
+
+Before adding:
+
+* route
+* service
+* API
+* DB table
+* component
+* hook
+* utility
+* job
+* worker
+* middleware
+
+search the repository for existing equivalents.
+
+Extend the existing implementation when appropriate.
+
+---
+
+# 83. DESIGN REQUIREMENT
+
+Maintain Mashahd's existing visual identity where possible.
+
+Do not redesign the entire application merely to implement functionality.
+
+Improve UX through:
+
+* hierarchy
+* clarity
+* consistency
+* discoverability
+* accessibility
+* reduced clutter
+* meaningful controls
+
+New capabilities should feel native to Mashahd.
+
+---
+
+# 84. DO NOT TURN MASHAHD INTO A YOUTUBE CLONE
+
+Mashahd should DIFFERENTIATE through:
+
+### USER CONTROL
+
+The user directly shapes the experience.
+
+### TRANSPARENCY
+
+Recommendations and moderation have understandable explanations.
+
+### DISCOVERY
+
+Serendipity is intentional.
+
+### AI PROVENANCE
+
+AI content is clearly represented.
+
+### SEARCH
+
+Explicit user-defined sorting and filtering are preserved.
+
+### LIBRARY
+
+Users have a serious personal media library.
+
+### AI MEDIA INTELLIGENCE
+
+Users can understand, search and compare media.
+
+### MODULAR ARCHITECTURE
+
+Features remain independently evolvable.
+
+---
+
+# 85. REQUIRED COMPETITIVE REPORT AFTER AUDIT
+
+When the work is complete, produce a final report with:
+
+## A. CURRENT MASHAHD STRENGTHS
+
+What already works well.
+
+## B. FEATURES ALREADY BETTER THAN THE TARGET REQUIREMENTS
+
+Do not modify these unnecessarily.
+
+## C. FEATURES WHERE YOUTUBE HAS STRONGER FUNCTIONALITY
+
+Explain the gap.
+
+## D. FEATURES WHERE MASHAHD IS NOW STRONGER
+
+Explain specifically what makes it stronger.
+
+## E. IMPLEMENTED IMPROVEMENTS
+
+List every change.
+
+## F. INTENTIONALLY NOT IMPLEMENTED ITEMS
+
+Explain why each was not implemented.
+
+Examples:
+
+* redundant with an existing Mashahd system
+* technically unsafe
+* legally constrained
+* expensive with insufficient value
+* not aligned with platform architecture
+* requires external dependency not currently justified
+
+## G. REMAINING GAPS
+
+Nothing should be hidden.
+
+## H. REGRESSION RESULTS
+
+Report:
+
+* tests run
+* tests passed
+* tests failed
+* failures fixed
+* unresolved issues
+
+## I. FINAL FEATURE MATRIX
+
+Use:
+
+| Feature | Existing | Improved | New | Better Than Previous | Remaining Gap |
+| ------- | -------: | -------: | --: | -------------------: | ------------: |
+
+---
+
+# 86. REQUIRED FINAL QUALITY GATE
+
+Do not tell me Mashahd is "better" simply because more features were added.
+
+Use measurable or demonstrable criteria:
+
+* user control
+* feature completeness
+* search determinism
+* recommendation transparency
+* discovery diversity
+* playback reliability
+* AI transparency
+* creator tooling
+* moderation transparency
+* privacy
+* accessibility
+* performance
+* scalability
+* maintainability
+* cost efficiency
+
+Do not give a subjective overall score unless it is backed by clearly defined measurements.
+
+---
+
+# 87. CRITICAL IMPLEMENTATION ORDER
+
+Follow this sequence:
+
+### PHASE 1 — DISCOVERY
+
+Inspect current repository.
+
+### PHASE 2 — INVENTORY
+
+Map all current features/APIs/services/database/media systems.
+
+### PHASE 3 — GAP ANALYSIS
+
+Compare current Mashahd with this specification and current YouTube capabilities.
+
+### PHASE 4 — ARCHITECTURE REVIEW
+
+Determine the minimum safe modifications.
+
+### PHASE 5 — IMPLEMENTATION
+
+Implement missing functionality and improve weak existing functionality.
+
+### PHASE 6 — DATABASE/API
+
+Add required schema/API changes carefully.
+
+### PHASE 7 — UX
+
+Expose the new user controls without cluttering the interface.
+
+### PHASE 8 — AI
+
+Integrate AI features through modular abstractions.
+
+### PHASE 9 — TESTING
+
+Run unit, integration, E2E, regression and build tests.
+
+### PHASE 10 — PERFORMANCE
+
+Measure and optimize.
+
+### PHASE 11 — SECURITY
+
+Review all modified endpoints and user controls.
+
+### PHASE 12 — FINAL AUDIT
+
+Compare final Mashahd against the complete specification.
+
+---
+
+# 88. MOST IMPORTANT RULE
+
+When uncertain between:
+
+### "Add a new system"
+
+and
+
+### "Improve the existing Mashahd system"
+
+choose:
+
+## IMPROVE THE EXISTING SYSTEM
+
+unless there is a concrete architectural reason not to.
+
+When uncertain between:
+
+### "Hide complexity"
+
+and
+
+### "Remove functionality"
+
+choose:
+
+## HIDE COMPLEXITY, DO NOT REMOVE FUNCTIONALITY.
+
+When uncertain between:
+
+### "Algorithm decides"
+
+and
+
+### "User decides"
+
+choose:
+
+## USER DECIDES.
+
+When uncertain between:
+
+### "More engagement"
+
+and
+
+### "More usefulness"
+
+choose:
+
+## MORE USEFULNESS.
+
+---
+
+# 89. FINAL COMMAND
+
+Start by auditing the actual current Mashahd repository.
+
+Do NOT begin by rewriting code.
+
+Do NOT assume missing features.
+
+Do NOT duplicate existing APIs.
+
+Do NOT break existing functionality.
+
+Do NOT replace the current media architecture without evidence.
+
+Do NOT introduce unnecessary paid infrastructure.
+
+Do NOT remove advanced functionality simply to simplify the interface.
+
+First determine exactly what Mashahd already has.
+
+Then determine exactly what is missing.
+
+Then implement the missing pieces.
+
+Then test everything.
+
+Then produce the final competitive matrix showing:
+
+**MASHAHD BEFORE → REQUIRED CHANGE → MASHAHD AFTER → COMPARISON WITH YOUTUBE.**
+
+The final objective is:
+
+# MASHAHD = A USER-CONTROLLED, TRANSPARENT, AI-ENHANCED, MODULAR MEDIA PLATFORM
+
+—not a generic YouTube clone.

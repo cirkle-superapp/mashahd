@@ -57,9 +57,13 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Sort
-  if (sort === "popular") {
+  // Sort (§12 — deterministic search options).
+  // Per spec §14: "Do not manipulate explicit search queries merely to increase
+  // engagement. When the user explicitly chooses a deterministic operation, honor it."
+  if (sort === "popular" || sort === "most_viewed") {
     filtered.sort((a, b) => b.views - a.views);
+  } else if (sort === "least_viewed") {
+    filtered.sort((a, b) => a.views - b.views);
   } else if (sort === "trending") {
     // Trending = recent + high view velocity. Proxy: views * recency weight.
     const now = Date.now();
@@ -68,10 +72,32 @@ export async function GET(req: NextRequest) {
       const wb = scoreTrending(b.views, b.createdAt.getTime(), now);
       return wb - wa;
     });
+  } else if (sort === "newest") {
+    filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  } else if (sort === "oldest") {
+    filtered.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  } else if (sort === "longest") {
+    filtered.sort((a, b) => b.durationSec - a.durationSec);
+  } else if (sort === "shortest") {
+    filtered.sort((a, b) => a.durationSec - b.durationSec);
+  } else if (sort === "recent") {
+    // Default — newest first (backward compat).
+    filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  } else if (sort === "relevance") {
+    // Relevance: for search queries, score by match quality + popularity.
+    // If no query, fall back to recent.
+    if (q) {
+      filtered.sort((a, b) => {
+        const scoreA = relevanceScore(a, q);
+        const scoreB = relevanceScore(b, q);
+        return scoreB - scoreA;
+      });
+    } else {
+      filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    }
   } else {
-    filtered.sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-    );
+    // Default — newest first.
+    filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   // For "ids" mode (history), keep the order of the provided ids.
@@ -97,4 +123,34 @@ export async function GET(req: NextRequest) {
 function scoreTrending(views: number, createdAt: number, now: number) {
   const daysOld = Math.max(1, (now - createdAt) / (1000 * 60 * 60 * 24));
   return views / Math.pow(daysOld, 0.6);
+}
+
+/**
+ * Relevance score for search ranking (§12).
+ * Scores by: title match > tag match > description match > channel match.
+ * Weighted by popularity. Does NOT manipulate the query (§14).
+ */
+function relevanceScore(v: any, q: string): number {
+  const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return 0;
+  let score = 0;
+  const title = (v.title || "").toLowerCase();
+  const desc = (v.description || "").toLowerCase();
+  const tags = (v.tags || "").toLowerCase();
+  const channelName = (v.channel?.name || "").toLowerCase();
+  const channelHandle = (v.channel?.handle || "").toLowerCase();
+
+  for (const term of terms) {
+    // Title match is strongest (10 pts).
+    if (title.includes(term)) score += 10;
+    // Tag match (5 pts).
+    if (tags.includes(term)) score += 5;
+    // Channel match (5 pts).
+    if (channelName.includes(term) || channelHandle.includes(term)) score += 5;
+    // Description match (2 pts — weaker).
+    if (desc.includes(term)) score += 2;
+  }
+  // Popularity tiebreaker (log scale — doesn't overwhelm relevance).
+  score += Math.log10(Math.max(1, v.views)) * 0.5;
+  return score;
 }
