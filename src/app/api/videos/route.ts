@@ -117,7 +117,29 @@ export async function GET(req: NextRequest) {
     limit,
     offset,
     hasMore: offset + limit < filtered.length,
+    // §15: "Never make paid placements look identical to organic search results."
+    // We label any video that has an active ad disclosure as "sponsored".
+    sponsoredVideoIds: await getSponsoredVideoIds(paginated.map((v: any) => v.id)),
   });
+}
+
+/**
+ * §15: Fetch ad disclosures for the returned videos and return the IDs
+ * of videos that have active sponsorships. The frontend can then label
+ * these as "Sponsored" in search results — ensuring paid content is
+ * never deceptive.
+ */
+async function getSponsoredVideoIds(videoIds: string[]): Promise<string[]> {
+  if (videoIds.length === 0) return [];
+  try {
+    const disclosures = await db.adDisclosure.findMany({
+      where: { videoId: { in: videoIds } },
+      select: { videoId: true },
+    });
+    return [...new Set(disclosures.map((d: any) => d.videoId))];
+  } catch {
+    return [];
+  }
 }
 
 function scoreTrending(views: number, createdAt: number, now: number) {

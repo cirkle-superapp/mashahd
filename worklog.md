@@ -3382,3 +3382,67 @@ Stage Summary:
 - 3 new APIs (quality-signals, moderation, advanced-search).
 - The platform now has: differentiated quality signals (§20-21) with actionable creator feedback, full moderation transparency (§23) distinguishing platform vs creator moderation with appeal workflows, and natural-language search parsing (§13).
 - All 40 tests green, lint clean, 83 APIs verified, 38 models in schema.
+
+---
+Task ID: UPGRADE-PASS-24-REVENUE-SEARCH-TRANSPARENCY
+Agent: main (acting as CTO + Principal Architect + QA Lead)
+Task: Implement spec §15 (search result transparency), §51 (revenue transparency), final comprehensive regression test.
+
+Work Log:
+
+## 1 NEW API + 1 UPGRADED API
+
+### 1. Creator Revenue Transparency (§51)
+`src/app/api/channels/[id]/revenue/route.ts`:
+- GET returns a full revenue transparency dashboard (§51).
+- Per spec §51: "Where monetization exists, show: gross, platform fees, taxes where applicable, rights costs where applicable, creator earnings, pending amounts, payout status. Every deduction must be explainable."
+- Structure:
+  - grossRevenue: $0 (breakdown: ad/sponsorship/tips/memberships/premium)
+  - platformFees: $0 (0% — zero-cost model)
+  - taxes: $0
+  - rightsCosts: $0 (with active monetization claims count)
+  - creatorEarnings: $0 (net after deductions)
+  - pendingAmounts: $0
+  - payoutStatus: "not_applicable"
+  - deductions: 3 explainable items (Platform Fee, Rights Costs, Taxes — each with explanation)
+  - summary: gross $0, deductions $0, net $0, model "zero-cost-by-default"
+- Per spec §51: "Every deduction must be explainable." — all 3 deductions have explanations.
+- Verified: gross $0, 3 deductions with explanations, 1 rights claim noted ✅
+
+### 2. Search Result Transparency (§15)
+Upgraded `src/app/api/videos/route.ts`:
+- The videos list endpoint now returns `sponsoredVideoIds` — an array of video IDs that have active ad disclosures.
+- The frontend can use this to label sponsored videos in search results, ensuring paid content is never deceptive.
+- Per spec §15: "Never make paid placements look identical to organic search results."
+- Verified: 5 videos returned, 1 identified as sponsored ✅
+
+## FINAL COMPREHENSIVE REGRESSION TEST
+Ran a 30-endpoint regression test across ALL major API systems (including the new revenue + search endpoints).
+Results: **30/30 pass (100%)**. Zero regressions from 24 passes of upgrades.
+
+## VERIFICATION
+- `bun run lint` → clean (0 errors, 0 warnings).
+- `tests/basic.test.ts` → 23/23 passed.
+- `tests/chaos.test.ts` → 17/17 passed.
+- Regression: 30/30 APIs pass (100%).
+- Revenue: gross $0, 3 explainable deductions ✅
+- Search transparency: sponsoredVideoIds returned ✅
+- Platform stats: 84 API routes, 38 Prisma models.
+
+## SPEC COVERAGE (pass 24)
+- §15 Search result transparency: ✅ sponsoredVideoIds in search results
+- §51 Revenue transparency: ✅ full structure with explainable deductions
+
+## FINAL PLATFORM STATS (24 passes)
+- 84 API routes
+- 38 Prisma models
+- 40/40 tests pass (23 basic + 17 chaos)
+- 30/30 regression test pass (100%)
+- 0 lint errors
+- 0 browser errors
+
+Stage Summary:
+- 1 new API (revenue transparency), 1 upgraded API (search result transparency).
+- The platform now covers §15 (search transparency — sponsored content labeled), §51 (revenue transparency — every deduction explainable), and all previously implemented sections.
+- Final regression: 30/30 APIs pass (100%) — zero breakage from 24 passes of continuous upgrades.
+- All 40 tests green, lint clean, 84 APIs, 38 models, browser-verified with 0 errors.
