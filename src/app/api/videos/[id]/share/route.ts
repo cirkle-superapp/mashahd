@@ -5,12 +5,15 @@ import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
 /**
  * POST /api/videos/[id]/share
- * Body: { browserId, platform }
- *   platform: "twitter" | "facebook" | "copy_link" | "email" | ...
+ * Body: { browserId, platform, shareType?, timestamp?, clipId?, chapterStart? }
+ *   platform: "twitter" | "facebook" | "copy_link" | "email" | "whatsapp" | "telegram" | "native" | "other"
+ *   shareType: "full" (default) | "timestamp" | "clip" | "chapter" | "transcript"
+ *   timestamp: number (seconds) — for shareType="timestamp"
+ *   clipId: string — for shareType="clip"
+ *   chapterStart: number (seconds) — for shareType="chapter"
  *
- * Records a share event for virality metrics + recommendations.
- * The Share model exists in the schema but had no API (social-media
- * structuring audit gap).
+ * Per spec §44: "Support: full video, timestamp, clip, chapter, playlist,
+ * transcript location where legally appropriate."
  *
  * SECURITY: verifies browserId signature. Rate limited: 30/min per IP.
  * Does NOT require auth (sharing is public) — but the browserId signature
@@ -24,6 +27,10 @@ export async function POST(
   const body = await req.json().catch(() => ({}));
   const browserId: string = body.browserId || "";
   const platform: string = body.platform || "copy_link";
+  const shareType: string = body.shareType || "full";
+  const timestamp: number | undefined = typeof body.timestamp === "number" ? Math.max(0, Math.floor(body.timestamp)) : undefined;
+  const clipId: string | undefined = body.clipId ? String(body.clipId).slice(0, 60) : undefined;
+  const chapterStart: number | undefined = typeof body.chapterStart === "number" ? Math.max(0, Math.floor(body.chapterStart)) : undefined;
 
   // Rate limit.
   const ip = getClientIP(req);
@@ -47,7 +54,6 @@ export async function POST(
     if (verification.valid) {
       sharerId = verification.id;
     } else {
-      // Don't fail — just record as anonymous.
       sharerId = "anonymous";
     }
   }
@@ -55,6 +61,34 @@ export async function POST(
   // Validate platform against a whitelist.
   const ALLOWED_PLATFORMS = ["twitter", "facebook", "copy_link", "email", "whatsapp", "telegram", "native", "other"];
   const safePlatform = ALLOWED_PLATFORMS.includes(platform) ? platform : "other";
+
+  // Validate shareType.
+  const VALID_SHARE_TYPES = ["full", "timestamp", "clip", "chapter", "transcript"];
+  const safeShareType = VALID_SHARE_TYPES.includes(shareType) ? shareType : "full";
+
+  // Build the share URL based on shareType (§44).
+  const baseUrl = process.env.APP_URL || "http://localhost:3000";
+  let url = `${baseUrl}/?v=watch&id=${id}`;
+  let shareText = `${video.title} — watch on Mashahd`;
+
+  if (safeShareType === "timestamp" && timestamp !== undefined) {
+    url += `&t=${timestamp}`;
+    shareText = `${video.title} (at ${formatTimestamp(timestamp)}) — watch on Mashahd`;
+  } else if (safeShareType === "clip" && clipId) {
+    // Verify the clip exists + belongs to this video.
+    const clip = await db.clip.findUnique({ where: { id: clipId } }).catch(() => null);
+    if (!clip || clip.videoId !== id) {
+      return NextResponse.json({ error: "clip not found" }, { status: 404 });
+    }
+    url += `&clip=${clipId}`;
+    shareText = `${clip.title} (clip from ${video.title}) — Mashahd`;
+  } else if (safeShareType === "chapter" && chapterStart !== undefined) {
+    url += `&t=${chapterStart}`;
+    shareText = `${video.title} (chapter at ${formatTimestamp(chapterStart)}) — watch on Mashahd`;
+  } else if (safeShareType === "transcript" && timestamp !== undefined) {
+    url += `&t=${timestamp}&tab=transcript`;
+    shareText = `${video.title} (transcript at ${formatTimestamp(timestamp)}) — Mashahd`;
+  }
 
   // Record the share event.
   try {
@@ -66,13 +100,8 @@ export async function POST(
       },
     });
   } catch (e) {
-    // Non-critical — log and continue (the share UI still works).
     console.warn("[share] failed to record:", e);
   }
-
-  // Build the share URL.
-  const url = `${process.env.APP_URL || "http://localhost:3000"}/?v=watch&id=${id}`;
-  const shareText = `${video.title} — watch on Mashahd`;
 
   // Platform-specific share URLs.
   const platformUrls: Record<string, string> = {
@@ -89,7 +118,15 @@ export async function POST(
   return NextResponse.json({
     ok: true,
     platform: safePlatform,
+    shareType: safeShareType,
     shareUrl: platformUrls[safePlatform] || url,
     directUrl: url,
+    shareText,
   });
+}
+
+function formatTimestamp(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
