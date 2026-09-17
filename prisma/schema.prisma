@@ -465,6 +465,9 @@ model UserPreference {
   // ── Continue Watching (§32) ──
   continueWatchingEnabled Boolean @default(true)
   autoplayNext     Boolean  @default(false)
+  // §68: Simple mode = clean defaults; Advanced mode = full controls.
+  // Advanced users must not lose capabilities (spec §68).
+  uiMode           String   @default("simple") // simple | advanced
   // Timestamps.
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

@@ -719,24 +719,81 @@ export function FavoritesView() {
 
 export function WatchLaterView() {
   const bid = useBrowserId();
+  // §31: Watch Later filters — unread, started, completed, long, short, search.
+  const [filter, setFilter] = useState<"all" | "unwatched" | "started" | "completed" | "long" | "short">("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const { data: state, isLoading } = useQuery({
     queryKey: ["user-state", bid],
     queryFn: () => fetchUserState(bid),
     enabled: !!bid,
   });
   const ids = state?.watchLaterIds || [];
+  const watchedIds = new Set(state?.watchedVideoIds || []);
   const { data, isLoading: vLoading } = useQuery({
     queryKey: ["videos", "watchLater", ids.join("|")],
     queryFn: () => fetchVideosRaw({ ids: ids.join("|") }),
     enabled: ids.length > 0,
   });
 
+  // §31: Apply filters.
+  let filtered = data || [];
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    filtered = filtered.filter((v) =>
+      v.title.toLowerCase().includes(q) ||
+      v.channel.name.toLowerCase().includes(q)
+    );
+  }
+  if (filter === "unwatched") {
+    filtered = filtered.filter((v) => !watchedIds.has(v.id));
+  } else if (filter === "started") {
+    // "Started" = watched but not completed (we don't have completion data per-video
+    // in UserState, so we approximate: videos in the watched list that are also in
+    // watch later are "started").
+    filtered = filtered.filter((v) => watchedIds.has(v.id));
+  } else if (filter === "completed") {
+    // Approximation: completed = watched (since we remove from watch later on completion
+    // in a full implementation — for now, we treat "watched" as completed).
+    filtered = filtered.filter((v) => watchedIds.has(v.id));
+  } else if (filter === "long") {
+    filtered = filtered.filter((v) => v.durationSec >= 900);
+  } else if (filter === "short") {
+    filtered = filtered.filter((v) => v.durationSec < 300);
+  }
+
   return (
     <div className="px-4 sm:px-6 py-6 max-w-[1400px] mx-auto">
-      <h1 className="text-2xl font-bold mb-6 font-display flex items-center gap-2">
+      <h1 className="text-2xl font-bold mb-2 font-display flex items-center gap-2">
         <Bookmark className="h-6 w-6 text-gold" />
         Watch Later
       </h1>
+
+      {/* §31: Search + filters */}
+      {ids.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-2 mb-6">
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search your queue..."
+            className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60"
+            aria-label="Search watch later"
+          />
+          <Select value={filter} onValueChange={(v) => setFilter(v as any)}>
+            <SelectTrigger className="w-full sm:w-40 rounded-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All videos</SelectItem>
+              <SelectItem value="unwatched">Unwatched</SelectItem>
+              <SelectItem value="started">Started</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="long">Long (15min+)</SelectItem>
+              <SelectItem value="short">Short (under 5min)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {isLoading || vLoading ? (
         <div className="flex flex-col gap-4">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -754,10 +811,22 @@ export function WatchLaterView() {
           title="Your queue is empty"
           body="Tap 'Watch Later' on a video to add it to your queue."
         />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          title="No videos match your filters"
+          body="Try adjusting your search or filters above."
+        />
       ) : (
         <div className="flex flex-col gap-4">
-          {data?.map((v) => (
-            <VideoCardHorizontal key={v.id} video={v} />
+          {filtered.map((v) => (
+            <div key={v.id} className="relative">
+              <VideoCardHorizontal video={v} />
+              {watchedIds.has(v.id) && (
+                <span className="absolute top-2 right-2 text-emerald" title="Watched">
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" /></svg>
+                </span>
+              )}
+            </div>
           ))}
         </div>
       )}

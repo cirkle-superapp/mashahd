@@ -39,6 +39,8 @@ const DEFAULTS = {
   largeControls: false,
   continueWatchingEnabled: true,
   autoplayNext: false,
+  // §68: simple/advanced mode.
+  uiMode: "simple",
   // §55: privacy visibility defaults.
   likesVisibility: "private",
   subscriptionsVisibility: "private",
@@ -88,6 +90,8 @@ export async function POST(req: NextRequest) {
     "searchSort", "pauseRecommendationLearning",
     "reducedMotion", "highContrast", "largeControls",
     "continueWatchingEnabled", "autoplayNext",
+    // §68: simple/advanced mode.
+    "uiMode",
     // §55: privacy visibility controls.
     "likesVisibility", "subscriptionsVisibility", "historyVisibility",
     "playlistsVisibility", "commentsVisibility",
@@ -171,6 +175,8 @@ function formatPref(p: any) {
     largeControls: p.largeControls,
     continueWatchingEnabled: p.continueWatchingEnabled,
     autoplayNext: p.autoplayNext,
+    // §68: simple/advanced mode.
+    uiMode: p.uiMode || "simple",
     // §55: privacy visibility.
     likesVisibility: p.likesVisibility || "private",
     subscriptionsVisibility: p.subscriptionsVisibility || "private",
