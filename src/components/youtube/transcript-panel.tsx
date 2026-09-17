@@ -126,6 +126,7 @@ export function TranscriptPanel({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search transcript…"
+              aria-label="Search transcript"
               className="w-full pl-7 pr-3 py-1.5 text-sm rounded-lg bg-background/60 border border-border/60 focus:border-gold/40 focus:outline-none"
             />
           </div>

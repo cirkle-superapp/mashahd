@@ -224,6 +224,7 @@ function OracleTab({ videoId }: { videoId: string }) {
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && ask()}
           placeholder="e.g. What skill level is this aimed at?"
+          aria-label="Ask Mashahd AI a question about this video"
           className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60"
         />
         <Button
@@ -300,6 +301,7 @@ function ToneTab() {
         onChange={(e) => setDraft(e.target.value)}
         rows={3}
         placeholder="Write your comment…"
+        aria-label="Draft a comment"
         maxLength={500}
         className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60 resize-none"
       />

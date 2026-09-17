@@ -165,6 +165,7 @@ export function ClipDialog({
                   min={0}
                   max={duration - 5}
                   value={start}
+                  aria-label="Clip start time"
                   onChange={(e) => {
                     const v = Math.min(Number(e.target.value), end - 5);
                     setStart(v);
@@ -183,6 +184,7 @@ export function ClipDialog({
                   min={start + 5}
                   max={duration}
                   value={end}
+                  aria-label="Clip end time"
                   onChange={(e) => {
                     const v = Math.max(Number(e.target.value), start + 5);
                     setEnd(v);

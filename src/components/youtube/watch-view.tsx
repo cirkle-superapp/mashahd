@@ -953,6 +953,7 @@ function CommentsSection({
               }
             }}
             placeholder="Add a comment..."
+            aria-label="Add a comment"
             className="w-full bg-transparent border-b border-border pb-1 text-sm focus:outline-none focus:border-foreground transition-colors"
           />
           {/* Pin-to-timestamp toggle: when active, the next posted comment
@@ -1002,8 +1003,8 @@ function CommentsSection({
         </div>
       </div>
 
-      {/* List */}
-      <div className="space-y-5">
+      {/* List — bounded with max-height + overflow to prevent unbounded pages (UI audit) */}
+      <div className="space-y-5 max-h-[600px] overflow-y-auto custom-scroll pr-1">
         {sorted.map((c) => (
           <div key={c.id} className="flex gap-3">
             <Avatar className="h-9 w-9 rounded-full shrink-0">
@@ -1085,6 +1086,7 @@ function CommentsSection({
                       }
                     }}
                     placeholder={`Reply to ${c.author}...`}
+                    aria-label={`Reply to ${c.author}`}
                     autoFocus
                     className="w-full bg-transparent border-b border-border pb-1 text-sm focus:outline-none focus:border-foreground transition-colors"
                   />

@@ -189,6 +189,7 @@ export function BulletComposer({
           if (e.key === "Escape") onClose();
         }}
         placeholder="Type a short comment that drifts across…"
+        aria-label="Type a bullet comment"
         maxLength={80}
         className="w-full bg-transparent border-b border-border pb-1 text-sm focus:outline-none focus:border-gold"
       />

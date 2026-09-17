@@ -316,6 +316,7 @@ export function CreateButton() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Give your video a compelling title"
+              aria-label="Video title"
               maxLength={100}
               className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60"
             />
@@ -330,6 +331,7 @@ export function CreateButton() {
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
               placeholder="Tell viewers about your video"
+              aria-label="Video description"
               rows={3}
               maxLength={1000}
               className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60 resize-none"
@@ -344,6 +346,7 @@ export function CreateButton() {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
+              aria-label="Video category"
               className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60"
             >
               {["Tech", "Music", "Gaming", "Cooking", "Travel", "Fitness", "Art", "Science", "Nature", "Cars"].map(
@@ -456,6 +459,7 @@ export function ShareButton({
             <input
               readOnly
               value={url}
+              aria-label="Share URL"
               className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-gold/60"
               onFocus={(e) => e.target.select()}
             />

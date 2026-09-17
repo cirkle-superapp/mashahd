@@ -301,6 +301,7 @@ export function SettingsView({ initialTab = "general" }: { initialTab?: string }
                   value={p.preferredSubtitleLang}
                   onChange={(e) => set("preferredSubtitleLang", e.target.value.slice(0, 10))}
                   placeholder="off"
+                  aria-label="Preferred subtitle language"
                   className="w-24 rounded-full border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60"
                 />
               </SettingRow>
@@ -310,6 +311,7 @@ export function SettingsView({ initialTab = "general" }: { initialTab?: string }
                   value={p.preferredAudioLang}
                   onChange={(e) => set("preferredAudioLang", e.target.value.slice(0, 10))}
                   placeholder="original"
+                  aria-label="Preferred audio language"
                   className="w-24 rounded-full border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60"
                 />
               </SettingRow>
@@ -614,6 +616,7 @@ function FeedbackForm() {
         onChange={(e) => setText(e.target.value)}
         rows={5}
         placeholder="What's on your mind?"
+        aria-label="Send feedback"
         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
       />
       <div className="flex justify-end gap-2 mt-3">
