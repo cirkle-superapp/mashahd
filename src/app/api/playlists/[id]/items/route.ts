@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { rateLimit, getClientIP } from "@/lib/rate-limiter";
+import { parseList } from "@/lib/user-state";
 
 /**
+ * GET /api/playlists/[id]/items?bid=<browserId>&filter=<filter>
+ * Returns all items in a playlist, with optional filtering (§29).
+ *   filter: all (default) | watched | unwatched | unavailable
+ *   sort: position (default) | newest | oldest
+ *
+ * Per spec §29: "Add missing: watched/unwatched filtering, remove watched,
+ * remove unavailable."
+ *
  * POST /api/playlists/[id]/items
  *   Body: { browserId, videoId }
  *   Adds a video to the playlist. If the video is already in the playlist,
@@ -14,6 +23,75 @@ import { rateLimit, getClientIP } from "@/lib/rate-limiter";
  *   Removes an item from the playlist (owner only). Positions are compacted
  *   after removal so ordering stays consistent.
  */
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const url = new URL(req.url);
+  const bid = url.searchParams.get("bid") || "";
+  const filter = url.searchParams.get("filter") || "all";
+  const sort = url.searchParams.get("sort") || "position";
+
+  const playlist = await db.playlist.findUnique({ where: { id } });
+  if (!playlist) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+
+  let items = await db.playlistItem.findMany({
+    where: { playlistId: id },
+    orderBy: sort === "newest" ? { addedAt: "desc" } : sort === "oldest" ? { addedAt: "asc" } : { position: "asc" },
+  });
+
+  // Fetch video data for each item.
+  const videoIds = items.map((i: any) => i.videoId);
+  const videos = videoIds.length > 0
+    ? await db.video.findMany({
+        where: { id: { in: videoIds } },
+        include: { channel: true },
+      })
+    : [];
+  const videoMap = new Map(videos.map((v: any) => [v.id, v]));
+
+  // Get the user's watched video IDs for the watched/unwatched filter.
+  let watchedIds = new Set<string>();
+  if (bid && (filter === "watched" || filter === "unwatched")) {
+    const state = await db.userState.findUnique({ where: { browserId: bid } });
+    if (state) {
+      watchedIds = new Set(parseList(state.watchedVideoIds));
+    }
+  }
+
+  // Apply filter (§29).
+  let filteredItems = items.map((item: any) => {
+    const video = videoMap.get(item.videoId);
+    return {
+      id: item.id,
+      videoId: item.videoId,
+      position: item.position,
+      addedAt: item.addedAt?.toISOString(),
+      video,
+      isWatched: watchedIds.has(item.videoId),
+      isAvailable: !!video,
+    };
+  });
+
+  if (filter === "watched") {
+    filteredItems = filteredItems.filter((i: any) => i.isWatched);
+  } else if (filter === "unwatched") {
+    filteredItems = filteredItems.filter((i: any) => !i.isWatched);
+  } else if (filter === "unavailable") {
+    filteredItems = filteredItems.filter((i: any) => !i.isAvailable);
+  }
+
+  return NextResponse.json({
+    items: filteredItems,
+    total: items.length,
+    filtered: filteredItems.length,
+    filter,
+  });
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

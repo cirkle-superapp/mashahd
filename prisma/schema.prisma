@@ -699,3 +699,60 @@ model ActiveSession {
   @@index([userId])
   @@index([deviceFingerprint])
 }
+
+// ── Content Rights System (§53-54 — ownership, licenses, claims, disputes) ──
+// Per spec §53: "Support where relevant: ownership metadata, licenses,
+// territorial restrictions, audio rights, music rights, claims, disputes,
+// evidence, counter-notices, enforcement records."
+// Per spec §54: "A rights claim should expose: matched material, approximate
+// location/timestamp, claimant, claim type, action, dispute pathway."
+model RightsClaim {
+  id              String   @id @default(cuid())
+  videoId         String
+  // Who filed the claim (claimant name or ID).
+  claimant        String
+  // The type of claim (§53).
+  claimType       String   // copyright | trademark | music | audio | visual | other
+  // The material that was matched (e.g. "Song: 'Example' by Artist").
+  matchedMaterial String
+  // Approximate location in the video where the match occurs (seconds).
+  timestampStart  Int      @default(0)
+  timestampEnd    Int      @default(0)
+  // The action taken (§54).
+  action          String   @default("monetize") // monetize | block | mute | track | none
+  // Territorial restrictions (pipe-separated ISO country codes, empty = worldwide).
+  territory       String   @default("")
+  // The dispute status (§24, §53).
+  status          String   @default("active") // active | disputed | resolved | withdrawn | counter_noticed
+  // Evidence/note from the claimant.
+  evidence        String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([videoId])
+  @@index([status])
+}
+
+// ── Rights Disputes (§24, §53-54 — appeal workflow) ──
+// Per spec §24: "Implement an appeal workflow for meaningful moderation and
+// rights decisions. Track: submitted, under review, additional information
+// requested, accepted, rejected, closed."
+model RightsDispute {
+  id              String   @id @default(cuid())
+  claimId         String
+  // Who filed the dispute (creator userId or name).
+  disputant       String
+  // The reason for the dispute.
+  reason          String
+  // Evidence/note from the disputant.
+  evidence        String   @default("")
+  // The dispute status (§24).
+  status          String   @default("submitted") // submitted | under_review | info_requested | accepted | rejected | closed
+  // Resolution note (filled when accepted/rejected/closed).
+  resolution      String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([claimId])
+  @@index([status])
+}
