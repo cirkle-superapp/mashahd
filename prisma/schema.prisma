@@ -587,3 +587,68 @@ model RecommendationChangelog {
 
   @@index([userId, createdAt])
 }
+
+// ── Comment enhancements (§22 — sort + question/answer tracking) ──
+// Extends the existing Comment model with fields for:
+//   - isQuestion: marks a comment as a question (for §22 "questions" sort)
+//   - isCreatorReply: marks a reply as from the video's creator (for §22 "creator replies" sort)
+//   - pinnedBy: if set, the comment is pinned to the top by the creator
+// NOTE: We add these as a separate model to avoid destructive migrations
+// on the existing Comment table. The comments API joins them.
+model CommentMeta {
+  id            String   @id @default(cuid())
+  commentId     String   @unique
+  isQuestion    Boolean  @default(false)
+  isCreatorReply Boolean @default(false)
+  pinnedBy      String?  // creator userId who pinned, null = not pinned
+  pinnedAt      DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([commentId])
+  @@index([isQuestion])
+  @@index([isCreatorReply])
+}
+
+// ── Video Relationship Graph (§41) ──
+// Associates videos with: earlier videos, later updates, responses,
+// corrections, source materials, related tutorials, same topic, same creator.
+model VideoRelationship {
+  id            String   @id @default(cuid())
+  videoId       String   // the source video
+  relatedVideoId String  // the related video
+  // The type of relationship (§41).
+  relationType  String   // earlier | later | response | correction | source | tutorial | same_topic | same_creator | other
+  // Optional note explaining the relationship.
+  note          String   @default("")
+  // Who created this relationship: creator | system | community
+  createdBy     String   @default("system")
+  createdAt     DateTime @default(now())
+
+  @@unique([videoId, relatedVideoId, relationType])
+  @@index([videoId])
+  @@index([relatedVideoId])
+  @@index([relationType])
+}
+
+// ── Creator Corrections (§66) ──
+// Creators can mark and publish corrections to their videos.
+// Where appropriate, notify viewers who watched the affected content.
+model VideoCorrection {
+  id            String   @id @default(cuid())
+  videoId       String
+  // The timestamp in the video where the correction applies (seconds).
+  timestamp     Int      @default(0)
+  // What was wrong.
+  originalText  String
+  // What it should be.
+  correctedText String
+  // Optional note from the creator.
+  note          String   @default("")
+  // Whether viewers who watched this video have been notified.
+  viewersNotified Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([videoId])
+}

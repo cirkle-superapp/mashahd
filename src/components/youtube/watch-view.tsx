@@ -750,7 +750,8 @@ function CommentsSection({
 }) {
   const [text, setText] = useState("");
   const [posting, setPosting] = useState(false);
-  const [sortNew, setSortNew] = useState(true);
+  // §22 — comment sort options: top, newest, creator_replies, questions, unanswered, most_discussed.
+  const [commentSort, setCommentSort] = useState<"top" | "newest" | "creator_replies" | "questions" | "unanswered" | "most_discussed">("top");
   const [translateLang, setTranslateLang] = useState<string | null>(null);
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [translating, setTranslating] = useState(false);
@@ -774,11 +775,39 @@ function CommentsSection({
     }
   }, [starterText, onStarterUsed]);
 
-  const sorted = [...(comments || [])].sort((a, b) =>
-    sortNew
-      ? b.createdAt.localeCompare(a.createdAt)
-      : b.likes - a.likes
-  );
+  // §22 — client-side sort using the enriched fields from the API
+  // (isQuestion, hasCreatorReply, replyCount, pinned).
+  const sorted = [...(comments || [])].sort((a: any, b: any) => {
+    switch (commentSort) {
+      case "newest":
+        return (b.createdAt || "").localeCompare(a.createdAt || "");
+      case "creator_replies":
+        if (a.hasCreatorReply && !b.hasCreatorReply) return -1;
+        if (!a.hasCreatorReply && b.hasCreatorReply) return 1;
+        return b.likes - a.likes;
+      case "questions":
+        if (a.isQuestion && !b.isQuestion) return -1;
+        if (!a.isQuestion && b.isQuestion) return 1;
+        return b.likes - a.likes;
+      case "unanswered": {
+        const aU = a.isQuestion && (a.replyCount || 0) === 0;
+        const bU = b.isQuestion && (b.replyCount || 0) === 0;
+        if (aU && !bU) return -1;
+        if (!aU && bU) return 1;
+        if (a.isQuestion && !b.isQuestion) return -1;
+        if (!a.isQuestion && b.isQuestion) return 1;
+        return b.likes - a.likes;
+      }
+      case "most_discussed":
+        return (b.replyCount || 0) - (a.replyCount || 0);
+      case "top":
+      default:
+        // Pinned first, then by likes.
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return b.likes - a.likes;
+    }
+  });
 
   const submit = async () => {
     if (!text.trim() || !bid) return;
@@ -842,12 +871,23 @@ function CommentsSection({
         <h2 className="text-base font-semibold">
           {comments?.length ?? 0} Comments
         </h2>
-        <button
-          className="text-sm text-muted-foreground hover:text-foreground"
-          onClick={() => setSortNew((s) => !s)}
-        >
-          Sort by: {sortNew ? "Newest first" : "Top comments"}
-        </button>
+        {/* §22 — comment sort dropdown with 6 deterministic options */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm text-muted-foreground">Sort by:</span>
+          <select
+            value={commentSort}
+            onChange={(e) => setCommentSort(e.target.value as any)}
+            className="text-sm bg-transparent border-none hover:text-foreground cursor-pointer focus:outline-none focus:ring-0"
+            aria-label="Sort comments by"
+          >
+            <option value="top">Top comments</option>
+            <option value="newest">Newest first</option>
+            <option value="creator_replies">Creator replies</option>
+            <option value="questions">Questions</option>
+            <option value="unanswered">Unanswered</option>
+            <option value="most_discussed">Most discussed</option>
+          </select>
+        </div>
         {/* Live Translate — Mashahd (adapted from CIRKLE live-translate overlay) */}
         <div className="flex items-center gap-1.5 ml-auto">
           <Languages
