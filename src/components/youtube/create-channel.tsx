@@ -133,16 +133,44 @@ export function CreateChannel({
     }, 2500);
   };
 
-  const finish = () => {
+  const finish = async () => {
     handleClose(false);
-    // In a real app, the channel would be persisted via /api/channels POST.
-    // For the demo, dispatch an event and go home.
-    window.dispatchEvent(
-      new CustomEvent("mashahd:channel-created", {
-        detail: { name: channelName, handle: handle || channelName.toLowerCase().replace(/\s+/g, "") },
-      })
-    );
-    navigate({ kind: "home" });
+
+    // POST to the real /api/channels API to persist the channel.
+    try {
+      const bid = localStorage.getItem("yt-clone-browser-id") || "";
+      const res = await fetch("/api/channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          browserId: bid,
+          name: channelName,
+          handle: (handle || channelName.toLowerCase().replace(/[^a-z0-9_]/g, "")).slice(0, 30),
+          description: description || "",
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const channel = data.channel;
+        // Dispatch event for other components.
+        window.dispatchEvent(
+          new CustomEvent("mashahd:channel-created", {
+            detail: { id: channel.id, name: channel.name, handle: channel.handle },
+          })
+        );
+        toast.success(`Channel "${channel.name}" created successfully!`);
+        // Navigate to the new channel page.
+        navigate({ kind: "channel", channelId: channel.id });
+      } else {
+        const error = await res.json().catch(() => ({}));
+        toast.error(error.error || "Failed to create channel");
+        navigate({ kind: "home" });
+      }
+    } catch {
+      toast.error("Network error — channel could not be created");
+      navigate({ kind: "home" });
+    }
   };
 
   const stepIndex = STEP_ORDER.indexOf(step);

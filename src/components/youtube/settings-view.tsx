@@ -319,20 +319,7 @@ export function SettingsView({ initialTab = "general" }: { initialTab?: string }
           )}
 
           {tab === "notifications" && (
-            <div className="space-y-4">
-              <SettingRow title="New uploads" desc="Notify me when a channel I subscribe to posts.">
-                <Switch defaultChecked />
-              </SettingRow>
-              <SettingRow title="Comment replies" desc="Notify me when someone replies to my comment.">
-                <Switch defaultChecked />
-              </SettingRow>
-              <SettingRow title="AI Recap ready" desc="Notify me when an AI recap finishes generating.">
-                <Switch />
-              </SettingRow>
-              <SettingRow title="Mentions" desc="Notify me when I'm @-mentioned in a comment or description.">
-                <Switch defaultChecked />
-              </SettingRow>
-            </div>
+            <NotificationPreferencesSection bid={bid} set={set} p={p} />
           )}
 
           {tab === "privacy" && (
@@ -858,6 +845,70 @@ function ActiveSessions({ bid }: { bid: string }) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * NotificationPreferencesSection — §47: wired to the real
+ * /api/notification-preferences API. Replaces the previous stateless
+ * <Switch defaultChecked /> that did nothing.
+ */
+function NotificationPreferencesSection({ bid, set, p }: { bid: string; set: (key: string, value: any) => void; p: any }) {
+  const qc = useQueryClient();
+
+  // Fetch real notification preferences.
+  const { data: notifPrefs } = useQuery({
+    queryKey: ["notif-prefs", bid],
+    queryFn: async () => {
+      if (!bid) return null;
+      const res = await fetch(`/api/notification-preferences?bid=${encodeURIComponent(bid)}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!bid,
+    staleTime: 30_000,
+  });
+
+  const np = notifPrefs?.preferences;
+  const updateNotifPref = useCallback((key: string, value: boolean) => {
+    if (!bid) return;
+    fetch("/api/notification-preferences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ browserId: bid, [key]: value }),
+    }).then(() => {
+      qc.invalidateQueries({ queryKey: ["notif-prefs", bid] });
+      toast.success("Notification preference saved");
+    }).catch(() => toast.error("Failed to save preference"));
+  }, [bid, qc]);
+
+  return (
+    <div className="space-y-4">
+      <SettingRow title="New uploads" desc="Notify me when a channel I subscribe to posts.">
+        <Switch checked={np?.newVideos ?? true} onCheckedChange={(v) => updateNotifPref("newVideos", v)} />
+      </SettingRow>
+      <SettingRow title="Comment replies" desc="Notify me when someone replies to my comment.">
+        <Switch checked={np?.comments ?? true} onCheckedChange={(v) => updateNotifPref("comments", v)} />
+      </SettingRow>
+      <SettingRow title="New subscribers" desc="Notify me when someone subscribes to my channel.">
+        <Switch checked={np?.subscribers ?? true} onCheckedChange={(v) => updateNotifPref("subscribers", v)} />
+      </SettingRow>
+      <SettingRow title="Tips received" desc="Notify me when someone tips my content.">
+        <Switch checked={np?.tips ?? true} onCheckedChange={(v) => updateNotifPref("tips", v)} />
+      </SettingRow>
+      <SettingRow title="Mentions" desc="Notify me when I'm @-mentioned in a comment or description.">
+        <Switch checked={np?.mentions ?? true} onCheckedChange={(v) => updateNotifPref("mentions", v)} />
+      </SettingRow>
+      <div className="pt-4 border-t border-border">
+        <h3 className="text-sm font-semibold mb-3">Delivery methods</h3>
+        <SettingRow title="Email notifications" desc="Receive notifications via email (requires Brevo).">
+          <Switch checked={np?.emailEnabled ?? true} onCheckedChange={(v) => updateNotifPref("emailEnabled", v)} />
+        </SettingRow>
+        <SettingRow title="Push notifications" desc="Receive notifications via browser push (requires VAPID keys).">
+          <Switch checked={np?.pushEnabled ?? false} onCheckedChange={(v) => updateNotifPref("pushEnabled", v)} />
+        </SettingRow>
+      </div>
     </div>
   );
 }
