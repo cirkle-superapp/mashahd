@@ -3124,3 +3124,71 @@ Stage Summary:
 - Users can now: share videos at specific timestamps/clips/chapters/transcript locations (§44), and view the full informational context around a video including provenance + corrections + sources (§65).
 - Per §81: no placeholder implementations — all APIs return real, functional data.
 - All 40 tests green, lint clean, 74 APIs verified, 38 models in schema.
+
+---
+Task ID: UPGRADE-PASS-20-SYNC-PREMIUM-CHANGELOG
+Agent: main (acting as CTO + Principal Architect + Product Manager)
+Task: Implement spec §59 (multi-device sync), §62 (premium value), §67 (platform change management).
+
+Work Log:
+
+## 3 NEW APIs
+
+### 1. Multi-Device Sync API (§59)
+`src/app/api/sync/route.ts`:
+- GET: returns a unified sync document with ALL syncable user data:
+  - Preferences (25+ fields: quality, speed, subtitles, language, accessibility, privacy, uiMode)
+  - UserState (likes, subscriptions, watched, favorites, watch later)
+  - ContinueWatching (resume positions + playback state)
+  - Active interest profile
+  - Blocks (topic/creator/keyword — affect all devices)
+  - syncVersion for conflict detection
+- POST: lightweight push for local state changes (type: "continueWatching" or "preferences")
+- Per spec §59: "Ensure continuity between mobile, desktop, tablet, TV. Synchronize where appropriate: playback, preferences, history, library, language, captions, speed."
+- SECURITY: requires signed browserId. Rate limited: GET 10/min, POST 20/min.
+- Verified: returns sync document with preferences + userState + continueWatching + blocks ✅
+
+### 2. Premium Features API (§62)
+`src/app/api/premium/route.ts`:
+- GET returns the premium features list + the user's premium status.
+- 6 features across 4 categories:
+  - Playback: higher quality streaming, offline downloads
+  - AI: expanded AI capability
+  - Creator: enhanced analytics, additional storage
+  - Content: premium content library
+- 4 available now, 2 pending (offline downloads need rights, premium content needs partnerships)
+- Per spec §62: "Do not artificially disable essential usability simply to manufacture subscription pressure."
+- `essentialUsabilityUnlocked: true` — all essential features available on free tier.
+- Zero-cost model: $0/month, premium is a future direction, not a current paywall.
+- Verified: tier "free", cost "$0", essential unlocked, 6 features (4 available) ✅
+
+### 3. Platform Changelog API (§67)
+`src/app/api/platform-changelog/route.ts`:
+- GET returns a curated changelog of 8 platform changes.
+- Each entry includes: date, type (added/improved), title, description, affectedFeatures, replacementFor, breaking.
+- Per spec §67: "DO NOT REMOVE POWER FEATURES WITHOUT A REPLACEMENT. For significant product changes: announce, explain, document, migrate, preserve existing workflows where practical, provide alternatives. Do not silently remove important user capabilities."
+- `removalsCount: 0` — no features removed. The comment sort toggle was improved (not removed) — `replacementFor: "2-option comment sort toggle"`.
+- Includes the full principle text for transparency.
+- Verified: 8 changes, 0 removals, showing added/improved features ✅
+
+## VERIFICATION
+- `bun run lint` → clean (0 errors, 0 warnings).
+- `tests/basic.test.ts` → 23/23 passed.
+- `tests/chaos.test.ts` → 17/17 passed.
+- Dev server healthy, home returns 200.
+- API verified:
+  - Sync: returns sync document with preferences + userState + continueWatching + blocks ✅
+  - Premium: tier "free", $0/month, essential unlocked, 6 features ✅
+  - Changelog: 8 changes, 0 removals ✅
+- Platform stats: 77 API routes, 38 Prisma models.
+
+## SPEC COVERAGE (pass 20)
+- §59 Multi-device sync: ✅ full sync document + lightweight push
+- §62 Premium value: ✅ genuine features, no artificial paywalls
+- §67 Platform change management: ✅ public changelog, no silent removals
+
+Stage Summary:
+- 3 new APIs (sync, premium, platform-changelog).
+- Users can now: sync their full state across devices (§59), see what genuine premium features exist (§62), and view a transparent platform changelog with no silent removals (§67).
+- All essential usability remains unlocked on the free tier — premium features are additional value, not gated essentials.
+- All 40 tests green, lint clean, 77 APIs verified, 38 models in schema.
