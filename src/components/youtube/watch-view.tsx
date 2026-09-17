@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2, MessageSquarePlus, Compass, Wand2, Heart, Bookmark, Check, ListPlus, Users, FileText, Scissors } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2, MessageSquarePlus, Compass, Wand2, Heart, Bookmark, Check, ListPlus, Users, FileText, Scissors, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppStore } from "@/store/app-store";
 import { useMiniPlayer } from "@/store/mini-player-store";
@@ -53,6 +54,54 @@ async function fetchComments(id: string) {
   return data.comments as Comment[];
 }
 
+// §61 — ad disclosures. Returns sponsor info so the watch view can show a
+// "Sponsored: {sponsor}" badge next to the title when disclosures exist.
+interface AdDisclosureItem {
+  id: string;
+  sponsor: string;
+  adType: string;
+  isPaid: boolean;
+  label: string;
+  product?: string | null;
+  disclosureNote?: string | null;
+  createdAt?: string;
+}
+interface AdDisclosuresResponse {
+  disclosures: AdDisclosureItem[];
+}
+async function fetchAdDisclosures(id: string): Promise<AdDisclosuresResponse> {
+  const res = await fetch(`/api/videos/${id}/ad-disclosures`);
+  if (!res.ok) return { disclosures: [] };
+  const data = await res.json();
+  return { disclosures: (data?.disclosures as AdDisclosureItem[]) || [] };
+}
+
+// §65 — informational context (publication date, provenance, corrections,
+// rights claims) shown below the description in a collapsible <details>.
+interface VideoContextResponse {
+  publicationDate?: string;
+  provenance?: { origin?: string; sourceNote?: string };
+  corrections?: Array<{ note?: string; createdAt?: string }>;
+  rightsClaims?: Array<{ claimant?: string; claimType?: string }>;
+}
+async function fetchVideoContext(id: string): Promise<VideoContextResponse | null> {
+  const res = await fetch(`/api/videos/${id}/context`);
+  if (!res.ok) return null;
+  return (await res.json()) as VideoContextResponse;
+}
+
+// §20-21 — quality signals. Used by the comments header to show a small
+// colored quality badge (green/yellow/red) based on the aggregated score.
+interface QualitySignalsResponse {
+  qualityScore: number;
+  likeRatio: number;
+}
+async function fetchQualitySignals(id: string): Promise<QualitySignalsResponse | null> {
+  const res = await fetch(`/api/videos/${id}/quality-signals`);
+  if (!res.ok) return null;
+  return (await res.json()) as QualitySignalsResponse;
+}
+
 export function WatchView({ videoId }: { videoId: string }) {
   const bid = useBrowserId();
   const qc = useQueryClient();
@@ -70,6 +119,10 @@ export function WatchView({ videoId }: { videoId: string }) {
   const [starterText, setStarterText] = useState("");
   const [fav, setFav] = useState(false);
   const [later, setLater] = useState(false);
+  // Age gate — true once the user has confirmed 18+ for an age-restricted
+  // video in this session. Persisted in sessionStorage so it only shows once
+  // per session (cleared when the browser tab closes).
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const viewsRecorded = useRef(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -93,6 +146,22 @@ export function WatchView({ videoId }: { videoId: string }) {
     enabled: !!videoId,
   });
 
+  // §61 — ad disclosures for the "Sponsored" badge near the title.
+  const { data: adDisclosures } = useQuery({
+    queryKey: ["ad-disclosures", videoId],
+    queryFn: () => fetchAdDisclosures(videoId),
+    enabled: !!videoId,
+    staleTime: 60_000,
+  });
+
+  // §65 — informational context below the description.
+  const { data: contextData } = useQuery({
+    queryKey: ["video-context", videoId],
+    queryFn: () => fetchVideoContext(videoId),
+    enabled: !!videoId,
+    staleTime: 60_000,
+  });
+
   // Record a view once when the watch page opens
   useEffect(() => {
     if (viewsRecorded.current) return;
@@ -100,6 +169,27 @@ export function WatchView({ videoId }: { videoId: string }) {
     viewsRecorded.current = true;
     fetch(`/api/videos/${videoId}/views`, { method: "POST" }).catch(() => {});
   }, [videoId]);
+
+  // Age gate confirmation — hydrate from sessionStorage so the gate only
+  // shows once per session (cleared automatically when the tab closes).
+  // We hydrate in an effect (rather than during render) to avoid SSR/CSR
+  // hydration mismatches: sessionStorage is undefined on the server.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (window.sessionStorage.getItem("mashahd:age-confirmed") === "1") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setAgeConfirmed(true);
+      }
+    } catch {
+      // sessionStorage can throw in privacy-mode browsers — treat as not
+      // confirmed, so the user will see the gate (safe default).
+    }
+  }, [videoId]);
+
+  // The video is age-restricted AND the user hasn't confirmed in this
+  // session → we block autoplay and show the gate overlay.
+  const needsAgeGate = !!video?.ageGated && !ageConfirmed;
 
   // Record into watch history
   useEffect(() => {
@@ -316,7 +406,7 @@ export function WatchView({ videoId }: { videoId: string }) {
             src={video.videoUrl}
             poster={video.thumbnailUrl}
             videoId={video.id}
-            autoPlay
+            autoPlay={!needsAgeGate}
             onPlay={() => { setPaused(false); setUpNext(false); }}
             onPause={() => setPaused(true)}
             onTimeUpdate={(t) => setLiveCurrentTime(t)}
@@ -334,7 +424,8 @@ export function WatchView({ videoId }: { videoId: string }) {
               onClick={() => setTheater((t) => !t)}
               className={cn(
                 "absolute top-2 left-12 z-10 px-2.5 py-1 rounded-full bg-black/70 hover:bg-black/90 text-white text-xs font-medium backdrop-blur flex items-center gap-1.5",
-                upNext && "opacity-0 pointer-events-none"
+                upNext && "opacity-0 pointer-events-none",
+                needsAgeGate && "hidden"
               )}
               aria-label={theater ? "Exit theater mode" : "Theater mode"}
               title={theater ? "Exit theater mode" : "Theater mode"}
@@ -342,6 +433,53 @@ export function WatchView({ videoId }: { videoId: string }) {
               <Maximize2 className="h-3.5 w-3.5" />
               {theater ? "Exit" : "Theater"}
             </button>
+            {/* Age gate — overlays the player for 18+ videos until the
+                viewer confirms in this session. Stored in sessionStorage
+                so it only appears once per session. */}
+            {needsAgeGate && (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Age confirmation"
+                className="absolute inset-0 z-30 grid place-items-center bg-black/85 backdrop-blur-sm p-4"
+              >
+                <div className="glass-strong rounded-2xl border border-white/15 shadow-glow max-w-md w-full p-6 text-center">
+                  <div className="mx-auto mb-3 grid place-items-center h-12 w-12 rounded-full bg-rose/20 text-rose">
+                    <span className="text-lg font-bold">18+</span>
+                  </div>
+                  <h2 className="text-white text-lg font-semibold">
+                    Age-restricted video
+                  </h2>
+                  <p className="text-white/70 text-sm mt-2">
+                    This video is age-restricted. Are you 18 or older?
+                  </p>
+                  <div className="mt-5 flex flex-col sm:flex-row gap-2 justify-center">
+                    <Button
+                      variant="default"
+                      className="rounded-full h-10 px-5 bg-primary text-primary-foreground hover:bg-primary/90"
+                      onClick={() => {
+                        try {
+                          window.sessionStorage.setItem("mashahd:age-confirmed", "1");
+                        } catch {
+                          // sessionStorage may be unavailable (private mode);
+                          // we still unblock in-session via state.
+                        }
+                        setAgeConfirmed(true);
+                      }}
+                    >
+                      Yes, I&apos;m 18+
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      className="rounded-full h-10 px-5 bg-white/10 text-white hover:bg-white/20"
+                      onClick={() => navigate({ kind: "home" })}
+                    >
+                      No, go back
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* End screen — proper video-end overlay with up-next cards + countdown. */}
             <EndScreen
               show={upNext}
@@ -360,9 +498,25 @@ export function WatchView({ videoId }: { videoId: string }) {
           </MashahdPlayer>
 
           {/* Title */}
-          <h1 className="mt-3 px-4 sm:px-0 text-lg sm:text-xl font-semibold leading-snug">
-            {video.title}
-          </h1>
+          <div className="mt-3 px-4 sm:px-0 flex items-start gap-2 flex-wrap">
+            <h1 className="text-lg sm:text-xl font-semibold leading-snug flex-1 min-w-0">
+              {video.title}
+            </h1>
+            {/* §61 — Sponsored badge. Shown only when the video has at least
+                one ad disclosure. Gold-tinted to distinguish from organic. */}
+            {adDisclosures && adDisclosures.disclosures.length > 0 && (
+              <Badge
+                variant="outline"
+                className="shrink-0 bg-gold/15 text-gold border-gold/40"
+                title={
+                  adDisclosures.disclosures[0]?.disclosureNote
+                  || `Sponsored by ${adDisclosures.disclosures[0]?.sponsor}`
+                }
+              >
+                Sponsored: {adDisclosures.disclosures[0]?.sponsor}
+              </Badge>
+            )}
+          </div>
 
           {/* Channel row + actions */}
           <div className="mt-3 px-4 sm:px-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -567,6 +721,34 @@ export function WatchView({ videoId }: { videoId: string }) {
                   {showFullDesc ? "Show less" : "...more"}
                 </button>
               )}
+              {/* §65 — Informational context (publication date, provenance,
+                  corrections count, rights claims count). Collapsible so it
+                  doesn't dominate the description area. */}
+              {contextData && (
+                <details className="mt-2 group rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+                  <summary className="cursor-pointer list-none flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
+                    <Info className="h-3.5 w-3.5" />
+                    Context
+                    <span className="ml-auto text-muted-foreground/70 group-open:rotate-180 transition-transform" aria-hidden>⌄</span>
+                  </summary>
+                  <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                    {contextData.publicationDate && (
+                      <p>
+                        Published: {new Date(contextData.publicationDate).toLocaleDateString()}
+                      </p>
+                    )}
+                    <p>
+                      Provenance origin: {contextData.provenance?.origin || "unknown"}
+                    </p>
+                    <p>
+                      Corrections: {contextData.corrections?.length ?? 0}
+                    </p>
+                    <p>
+                      Rights claims: {contextData.rightsClaims?.length ?? 0}
+                    </p>
+                  </div>
+                </details>
+              )}
             </div>
           </div>
 
@@ -748,6 +930,25 @@ function CommentsSection({
   onStarterUsed?: () => void;
   videoRef: React.RefObject<HTMLVideoElement | null>;
 }) {
+  // §20-21 — quality signals score for the small badge in the comments
+  // header area. Fetched once per video; non-blocking (no spinner shown
+  // while loading — the badge just appears when the data arrives).
+  const { data: qualityData } = useQuery({
+    queryKey: ["quality-signals", videoId],
+    queryFn: () => fetchQualitySignals(videoId),
+    enabled: !!videoId,
+    staleTime: 60_000,
+  });
+  const qualityScore = qualityData?.qualityScore;
+  const qualityBadgeClass =
+    typeof qualityScore === "number"
+      ? qualityScore >= 80
+        ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"
+        : qualityScore >= 50
+          ? "bg-amber-500/15 text-amber-600 border-amber-500/30"
+          : "bg-rose/15 text-rose border-rose/30"
+      : "";
+
   const [text, setText] = useState("");
   const [posting, setPosting] = useState(false);
   // §22 — comment sort options: top, newest, creator_replies, questions, unanswered, most_discussed.
@@ -871,6 +1072,17 @@ function CommentsSection({
         <h2 className="text-base font-semibold">
           {comments?.length ?? 0} Comments
         </h2>
+        {/* §20-21 — small quality-signal badge next to the comment count.
+            Colored by score: green ≥80, yellow 50-79, red <50. */}
+        {typeof qualityScore === "number" && (
+          <Badge
+            variant="outline"
+            className={`rounded-full px-2 py-0.5 text-xs ${qualityBadgeClass}`}
+            title={`Quality score: ${qualityScore}/100 — based on like ratio + user feedback signals`}
+          >
+            Quality: {qualityScore}
+          </Badge>
+        )}
         {/* §22 — comment sort dropdown with 6 deterministic options */}
         <div className="flex items-center gap-1.5">
           <span className="text-sm text-muted-foreground">Sort by:</span>

@@ -337,6 +337,16 @@ export function MashahdPlayer({
     setMuted(val === 0);
   };
 
+  // Seek to an absolute position (in seconds). Used by keyboard handlers
+  // on the scrubber so arrow keys move by fixed deltas.
+  const seekTo = useCallback((seconds: number) => {
+    const v = videoRef.current;
+    if (!v || !duration) return;
+    const clamped = Math.max(0, Math.min(duration, seconds));
+    v.currentTime = clamped;
+    setCurrent(clamped);
+  }, [duration]);
+
   const seek = (frac: number) => {
     const v = videoRef.current;
     if (!v || !duration) return;
@@ -471,7 +481,28 @@ export function MashahdPlayer({
       >
         {/* Scrubber */}
         <div
-          className="relative h-1.5 rounded-full bg-white/20 mb-2 cursor-pointer group/scrub"
+          role="slider"
+          tabIndex={0}
+          aria-label="Video progress"
+          aria-valuemin={0}
+          aria-valuemax={duration || 0}
+          aria-valuenow={Math.floor(current)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowLeft") {
+              e.preventDefault();
+              seekTo(current - 5);
+            } else if (e.key === "ArrowRight") {
+              e.preventDefault();
+              seekTo(current + 5);
+            } else if (e.key === "Home") {
+              e.preventDefault();
+              seekTo(0);
+            } else if (e.key === "End") {
+              e.preventDefault();
+              seekTo(duration);
+            }
+          }}
+          className="relative h-1.5 rounded-full bg-white/20 mb-2 cursor-pointer group/scrub focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             seek((e.clientX - rect.left) / rect.width);

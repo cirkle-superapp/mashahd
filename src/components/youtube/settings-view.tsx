@@ -6,6 +6,9 @@ import { Settings as SettingsIcon, Flag, HelpCircle, MessageSquare, Bell, Globe,
 import { useTheme } from "next-themes";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -32,6 +35,8 @@ const TABS = [
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "privacy", label: "Privacy", icon: Shield },
   { id: "accessibility", label: "Accessibility", icon: Sparkles },
+  { id: "premium", label: "Premium", icon: Sparkles },
+  { id: "changelog", label: "Updates", icon: Activity },
   { id: "report", label: "Report history", icon: Flag },
   { id: "help", label: "Help", icon: HelpCircle },
   { id: "feedback", label: "Send feedback", icon: MessageSquare },
@@ -522,6 +527,10 @@ export function SettingsView({ initialTab = "general" }: { initialTab?: string }
             </div>
           )}
 
+          {tab === "premium" && <PremiumSection bid={bid} />}
+
+          {tab === "changelog" && <ChangelogSection />}
+
           {tab === "help" && (
             <div className="space-y-3">
               <HelpItem q="How does AI Recap work?" a="AI Recap reads a video's title, description and metadata, then asks the LLM for a concise TL;DR, key takeaways, and a standout moment." />
@@ -908,6 +917,207 @@ function NotificationPreferencesSection({ bid, set, p }: { bid: string; set: (ke
         <SettingRow title="Push notifications" desc="Receive notifications via browser push (requires VAPID keys).">
           <Switch checked={np?.pushEnabled ?? false} onCheckedChange={(v) => updateNotifPref("pushEnabled", v)} />
         </SettingRow>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * PremiumSection — §62. Wires the Settings → Premium tab to the real
+ * /api/premium endpoint. Shows tier, monthlyCost, essential-usability
+ * status, and the 6 features with available/pending badges.
+ *
+ * Mashahd's zero-cost model means essential usability is always unlocked
+ * — this section is transparency about the future premium direction,
+ * not a paywall.
+ */
+interface PremiumFeature {
+  id: string;
+  label: string;
+  description: string;
+  category: string;
+  essential: boolean;
+  available: boolean;
+  note?: string;
+}
+interface PremiumResponse {
+  isPremium: boolean;
+  tier: string;
+  monthlyCost: string;
+  essentialUsabilityUnlocked: boolean;
+  features: PremiumFeature[];
+}
+
+function PremiumSection({ bid }: { bid: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["premium", bid],
+    queryFn: async () => {
+      const url = bid ? `/api/premium?bid=${encodeURIComponent(bid)}` : "/api/premium";
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("failed");
+      return (await res.json()) as PremiumResponse;
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  if (isLoading) {
+    return <Skeleton className="h-40 w-full rounded-xl" />;
+  }
+  if (!data) {
+    return (
+      <p className="text-sm text-muted-foreground py-6 text-center">
+        Could not load premium information.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-gold/30 bg-gold/5 p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Sparkles className="h-5 w-5 text-[hsl(var(--gold))]" />
+          <p className="text-sm font-semibold">Mashahd Premium</p>
+          <Badge
+            variant="outline"
+            className="ml-auto bg-gold/15 text-[hsl(var(--gold))] border-gold/40"
+          >
+            Tier: {data.tier}
+          </Badge>
+        </div>
+        <div className="flex items-baseline gap-2 mb-3">
+          <span className="text-2xl font-bold">{data.monthlyCost}</span>
+          <span className="text-xs text-muted-foreground">/month</span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {data.essentialUsabilityUnlocked
+            ? "✓ All essential features (playback, search, history, playlists, recommendations) are unlocked on the free tier. Premium features are additional value, not gated essentials."
+            : "Some essential features are gated — this should never happen per spec §62."}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-sm font-medium mb-2">Features</p>
+        <div className="space-y-2">
+          {data.features.map((f) => (
+            <div
+              key={f.id}
+              className="flex items-start justify-between gap-3 p-3 rounded-xl border border-border bg-card"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{f.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{f.description}</p>
+                {f.note && (
+                  <p className="text-xs text-amber-600 mt-1">{f.note}</p>
+                )}
+              </div>
+              <Badge
+                variant="outline"
+                className={`shrink-0 ${
+                  f.available
+                    ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"
+                    : "bg-amber-500/15 text-amber-600 border-amber-500/30"
+                }`}
+              >
+                {f.available ? "Available" : "Pending"}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ChangelogSection — §67. Wires the Settings → Updates tab to the real
+ * /api/platform-changelog endpoint. Shows the principle text and a list
+ * of changes (added=green, improved=blue). Each change is a card with
+ * type badge, date, title, and description.
+ *
+ * Per spec §67: "DO NOT REMOVE POWER FEATURES WITHOUT A REPLACEMENT."
+ * This changelog ensures users always know what changed.
+ */
+interface ChangelogChange {
+  id: string;
+  date: string;
+  type: "added" | "improved" | "removed";
+  title: string;
+  description: string;
+  replacementFor?: string | null;
+  breaking: boolean;
+}
+interface ChangelogResponse {
+  changes: ChangelogChange[];
+  principle: string;
+  removalsCount: number;
+  note: string;
+}
+
+function ChangelogSection() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["platform-changelog"],
+    queryFn: async () => {
+      const res = await fetch("/api/platform-changelog");
+      if (!res.ok) throw new Error("failed");
+      return (await res.json()) as ChangelogResponse;
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  if (isLoading) {
+    return <Skeleton className="h-40 w-full rounded-xl" />;
+  }
+  if (!data) {
+    return (
+      <p className="text-sm text-muted-foreground py-6 text-center">
+        Could not load changelog.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border bg-muted/40 p-4">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+          Principle
+        </p>
+        <p className="text-sm font-medium">{data.principle}</p>
+        <p className="text-xs text-muted-foreground mt-2">{data.note}</p>
+      </div>
+
+      <div className="space-y-2">
+        {data.changes.map((c) => {
+          const typeBadgeClass =
+            c.type === "added"
+              ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"
+              : c.type === "improved"
+                ? "bg-sky-500/15 text-sky-600 border-sky-500/30"
+                : "bg-rose/15 text-rose border-rose/30";
+          return (
+            <Card key={c.id} className="py-3 gap-2">
+              <div className="px-4 flex items-start gap-3">
+                <Badge
+                  variant="outline"
+                  className={`shrink-0 ${typeBadgeClass}`}
+                >
+                  {c.type}
+                </Badge>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">{c.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {c.description}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(c.date).toLocaleDateString()}
+                    {c.replacementFor && (
+                      <span> · Replaces: {c.replacementFor}</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );
