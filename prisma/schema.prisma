@@ -63,6 +63,9 @@ model Video {
   language     String   @default("")
   // Age restriction flag (audit gap). True = 18+ only.
   ageGated     Boolean  @default(false)
+  // §43: Creator controls clipping behavior. Default: allowed.
+  // Values: "allowed" (default) | "disabled" (no clips) | "followers_only"
+  clipPolicy   String   @default("allowed")
   createdAt    DateTime @default(now())
 
   channel      Channel  @relation(fields: [channelId], references: [id])

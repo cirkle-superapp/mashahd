@@ -12,6 +12,12 @@ import { rateLimit, getClientIP } from "@/lib/rate-limiter";
  *   Body: { videoId, creatorId, creatorName?, title, startSec, endSec, note? }
  *   Creates a new clip. Validates: 5s ≤ (endSec - startSec) ≤ 120s, and
  *   both bounds within [0, video.durationSec].
+ *
+ * §43: "Creators must be able to control clipping behavior."
+ * The video's clipPolicy field controls whether clips are allowed:
+ *   - "allowed" (default): anyone can clip
+ *   - "disabled": no clips allowed (returns 403)
+ *   - "followers_only": only subscribers can clip (checked via UserState)
  */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -58,6 +64,32 @@ export async function POST(req: NextRequest) {
   const video = await db.video.findUnique({ where: { id: videoId } });
   if (!video) {
     return NextResponse.json({ error: "video not found" }, { status: 404 });
+  }
+
+  // §43: Enforce clip policy.
+  const clipPolicy = (video as any).clipPolicy || "allowed";
+  if (clipPolicy === "disabled") {
+    return NextResponse.json(
+      { error: "Clipping is disabled for this video by the creator." },
+      { status: 403 }
+    );
+  }
+  if (clipPolicy === "followers_only") {
+    // Check if the clipper is a subscriber of the channel.
+    const state = await db.userState.findUnique({ where: { browserId: creatorId } });
+    if (!state) {
+      return NextResponse.json(
+        { error: "Clipping is followers-only. Subscribe to the channel to clip." },
+        { status: 403 }
+      );
+    }
+    const subs = (state.subscribedChannelIds || "").split("|").filter(Boolean);
+    if (!subs.includes(video.channelId)) {
+      return NextResponse.json(
+        { error: "Clipping is followers-only. Subscribe to the channel to clip." },
+        { status: 403 }
+      );
+    }
   }
 
   // Validate the clip bounds.
