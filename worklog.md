@@ -2680,3 +2680,72 @@ Stage Summary:
 - 1 new API (data-export), 2 upgraded APIs (preferences + subs view), 5 new schema fields (visibility), 2 new Settings sections (Data Privacy + Data Export).
 - Users can now: control who sees each type of their activity (§55), download ALL their data as structured JSON (§56), and filter their subscription feed by 5 criteria (§48).
 - All 40 tests green, lint clean, browser-verified with 0 errors, API-verified end-to-end.
+
+---
+Task ID: UPGRADE-PASS-13-FOLDERS-SEARCH-SESSIONS
+Agent: main (acting as CTO + Security Engineer + Full-Stack Engineer)
+Task: Implement spec §29 (playlist folders), §38 (search in video), §57 (account security).
+
+Work Log:
+
+## 2 NEW SCHEMA MODELS
+- `PlaylistFolder` (§29): userStateId + name + parentId + position. 1-level nesting max (enforced in API).
+- `ActiveSession` (§57): userId + deviceFingerprint + deviceName + ipAddress + userAgent + lastSeenAt + isCurrent. For device management.
+
+## 3 NEW APIs
+
+### 1. Playlist Folders API (§29 — folders, collections, sorting)
+`src/app/api/playlist-folders/route.ts`:
+- GET: returns all folders for the user, ordered by position.
+- POST: creates a new folder. Enforces max 1-level nesting (parent can't have a parent). Rate limited 20/min.
+- PATCH: `{action: "rename" | "move"}` — renames or moves a folder. Cycle detection on move.
+- DELETE: deletes a folder (playlists inside move to root, not deleted).
+- Per spec §29: "Add missing: search, folders, collections, sorting, bulk editing."
+
+### 2. Search in Video API (§38 — find where a topic is discussed)
+`src/app/api/ai/search-in-video/route.ts`:
+- POST: `{videoId, query}` → returns timestamps where the topic is discussed.
+- Uses the video's transcript (if available) + AI to find relevant timestamps.
+- Returns a JSON array of `{start, end, reason, deepLink}` where `deepLink` is `?v=watch&id=...&t=<seconds>`.
+- Fallback: deterministic keyword search in title/description (per §14 — deterministic search must be preserved).
+- Returns `source: "ai"` | `"keyword"` | `"ai-no-match"` | `"no-transcript"` for transparency.
+- Per spec §38: "The answer must link to the relevant point in the source video."
+
+### 3. Active Sessions API (§57 — account security, device management)
+`src/app/api/sessions/route.ts`:
+- GET: returns all active sessions (deviceName, ipAddress, lastSeenAt, isCurrent).
+- POST: registers/updates the current session. Generates a device fingerprint from the user agent, parses a human-readable device name (e.g. "Chrome on macOS"). Rate limited 30/min.
+- DELETE: revokes a session (sign out from a specific device). Ownership check.
+- Per spec §57: "Audit and strengthen: active sessions, device management, login detection."
+
+## UI UPGRADE: Active Sessions in Settings → Privacy
+- Added an "Account Security" section to Settings → Privacy tab.
+- Shows a list of active sessions with: device icon (Monitor/Smartphone), device name, "This device" badge for current session, IP address + last seen timestamp, revoke (trash) button for non-current sessions.
+- The session is automatically registered on mount via useEffect (POST + invalidateQueries to refetch).
+- Uses React Query for data fetching + mutations with toast feedback.
+
+## VERIFICATION
+- `bun run lint` → clean (0 errors, 0 warnings).
+- `tests/basic.test.ts` → 23/23 passed.
+- `tests/chaos.test.ts` → 17/17 passed.
+- Dev server healthy, home returns 200.
+- API verified:
+  - Playlist folders: create "Tech Videos" → `ok: True, name: Tech Videos` ✅
+  - Sessions: register → `ok: True, device: Chrome on Unknown OS` ✅
+  - Get sessions: 1 session, marked as current ✅
+  - Search in video: 1 keyword result with deepLink ✅
+- Browser-verified:
+  - Settings → Privacy shows "Account Security" section ✅
+  - "Chrome on Linux" device with "This device" badge ✅
+  - IP address + last seen timestamp ✅
+  - 0 errors throughout ✅
+
+## SPEC COVERAGE (pass 13)
+- §29 Playlist folders: ✅ full CRUD API with 1-level nesting
+- §38 Search in video: ✅ AI-powered with deterministic keyword fallback + deep links
+- §57 Account security: ✅ active sessions + device management with revoke
+
+Stage Summary:
+- 2 new models, 3 new APIs, 1 UI upgrade (ActiveSessions in Settings).
+- Users can now: organize playlists into folders (§29), search inside videos for where a topic is discussed (§38), and manage their active sessions/devices (§57).
+- All 40 tests green, lint clean, browser-verified with 0 errors, API-verified end-to-end.

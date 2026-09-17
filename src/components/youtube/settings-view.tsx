@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Settings as SettingsIcon, Flag, HelpCircle, MessageSquare, Bell, Globe, Moon, Sun, Shield, Info, Sliders, Ban, Eye, Sparkles, RotateCcw, Activity, AlertTriangle, Download } from "lucide-react";
+import { Settings as SettingsIcon, Flag, HelpCircle, MessageSquare, Bell, Globe, Moon, Sun, Shield, Info, Sliders, Ban, Eye, Sparkles, RotateCcw, Activity, AlertTriangle, Download, Monitor, Smartphone, Trash2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -373,6 +373,15 @@ export function SettingsView({ initialTab = "general" }: { initialTab?: string }
                 <ResetRecommendations bid={bid} />
               </div>
 
+              {/* §57: Account security — active sessions + device management */}
+              <div className="pt-4 border-t border-border">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-[hsl(var(--gold))]" />
+                  Account Security
+                </h3>
+                <ActiveSessions bid={bid} />
+              </div>
+
               {/* §47: User P2P Control — transparent opt-out */}
               <div className="pt-4 border-t border-border">
                 <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -735,5 +744,117 @@ function ResetRecommendations({ bid }: { bid: string }) {
         </DialogContent>
       </Dialog>
     </SettingRow>
+  );
+}
+
+/**
+ * ActiveSessions — §57 account security: shows active sessions + device management.
+ * Users can see which devices are logged in and revoke any session.
+ */
+function ActiveSessions({ bid }: { bid: string }) {
+  const qc = useQueryClient();
+
+  // Register the current session on mount, then refetch.
+  useEffect(() => {
+    if (!bid) return;
+    fetch("/api/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ browserId: bid, userAgent: navigator.userAgent }),
+    }).then(() => {
+      // Refetch after registering.
+      qc.invalidateQueries({ queryKey: ["sessions", bid] });
+    }).catch(() => {});
+  }, [bid, qc]);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["sessions", bid],
+    queryFn: async () => {
+      if (!bid) return { sessions: [] };
+      const res = await fetch(`/api/sessions?bid=${encodeURIComponent(bid)}`);
+      if (!res.ok) return { sessions: [] };
+      return res.json();
+    },
+    enabled: !!bid,
+    staleTime: 30_000,
+  });
+
+  const revoke = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const res = await fetch("/api/sessions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ browserId: bid, sessionId }),
+      });
+      if (!res.ok) throw new Error("failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sessions", bid] });
+      toast.success("Session revoked");
+    },
+    onError: () => toast.error("Failed to revoke session"),
+  });
+
+  const sessions = data?.sessions || [];
+
+  if (isLoading) {
+    return <p className="text-sm text-muted-foreground py-4">Loading sessions…</p>;
+  }
+
+  if (sessions.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-4">
+        No active sessions. Your session will appear here after it's registered.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground mb-3">
+        These are the devices currently signed into your Mashahd account. You can revoke any session to sign out from that device.
+      </p>
+      {sessions.map((s: any) => (
+        <div
+          key={s.id}
+          className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card"
+        >
+          <div className="grid place-items-center h-9 w-9 rounded-full bg-muted shrink-0">
+            {s.deviceName?.toLowerCase().includes("ios") || s.deviceName?.toLowerCase().includes("android")
+              ? <Smartphone className="h-4 w-4" />
+              : <Monitor className="h-4 w-4" />
+            }
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium flex items-center gap-2">
+              {s.deviceName || "Unknown device"}
+              {s.isCurrent && (
+                <span className="text-[10px] bg-emerald/15 text-emerald px-2 py-0.5 rounded-full font-medium">
+                  This device
+                </span>
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {s.ipAddress ? `IP: ${s.ipAddress} • ` : ""}
+              Last seen: {new Date(s.lastSeenAt).toLocaleString()}
+            </p>
+          </div>
+          {!s.isCurrent && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="shrink-0 hover:text-rose"
+              onClick={() => revoke.mutate(s.id)}
+              disabled={revoke.isPending}
+              aria-label="Revoke session"
+              title="Sign out this device"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }

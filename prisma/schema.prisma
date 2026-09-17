@@ -660,3 +660,42 @@ model VideoCorrection {
 
   @@index([videoId])
 }
+
+// ── Playlist Folders (§29 — folders, collections, sorting, bulk editing) ──
+// Users can organize playlists into folders for better library management.
+model PlaylistFolder {
+  id          String   @id @default(cuid())
+  userStateId String
+  name        String
+  // Optional parent folder for nesting (1 level deep max, enforced in app logic).
+  parentId    String?
+  position    Int      @default(0) // sort order within the parent
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userStateId])
+  @@index([parentId])
+}
+
+// ── Active Sessions (§57 — account security, device management) ──
+// Tracks all active sessions for a user (devices, IPs, last seen).
+model ActiveSession {
+  id          String   @id @default(cuid())
+  userId      String   // signed browserId or authenticated userId
+  // A fingerprint of the device/browser (user agent + screen size hash).
+  deviceFingerprint String
+  // Human-readable device name (e.g. "Chrome on macOS").
+  deviceName  String   @default("Unknown device")
+  // The IP address of the session (for security display).
+  ipAddress   String   @default("")
+  // The user agent string.
+  userAgent   String   @default("")
+  // When the session was last active.
+  lastSeenAt  DateTime @default(now())
+  // Whether this is the current session.
+  isCurrent   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([deviceFingerprint])
+}
