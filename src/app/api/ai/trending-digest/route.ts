@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { aiChat } from "@/lib/ai-provider";
 import { db } from "@/lib/db";
+import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
 /**
  * GET /api/ai/trending-digest
@@ -17,6 +18,14 @@ let _cache: { at: number; digest: string; videos: { id: string; title: string }[
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
+  const ip = getClientIP(req);
+  const rl = await rateLimit(`ai-trending-digest:${ip}`, 10, 60_000);
+  if (rl.limited) {
+    return NextResponse.json(
+      { error: "rate limited — AI requests are limited to 10/min" },
+      { status: 429, headers: { "Retry-After": "60" } }
+    );
+  }
   // Cache hit?
   if (_cache && Date.now() - _cache.at < CACHE_TTL_MS) {
     return NextResponse.json({

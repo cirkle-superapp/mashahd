@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { aiChat } from "@/lib/ai-provider";
+import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
 /**
  * POST /api/ai/tone
@@ -11,6 +12,14 @@ import { aiChat } from "@/lib/ai-provider";
  * text if the LLM is unavailable.
  */
 export async function POST(req: NextRequest) {
+  const ip = getClientIP(req);
+  const rl = await rateLimit(`ai-tone:${ip}`, 10, 60_000);
+  if (rl.limited) {
+    return NextResponse.json(
+      { error: "rate limited — AI requests are limited to 10/min" },
+      { status: 429, headers: { "Retry-After": "60" } }
+    );
+  }
   const { text, tone } = await req.json().catch(
     () => ({ text: "", tone: "friendly" })
   );
