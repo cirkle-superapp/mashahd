@@ -756,3 +756,64 @@ model RightsDispute {
   @@index([claimId])
   @@index([status])
 }
+
+// ── Live Streaming Enhancements (§45 — chat modes, polls, Q&A, DVR) ──
+// Per spec §45: "Support where applicable: low latency, chat, moderation,
+// slow mode, subscriber/follower mode, polls, Q&A, replay, DVR, clips, chapters."
+model LivePoll {
+  id          String   @id @default(cuid())
+  // The videoId of the live stream (live streams are stored as Video records with visibility="live").
+  videoId     String
+  question    String
+  // JSON-encoded options: [{ "text": "Yes", "votes": 0 }, { "text": "No", "votes": 0 }]
+  options     String   @default("[]")
+  // Poll status: active | closed
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  closedAt    DateTime?
+
+  @@index([videoId])
+  @@index([status])
+}
+
+model LiveQA {
+  id          String   @id @default(cuid())
+  videoId     String
+  // The viewer who asked the question.
+  askerName   String
+  askerAvatar String   @default("")
+  question    String
+  // Optional answer from the creator.
+  answer      String   @default("")
+  answeredBy  String   @default("")
+  answeredAt  DateTime?
+  // upvotes from other viewers.
+  upvotes     Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([videoId])
+  @@index([answeredBy])
+}
+
+// ── Advertising Transparency (§61 — separate platform/creator/affiliate) ──
+// Per spec §61: "Separate: platform advertising, creator sponsorship,
+// affiliate content, paid placement. Never make paid content deceptive."
+// Per spec §15: "Never make paid placements look identical to organic results."
+model AdDisclosure {
+  id          String   @id @default(cuid())
+  videoId     String
+  // The type of advertising (§61).
+  adType      String   // platform_ad | creator_sponsorship | affiliate | paid_placement
+  // The sponsor/brand name.
+  sponsor     String
+  // The product/service being promoted.
+  product     String   @default("")
+  // Whether this is a paid placement that must be disclosed.
+  isPaid      Boolean  @default(true)
+  // Optional disclosure note from the creator.
+  disclosureNote String @default("")
+  createdAt   DateTime @default(now())
+
+  @@index([videoId])
+  @@index([adType])
+}
