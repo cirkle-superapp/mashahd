@@ -196,16 +196,35 @@ function timeAgoShort(d: string) {
 
 export function SubscriptionsView() {
   const bid = useBrowserId();
+  // §48: subscription feed filters.
+  const [filter, setFilter] = useState<"all" | "new" | "unwatched" | "long" | "short">("all");
   const { data: state } = useQuery({
     queryKey: ["user-state", bid],
     queryFn: () => fetchUserState(bid),
     enabled: !!bid,
   });
   const subIds = state?.subscribedChannelIds || [];
+  const watchedIds = new Set(state?.watchedVideoIds || []);
 
   return (
     <div className="px-4 sm:px-6 py-6 max-w-[1400px] mx-auto">
-      <h1 className="text-2xl font-bold mb-2">Subscriptions</h1>
+      <div className="flex items-center justify-between gap-4 mb-2 flex-wrap">
+        <h1 className="text-2xl font-bold">Subscriptions</h1>
+        {subIds.length > 0 && (
+          <Select value={filter} onValueChange={(v) => setFilter(v as any)}>
+            <SelectTrigger className="w-36 rounded-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All videos</SelectItem>
+              <SelectItem value="new">New (last 24h)</SelectItem>
+              <SelectItem value="unwatched">Unwatched</SelectItem>
+              <SelectItem value="long">Long-form (15min+)</SelectItem>
+              <SelectItem value="short">Short (under 5min)</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+      </div>
       <p className="text-sm text-muted-foreground mb-6">
         Latest videos from channels you follow.
       </p>
@@ -215,26 +234,41 @@ export function SubscriptionsView() {
           body="Subscribe to channels to see their newest uploads here."
         />
       ) : (
-        <SubscriptionGrid subIds={subIds} />
+        <SubscriptionGrid subIds={subIds} filter={filter} watchedIds={watchedIds} />
       )}
     </div>
   );
 }
 
-function SubscriptionGrid({ subIds }: { subIds: string[] }) {
+function SubscriptionGrid({ subIds, filter, watchedIds }: { subIds: string[]; filter: string; watchedIds: Set<string> }) {
   // We fetch videos for all subscribed channels by passing channelId... but our
   // API only accepts a single channelId. So we fan out — fine for demo size.
   const queries = useQueriesForChannels(subIds);
-  const all = queries.flatMap((q) => q.data || []);
+  let all = queries.flatMap((q) => q.data || []);
   all.sort(
     (a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
+
+  // §48: apply filter.
+  if (filter === "new") {
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    all = all.filter((v) => new Date(v.createdAt).getTime() > oneDayAgo);
+  } else if (filter === "unwatched") {
+    all = all.filter((v) => !watchedIds.has(v.id));
+  } else if (filter === "long") {
+    all = all.filter((v) => v.durationSec >= 900);
+  } else if (filter === "short") {
+    all = all.filter((v) => v.durationSec < 300);
+  }
+
   if (all.length === 0) {
     return (
       <EmptyState
-        title="No videos yet"
-        body="The channels you follow haven't posted anything recently."
+        title={filter === "all" ? "No videos yet" : "No videos match this filter"}
+        body={filter === "all"
+          ? "The channels you follow haven't posted anything recently."
+          : "Try a different filter or check back later."}
       />
     );
   }

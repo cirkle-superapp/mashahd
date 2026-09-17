@@ -39,6 +39,12 @@ const DEFAULTS = {
   largeControls: false,
   continueWatchingEnabled: true,
   autoplayNext: false,
+  // §55: privacy visibility defaults.
+  likesVisibility: "private",
+  subscriptionsVisibility: "private",
+  historyVisibility: "private",
+  playlistsVisibility: "public",
+  commentsVisibility: "public",
 };
 
 export async function GET(req: NextRequest) {
@@ -82,6 +88,9 @@ export async function POST(req: NextRequest) {
     "searchSort", "pauseRecommendationLearning",
     "reducedMotion", "highContrast", "largeControls",
     "continueWatchingEnabled", "autoplayNext",
+    // §55: privacy visibility controls.
+    "likesVisibility", "subscriptionsVisibility", "historyVisibility",
+    "playlistsVisibility", "commentsVisibility",
   ];
   for (const field of allowedFields) {
     if (field in body) {
@@ -124,6 +133,14 @@ export async function POST(req: NextRequest) {
     updates.preferredSpeed = s;
   }
 
+  // §55: validate visibility fields.
+  const VISIBILITY_OPTIONS = ["public", "followers", "private"];
+  for (const visField of ["likesVisibility", "subscriptionsVisibility", "historyVisibility", "playlistsVisibility", "commentsVisibility"]) {
+    if (updates[visField] && !VISIBILITY_OPTIONS.includes(updates[visField])) {
+      return NextResponse.json({ error: `invalid ${visField}. valid: ${VISIBILITY_OPTIONS.join(", ")}` }, { status: 400 });
+    }
+  }
+
   // Upsert (create if not exists, update if exists).
   const pref = await db.userPreference.upsert({
     where: { ownerId: verification.id },
@@ -154,5 +171,11 @@ function formatPref(p: any) {
     largeControls: p.largeControls,
     continueWatchingEnabled: p.continueWatchingEnabled,
     autoplayNext: p.autoplayNext,
+    // §55: privacy visibility.
+    likesVisibility: p.likesVisibility || "private",
+    subscriptionsVisibility: p.subscriptionsVisibility || "private",
+    historyVisibility: p.historyVisibility || "private",
+    playlistsVisibility: p.playlistsVisibility || "public",
+    commentsVisibility: p.commentsVisibility || "public",
   };
 }

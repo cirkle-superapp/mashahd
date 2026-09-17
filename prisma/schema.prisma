@@ -447,6 +447,14 @@ model UserPreference {
   searchSort       String   @default("relevance") // relevance | newest | oldest | most_viewed | least_viewed | longest | shortest
   // ── Privacy (§26, §55) ──
   pauseRecommendationLearning Boolean @default(false) // §26: pause rec learning
+  // §55: Data privacy — control visibility of user activity.
+  // Each can be: public | followers | private (default: private for a
+  // user-controlled platform).
+  likesVisibility      String   @default("private") // §55
+  subscriptionsVisibility String @default("private") // §55
+  historyVisibility    String   @default("private") // §55
+  playlistsVisibility  String   @default("public") // §55 — playlists are shareable by default
+  commentsVisibility   String   @default("public") // §55 — comments are public by default
   // ── Accessibility (§58) ──
   reducedMotion    Boolean  @default(false)
   highContrast     Boolean  @default(false)

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Settings as SettingsIcon, Flag, HelpCircle, MessageSquare, Bell, Globe, Moon, Sun, Shield, Info, Sliders, Ban, Eye, Sparkles, RotateCcw, Activity, AlertTriangle } from "lucide-react";
+import { Settings as SettingsIcon, Flag, HelpCircle, MessageSquare, Bell, Globe, Moon, Sun, Shield, Info, Sliders, Ban, Eye, Sparkles, RotateCcw, Activity, AlertTriangle, Download } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -410,6 +410,107 @@ export function SettingsView({ initialTab = "general" }: { initialTab?: string }
               <SettingRow title="Large controls" desc="Make buttons, icons, and touch targets larger.">
                 <Switch checked={p.largeControls} onCheckedChange={(v) => set("largeControls", v)} />
               </SettingRow>
+
+              {/* §55: Data privacy — visibility controls */}
+              <div className="pt-4 border-t border-border">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-[hsl(var(--gold))]" />
+                  Data Privacy
+                </h3>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Control who can see your activity on Mashahd. Per spec §55: users should be able
+                  to control visibility for videos, playlists, likes, subscriptions, history, and comments.
+                </p>
+                <SettingRow title="Likes visibility" desc="Who can see the videos you've liked.">
+                  <Select value={p.likesVisibility || "private"} onValueChange={(v) => set("likesVisibility", v)}>
+                    <SelectTrigger className="w-32 rounded-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">Public</SelectItem>
+                      <SelectItem value="followers">Followers</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </SettingRow>
+                <SettingRow title="Subscriptions visibility" desc="Who can see which channels you follow.">
+                  <Select value={p.subscriptionsVisibility || "private"} onValueChange={(v) => set("subscriptionsVisibility", v)}>
+                    <SelectTrigger className="w-32 rounded-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">Public</SelectItem>
+                      <SelectItem value="followers">Followers</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </SettingRow>
+                <SettingRow title="Watch history visibility" desc="Who can see your watch history.">
+                  <Select value={p.historyVisibility || "private"} onValueChange={(v) => set("historyVisibility", v)}>
+                    <SelectTrigger className="w-32 rounded-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">Public</SelectItem>
+                      <SelectItem value="followers">Followers</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </SettingRow>
+                <SettingRow title="Playlists visibility" desc="Who can see your playlists.">
+                  <Select value={p.playlistsVisibility || "public"} onValueChange={(v) => set("playlistsVisibility", v)}>
+                    <SelectTrigger className="w-32 rounded-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">Public</SelectItem>
+                      <SelectItem value="followers">Followers</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </SettingRow>
+                <SettingRow title="Comments visibility" desc="Who can see your comments.">
+                  <Select value={p.commentsVisibility || "public"} onValueChange={(v) => set("commentsVisibility", v)}>
+                    <SelectTrigger className="w-32 rounded-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">Public</SelectItem>
+                      <SelectItem value="followers">Followers</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </SettingRow>
+              </div>
+
+              {/* §56: Data export */}
+              <div className="pt-4 border-t border-border">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Download className="h-4 w-4 text-[hsl(var(--gold))]" />
+                  Data Export
+                </h3>
+                <SettingRow
+                  title="Export my data"
+                  desc="Download all your Mashahd data as a structured JSON file: watch history, subscriptions, playlists, likes, saved content, preferences, comments, and more."
+                >
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={async () => {
+                      if (!bid) { toast.error("Please wait for your session to load."); return; }
+                      toast.info("Preparing your data export…");
+                      try {
+                        const res = await fetch(`/api/data-export?bid=${encodeURIComponent(bid)}`);
+                        if (!res.ok) throw new Error("Export failed");
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `mashahd-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        toast.success("Data export downloaded.");
+                      } catch {
+                        toast.error("Export failed — please try again.");
+                      }
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-1.5" />
+                    Download
+                  </Button>
+                </SettingRow>
+              </div>
             </div>
           )}
 
