@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Settings as SettingsIcon, Flag, HelpCircle, MessageSquare, Bell, Globe, Moon, Sun, Shield, Info, Sliders, Ban, Eye, Sparkles, RotateCcw, Activity, AlertTriangle, Download, Monitor, Smartphone, Trash2, Code } from "lucide-react";
+import { Settings as SettingsIcon, Flag, HelpCircle, MessageSquare, Bell, Globe, Moon, Sun, Shield, Info, Sliders, Ban, Eye, Sparkles, RotateCcw, Activity, AlertTriangle, Download, Monitor, Smartphone, Trash2, Code, DollarSign, GitBranch } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,8 @@ const TABS = [
   { id: "accessibility", label: "Accessibility", icon: Sparkles },
   { id: "premium", label: "Premium", icon: Sparkles },
   { id: "changelog", label: "Updates", icon: Activity },
+  { id: "cost", label: "Cost & Quotas", icon: DollarSign },
+  { id: "decisions", label: "Decisions", icon: GitBranch },
   { id: "api", label: "API Catalog", icon: Code },
   { id: "report", label: "Report history", icon: Flag },
   { id: "help", label: "Help", icon: HelpCircle },
@@ -531,6 +533,10 @@ export function SettingsView({ initialTab = "general" }: { initialTab?: string }
           {tab === "premium" && <PremiumSection bid={bid} />}
 
           {tab === "changelog" && <ChangelogSection />}
+
+          {tab === "cost" && <CostDashboardSection />}
+
+          {tab === "decisions" && <DecisionsSection />}
 
           {tab === "api" && <ApiCatalogSection />}
 
@@ -1230,6 +1236,376 @@ function ApiCatalogSection() {
           </Card>
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * CostDashboardSection — §40 unified infrastructure/cost dashboard.
+ * Wires the Settings → Cost & Quotas tab to the real /api/cost-dashboard
+ * endpoint. Shows each provider (Cloudflare, Turso, Vercel, Inngest, Brevo,
+ * Filebase, Neon, AI providers, SMS) with its fundingModel, status, and key
+ * limits as a compact card. The costSummary appears at the bottom showing
+ * platformMonthlyCost + the zero-cost model.
+ *
+ * Per spec §40: "Create one unified infrastructure/cost dashboard" so users
+ * can see exactly what funds the platform and what is customer-funded.
+ */
+interface CostDashboardProvider {
+  provider: string;
+  fundingModel: string;
+  status: string;
+  limits?: Record<string, string | number>;
+  note?: string;
+  configured?: boolean;
+  sentToday?: number;
+  remainingToday?: number;
+  usagePercent?: number;
+}
+interface CostDashboardAi {
+  providers: Record<string, boolean>;
+  activeCount: number;
+  totalRequests: number;
+  fallbackRate: number;
+  fundingModel: string;
+  status: string;
+}
+interface CostDashboardResponse {
+  timestamp: string;
+  cloudflare: CostDashboardProvider;
+  turso: CostDashboardProvider & { dbStats?: Record<string, number>; circuitState?: string };
+  vercel: CostDashboardProvider;
+  inngest: CostDashboardProvider & { configured: boolean };
+  brevo: CostDashboardProvider & { configured: boolean };
+  sms: CostDashboardProvider;
+  filebase: CostDashboardProvider;
+  neon: CostDashboardProvider;
+  ai: CostDashboardAi;
+  costSummary: {
+    platformMonthlyCost: string;
+    customerFundedCosts: string;
+    model: string;
+    r2Used: boolean;
+    resendUsed: boolean;
+  };
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  HEALTHY: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30",
+  NOT_CONFIGURED: "bg-muted text-muted-foreground border-border",
+  WARNING: "bg-amber-500/15 text-amber-600 border-amber-500/30",
+  MONITORING: "bg-sky-500/15 text-sky-600 border-sky-500/30",
+  QUOTA_EXCEEDED: "bg-rose/15 text-rose border-rose/30",
+};
+
+function ProviderCard({ p }: { p: CostDashboardProvider }) {
+  const colorClass = STATUS_COLOR[p.status] || "bg-muted text-muted-foreground border-border";
+  return (
+    <Card className="py-3 gap-2">
+      <div className="px-4 space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-semibold">{p.provider}</p>
+          <Badge variant="outline" className={`text-[10px] py-0 ${colorClass}`}>
+            {p.status}
+          </Badge>
+          <Badge variant="secondary" className="text-[10px] py-0 ml-auto">
+            {p.fundingModel}
+          </Badge>
+        </div>
+        {p.limits && Object.keys(p.limits).length > 0 && (
+          <ul className="text-[11px] text-muted-foreground space-y-0.5">
+            {Object.entries(p.limits).map(([k, v]) => (
+              <li key={k} className="flex items-start gap-1">
+                <span className="font-mono text-foreground/80">{k}:</span>
+                <span className="tabular-nums">{String(v)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {typeof p.usagePercent === "number" && (
+          <div className="flex items-center gap-2 text-[11px]">
+            <span className="text-muted-foreground">Usage today:</span>
+            <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden max-w-[120px]">
+              <div
+                className={`h-full ${p.usagePercent >= 90 ? "bg-rose" : p.usagePercent >= 70 ? "bg-amber-500" : "bg-emerald-500"}`}
+                style={{ width: `${Math.min(100, p.usagePercent)}%` }}
+              />
+            </div>
+            <span className="tabular-nums">{p.usagePercent}%</span>
+          </div>
+        )}
+        {p.note && <p className="text-[10px] text-muted-foreground italic">{p.note}</p>}
+      </div>
+    </Card>
+  );
+}
+
+function CostDashboardSection() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["cost-dashboard"],
+    queryFn: async () => {
+      const res = await fetch("/api/cost-dashboard");
+      if (!res.ok) throw new Error("failed");
+      return (await res.json()) as CostDashboardResponse;
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  if (isLoading) {
+    return <Skeleton className="h-40 w-full rounded-xl" />;
+  }
+  if (!data) {
+    return (
+      <p className="text-sm text-muted-foreground py-6 text-center">
+        Could not load cost dashboard.
+      </p>
+    );
+  }
+
+  // Build a flat list of providers in display order.
+  const providers: CostDashboardProvider[] = [
+    data.cloudflare,
+    data.turso,
+    data.vercel,
+    data.inngest,
+    data.brevo,
+    data.sms,
+    data.filebase,
+    data.neon,
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border bg-muted/40 p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <DollarSign className="h-5 w-5 text-[hsl(var(--gold))]" />
+          <p className="text-sm font-semibold">Cost &amp; Quota Dashboard</p>
+          <Badge variant="outline" className="ml-auto bg-gold/15 text-[hsl(var(--gold))] border-gold/40">
+            {data.costSummary.platformMonthlyCost}/mo
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Transparency on what funds the platform. Platform-funded = Mashahd pays.
+          Customer-funded = charges billed to customers (e.g. SMS). Free-tier =
+          provider&apos;s free quota.
+        </p>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        {providers.map((p) => (
+          <ProviderCard key={p.provider} p={p} />
+        ))}
+
+        {/* AI providers card — slightly different shape */}
+        <Card className="py-3 gap-2">
+          <div className="px-4 space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-semibold">AI Providers</p>
+              <Badge
+                variant="outline"
+                className={`text-[10px] py-0 ${STATUS_COLOR[data.ai.status] || ""}`}
+              >
+                {data.ai.status}
+              </Badge>
+              <Badge variant="secondary" className="text-[10px] py-0 ml-auto">
+                {data.ai.fundingModel}
+              </Badge>
+            </div>
+            <ul className="text-[11px] text-muted-foreground space-y-0.5">
+              <li className="flex items-start gap-1">
+                <span className="font-mono text-foreground/80">active:</span>
+                <span className="tabular-nums">{data.ai.activeCount} provider(s)</span>
+              </li>
+              <li className="flex items-start gap-1">
+                <span className="font-mono text-foreground/80">totalRequests:</span>
+                <span className="tabular-nums">{data.ai.totalRequests}</span>
+              </li>
+              <li className="flex items-start gap-1">
+                <span className="font-mono text-foreground/80">fallbackRate:</span>
+                <span className="tabular-nums">{data.ai.fallbackRate}%</span>
+              </li>
+              <li className="flex items-start gap-1">
+                <span className="font-mono text-foreground/80">providers:</span>
+                <span className="truncate">
+                  {Object.keys(data.ai.providers).map((k) => `${k}: ${data.ai.providers[k] ? "on" : "off"}`).join(" · ")}
+                </span>
+              </li>
+            </ul>
+          </div>
+        </Card>
+      </div>
+
+      {/* Cost summary at the bottom */}
+      <Card className="py-3 gap-2 border-gold/30 bg-gold/5">
+        <div className="px-4">
+          <div className="flex items-center gap-2 mb-2">
+            <DollarSign className="h-4 w-4 text-[hsl(var(--gold))]" />
+            <p className="text-sm font-semibold">Cost summary</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <dt className="text-muted-foreground">Platform monthly cost</dt>
+              <dd className="font-medium tabular-nums">{data.costSummary.platformMonthlyCost}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Customer-funded</dt>
+              <dd className="font-medium">{data.costSummary.customerFundedCosts}</dd>
+            </div>
+            <div className="col-span-2">
+              <dt className="text-muted-foreground">Model</dt>
+              <dd className="font-medium">{data.costSummary.model}</dd>
+            </div>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/**
+ * DecisionsSection — §181 admin decision explanation. Wires the Settings →
+ * Decisions tab to the /api/decisions endpoint. Shows the current delivery
+ * scheduler state, delivery metrics, content heat (top videos), active
+ * swarms, resource state, and (when a videoId is given) per-video delivery
+ * decision. The base response (no videoId) shows system-level decisions so
+ * the panel always has something to display.
+ *
+ * Per spec §181-182: "No Black Box" — all routing must be deterministic
+ * and explainable.
+ */
+interface DecisionsResponse {
+  timestamp?: string;
+  system?: {
+    originPressureMode: string;
+    peerPressureMode: string;
+    cachePressureMode: string;
+  };
+  delivery?: {
+    originBytesServed: number;
+    p2pBytesServed: number;
+    cacheHits: number;
+    cacheMisses: number;
+    p2pHits: number;
+    p2pMisses: number;
+    originReductionPct: number;
+  };
+  resources?: {
+    cpuLoadPct: number;
+    memoryUsagePct: number;
+    concurrentJobs: number;
+    maxConcurrentJobs: number;
+  };
+  content?: {
+    topVideos: Array<{ id: string; title: string; views: number; category: string }>;
+    activeSwarms: number;
+  };
+}
+
+function DecisionsSection() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["decisions"],
+    queryFn: async () => {
+      const res = await fetch("/api/decisions");
+      if (!res.ok) throw new Error("failed");
+      return (await res.json()) as DecisionsResponse;
+    },
+    staleTime: 60_000,
+  });
+
+  if (isLoading) {
+    return <Skeleton className="h-40 w-full rounded-xl" />;
+  }
+  if (!data) {
+    return (
+      <p className="text-sm text-muted-foreground py-6 text-center">
+        Could not load decision log.
+      </p>
+    );
+  }
+
+  const sys = data.system;
+  const del = data.delivery;
+  const res = data.resources;
+  const content = data.content;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border bg-muted/40 p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <GitBranch className="h-5 w-5 text-[hsl(var(--gold))]" />
+          <p className="text-sm font-semibold">Admin Decision Explanations</p>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Per spec §181-182: every delivery routing choice is deterministic
+          and explainable. This panel surfaces the current system state +
+          recent delivery decisions.
+        </p>
+      </div>
+
+      {sys && (
+        <Card className="py-3 gap-2">
+          <div className="px-4 space-y-2">
+            <p className="text-sm font-medium">System pressure</p>
+            <ul className="text-xs text-muted-foreground space-y-0.5">
+              <li>Origin: <span className="text-foreground font-medium">{sys.originPressureMode}</span></li>
+              <li>Peer: <span className="text-foreground font-medium">{sys.peerPressureMode}</span></li>
+              <li>Cache: <span className="text-foreground font-medium">{sys.cachePressureMode}</span></li>
+            </ul>
+          </div>
+        </Card>
+      )}
+
+      {del && (
+        <Card className="py-3 gap-2">
+          <div className="px-4 space-y-2">
+            <p className="text-sm font-medium">Delivery metrics</p>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div><dt className="text-muted-foreground">Origin bytes</dt><dd className="font-medium tabular-nums">{del.originBytesServed.toLocaleString()}</dd></div>
+              <div><dt className="text-muted-foreground">P2P bytes</dt><dd className="font-medium tabular-nums">{del.p2pBytesServed.toLocaleString()}</dd></div>
+              <div><dt className="text-muted-foreground">Cache hits / misses</dt><dd className="font-medium tabular-nums">{del.cacheHits} / {del.cacheMisses}</dd></div>
+              <div><dt className="text-muted-foreground">P2P hits / misses</dt><dd className="font-medium tabular-nums">{del.p2pHits} / {del.p2pMisses}</dd></div>
+              <div className="col-span-2"><dt className="text-muted-foreground">Origin reduction</dt><dd className="font-medium tabular-nums">{del.originReductionPct}%</dd></div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {res && (
+        <Card className="py-3 gap-2">
+          <div className="px-4 space-y-2">
+            <p className="text-sm font-medium">Resources</p>
+            <div className="grid grid-cols-3 gap-3 text-xs">
+              <div><dt className="text-muted-foreground">CPU</dt><dd className="font-medium tabular-nums">{res.cpuLoadPct}%</dd></div>
+              <div><dt className="text-muted-foreground">Memory</dt><dd className="font-medium tabular-nums">{res.memoryUsagePct}%</dd></div>
+              <div><dt className="text-muted-foreground">Jobs</dt><dd className="font-medium tabular-nums">{res.concurrentJobs}/{res.maxConcurrentJobs}</dd></div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {content && content.topVideos.length > 0 && (
+        <Card className="py-3 gap-2">
+          <div className="px-4 space-y-2">
+            <p className="text-sm font-medium">Top videos by views</p>
+            <ul className="divide-y divide-border">
+              {content.topVideos.slice(0, 8).map((v, i) => (
+                <li key={v.id} className="py-1.5 flex items-center gap-2 text-xs">
+                  <span className="text-muted-foreground tabular-nums w-5">{i + 1}.</span>
+                  <span className="flex-1 min-w-0 truncate" title={v.title}>{v.title}</span>
+                  {v.category && <Badge variant="outline" className="text-[10px] py-0 shrink-0">{v.category}</Badge>}
+                  <span className="tabular-nums text-muted-foreground shrink-0">{v.views.toLocaleString()} views</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Card>
+      )}
+
+      {content && (
+        <p className="text-[10px] text-muted-foreground italic">
+          Active swarms: <span className="tabular-nums">{content.activeSwarms}</span>
+        </p>
+      )}
     </div>
   );
 }

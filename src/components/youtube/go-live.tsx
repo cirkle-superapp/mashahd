@@ -165,10 +165,11 @@ export function GoLive({
         {phase === "setup" && (
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <label htmlFor="go-live-title" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Stream title (required)
               </label>
               <Input
+                id="go-live-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Live: building a Next.js app from scratch"

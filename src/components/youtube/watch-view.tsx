@@ -2,15 +2,17 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2, MessageSquarePlus, Compass, Wand2, Heart, Bookmark, Check, ListPlus, Users, FileText, Scissors, Info, Search, RefreshCw, Shield } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2, MessageSquarePlus, Compass, Wand2, Heart, Bookmark, Check, ListPlus, Users, FileText, Scissors, Info, Search, RefreshCw, Shield, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useAppStore } from "@/store/app-store";
 import { useMiniPlayer } from "@/store/mini-player-store";
 import { useBrowserId } from "@/hooks/use-browser-id";
+import { useAuth } from "@/hooks/use-auth";
 import { formatViews, formatSubs, formatCount, timeAgo } from "@/lib/format";
 import type { VideoWithFlags, Comment, Video } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -286,6 +288,11 @@ export function WatchView({ videoId }: { videoId: string }) {
   const bid = useBrowserId();
   const qc = useQueryClient();
   const { navigate } = useAppStore();
+  // §24 — dispute filing: the disputant is the current user's displayName,
+  // or "Anonymous" if not signed in (the backend requires a non-empty
+  // disputant string for every dispute).
+  const { user } = useAuth();
+  const disputantName = user?.displayName || "Anonymous";
   const [showFullDesc, setShowFullDesc] = useState(false);
   const [theater, setTheater] = useState(false);
   const [upNext, setUpNext] = useState(false);
@@ -299,6 +306,9 @@ export function WatchView({ videoId }: { videoId: string }) {
   const [starterText, setStarterText] = useState("");
   const [fav, setFav] = useState(false);
   const [later, setLater] = useState(false);
+  // §24 — Track which rights claim has its inline dispute form open.
+  // Only one form is open at a time per video (set of claim ids).
+  const [disputeOpenFor, setDisputeOpenFor] = useState<string | null>(null);
   // Age gate — true once the user has confirmed 18+ for an age-restricted
   // video in this session. Persisted in sessionStorage so it only shows once
   // per session (cleared when the browser tab closes).
@@ -427,6 +437,34 @@ export function WatchView({ videoId }: { videoId: string }) {
     },
     onError: (e: unknown) => {
       const msg = e instanceof Error ? e.message : "Conversion failed";
+      toast.error(msg);
+    },
+  });
+
+  // §24 — File a rights-claim dispute. POST /api/rights-claims/[id]/disputes
+  // with { disputant, reason, evidence }. On success, invalidate the rights
+  // claims query so the panel re-renders with the claim's new "disputed"
+  // status. The disputant is the current user's displayName (or "Anonymous").
+  const disputeMutation = useMutation({
+    mutationFn: async ({ claimId, reason, evidence }: { claimId: string; reason: string; evidence: string }) => {
+      const res = await fetch(`/api/rights-claims/${claimId}/disputes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ disputant: disputantName, reason, evidence }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error((data as { error?: string })?.error || "Failed to file dispute");
+      return data as { ok: boolean; dispute: { id: string; status: string }; message?: string };
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["rights-claims", videoId] });
+      toast.success("Dispute filed", {
+        description: data.message || "The claim status is now 'disputed'.",
+      });
+      setDisputeOpenFor(null);
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Failed to file dispute";
       toast.error(msg);
     },
   });
@@ -1057,8 +1095,31 @@ export function WatchView({ videoId }: { videoId: string }) {
                           <Badge variant="outline" className="text-[10px] py-0">{c.claimType}</Badge>
                           <Badge variant="outline" className="text-[10px] py-0">{c.action}</Badge>
                           {c.status !== "active" && <Badge variant="secondary" className="text-[10px] py-0">{c.status}</Badge>}
+                          {c.status === "active" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-[11px] rounded-full ml-auto hover:bg-rose/10 hover:text-rose"
+                              onClick={() => setDisputeOpenFor((cur) => (cur === c.id ? null : c.id))}
+                              aria-label={`File dispute for claim by ${c.claimant}`}
+                              aria-expanded={disputeOpenFor === c.id}
+                            >
+                              <Scale className="h-3 w-3 mr-1" />
+                              {disputeOpenFor === c.id ? "Cancel" : "File dispute"}
+                            </Button>
+                          )}
                         </div>
                         {c.matchedMaterial && <p className="mt-1 text-muted-foreground">Matched: {c.matchedMaterial}</p>}
+                        {disputeOpenFor === c.id && (
+                          <DisputeForm
+                            claimId={c.id}
+                            submitting={disputeMutation.isPending}
+                            onCancel={() => setDisputeOpenFor(null)}
+                            onSubmit={({ reason, evidence }) =>
+                              disputeMutation.mutate({ claimId: c.id, reason, evidence })
+                            }
+                          />
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -2112,6 +2173,102 @@ function WatchSkeleton() {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * DisputeForm — inline form for filing a rights-claim dispute (§24 appeal
+ * workflow). Renders a reason textarea (required) + evidence textarea
+ * (optional) + Submit/Cancel buttons. On submit, calls onSubmit with the
+ * trimmed reason + evidence; the parent decides the network call.
+ *
+ * Compact, self-contained, and accessible (labels associated via htmlFor).
+ */
+interface DisputeFormProps {
+  claimId: string;
+  submitting: boolean;
+  onCancel: () => void;
+  onSubmit: (payload: { reason: string; evidence: string }) => void;
+}
+
+function DisputeForm({ claimId, submitting, onCancel, onSubmit }: DisputeFormProps) {
+  const [reason, setReason] = useState("");
+  const [evidence, setEvidence] = useState("");
+
+  const reasonId = `dispute-reason-${claimId}`;
+  const evidenceId = `dispute-evidence-${claimId}`;
+
+  const submit = () => {
+    if (!reason.trim()) return;
+    onSubmit({ reason: reason.trim(), evidence: evidence.trim() });
+  };
+
+  return (
+    <div className="mt-2 rounded-md border border-rose/30 bg-rose/5 p-2.5 space-y-2">
+      <div>
+        <label
+          htmlFor={reasonId}
+          className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide"
+        >
+          Reason for dispute (required)
+        </label>
+        <Textarea
+          id={reasonId}
+          value={reason}
+          onChange={(e) => setReason(e.target.value.slice(0, 1000))}
+          rows={2}
+          maxLength={1000}
+          placeholder="Explain why you believe this claim is incorrect or fair use…"
+          className="mt-1 text-xs resize-none"
+        />
+      </div>
+      <div>
+        <label
+          htmlFor={evidenceId}
+          className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide"
+        >
+          Evidence (optional)
+        </label>
+        <Textarea
+          id={evidenceId}
+          value={evidence}
+          onChange={(e) => setEvidence(e.target.value.slice(0, 2000))}
+          rows={2}
+          maxLength={2000}
+          placeholder="Links, licenses, documentation that supports your dispute…"
+          className="mt-1 text-xs resize-none"
+        />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs rounded-full"
+          onClick={onCancel}
+          disabled={submitting}
+        >
+          Cancel
+        </Button>
+        <Button
+          size="sm"
+          className="h-7 px-3 text-xs rounded-full bg-rose text-white hover:bg-rose/90"
+          onClick={submit}
+          disabled={submitting || !reason.trim()}
+        >
+          {submitting ? (
+            <>
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              Filing…
+            </>
+          ) : (
+            <>
+              <Scale className="h-3 w-3 mr-1" />
+              Submit dispute
+            </>
+          )}
+        </Button>
       </div>
     </div>
   );

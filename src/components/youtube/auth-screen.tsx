@@ -168,11 +168,12 @@ export function AuthScreen({
         <div className="space-y-4">
           {/* Identifier (email / phone / username) */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <label htmlFor="auth-identifier" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               {mode === "login" ? "Email, phone, or username" : "Email or phone number"}
             </label>
             <div className="relative mt-1">
               <Input
+                id="auth-identifier"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 placeholder={mode === "login" ? "you@example.com / +1234... / @username" : "you@example.com"}
@@ -193,11 +194,12 @@ export function AuthScreen({
           {/* Username (register only) — with live availability */}
           {mode === "register" && (
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <label htmlFor="auth-username" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 CIRKLE username
               </label>
               <div className="relative mt-1">
                 <Input
+                  id="auth-username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 30))}
                   placeholder="choose a username"
@@ -249,10 +251,11 @@ export function AuthScreen({
           {/* Display name (register only) */}
           {mode === "register" && (
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <label htmlFor="auth-display-name" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Display name (optional)
               </label>
               <Input
+                id="auth-display-name"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value.slice(0, 60))}
                 placeholder={username || "Your name"}
@@ -263,11 +266,12 @@ export function AuthScreen({
 
           {/* Password */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <label htmlFor="auth-password" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Password
             </label>
             <div className="relative mt-1">
               <Input
+                id="auth-password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

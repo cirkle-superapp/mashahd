@@ -67,10 +67,11 @@ export function AvatarPicker({
 
         {/* Display name */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <label htmlFor="avatar-display-name" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Display name
           </label>
           <Input
+            id="avatar-display-name"
             value={nameDraft}
             onChange={(e) => setNameDraft(e.target.value.slice(0, 40))}
             placeholder="Your name"
@@ -103,10 +104,11 @@ export function AvatarPicker({
 
         {/* Upload */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 block">
+          <label htmlFor="avatar-upload-input" className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 block">
             Upload your own
           </label>
           <button
+            type="button"
             onClick={() => fileRef.current?.click()}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border hover:border-gold/50 hover:bg-gold/5 transition-colors text-sm"
           >
@@ -114,6 +116,7 @@ export function AvatarPicker({
             Choose a file from your device
           </button>
           <input
+            id="avatar-upload-input"
             ref={fileRef}
             type="file"
             accept="image/*"

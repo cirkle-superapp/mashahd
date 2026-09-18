@@ -2,12 +2,21 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, Share2, MoreHorizontal, Heart, Sparkles, BarChart3, Download, Wallet } from "lucide-react";
+import { Bell, Share2, MoreHorizontal, Heart, Sparkles, BarChart3, Download, Wallet, Pencil, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { formatSubs, formatViews, formatCount } from "@/lib/format";
 import type { ChannelWithFlags, Video } from "@/lib/types";
@@ -128,6 +137,10 @@ export function ChannelView({ channelId }: { channelId: string }) {
   // fetch studio data until the creator opens the panel.
   const [supportOpen, setSupportOpen] = useState(false);
   const [studioOpen, setStudioOpen] = useState(false);
+  // §PATCH /api/channels/[id] — Edit-channel dialog state. When open, the
+  // dialog lets the creator edit name/description/links/country. Save fires
+  // a PATCH with optimistic update.
+  const [editOpen, setEditOpen] = useState(false);
 
   const { data: studioData, isLoading: studioLoading } = useQuery({
     queryKey: ["channel-studio", channelId, bid],
@@ -247,6 +260,25 @@ export function ChannelView({ channelId }: { channelId: string }) {
             <Button variant="secondary" size="sm" className="rounded-full h-9 px-4 bg-muted hover:bg-accent">
               <Share2 className="h-4 w-4 mr-1.5" /> Share
             </Button>
+            {/* Edit-channel button — opens a Dialog to PATCH name/description/
+                links/country. Wired to /api/channels/[id] PATCH. */}
+            <Button
+              variant="secondary"
+              size="sm"
+              className="rounded-full h-9 px-4 bg-muted hover:bg-accent"
+              onClick={() => setEditOpen(true)}
+              aria-label="Edit channel"
+              title="Edit channel"
+            >
+              <Pencil className="h-4 w-4 mr-1.5" /> Edit
+            </Button>
+            <EditChannelDialog
+              open={editOpen}
+              onOpenChange={setEditOpen}
+              channelId={channelId}
+              bid={bid}
+              channel={channel}
+            />
             {/* §49 — Creator Studio button. Always visible in dev (spec:
                 "for now, always show it since we're in dev"). Toggles the
                 Creator Studio section at the bottom of the channel view. */}
@@ -530,5 +562,208 @@ function ChannelSkeleton() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * EditChannelDialog — opens a Dialog to edit name / description / links /
+ * country. On Save, fires PATCH /api/channels/[id] with optimistic update:
+ * the channel cache is updated immediately and rolled back on error.
+ *
+ * The PATCH endpoint verifies ownership via signed browserId and only allows
+ * a small allowlist of fields. We pass exactly the four editable fields.
+ */
+interface EditChannelDialogProps {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  channelId: string;
+  bid: string;
+  channel: ChannelWithFlags;
+}
+
+function EditChannelDialog({ open, onOpenChange, channelId, bid, channel }: EditChannelDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {/* Key on the inner form forces a fresh mount whenever the dialog
+          opens — so initial state is always re-derived from the latest
+          channel data, without needing a setState-in-effect. */}
+      {open ? (
+        <EditChannelForm
+          key={`${channelId}-${open}`}
+          channelId={channelId}
+          bid={bid}
+          channel={channel}
+          onDone={() => onOpenChange(false)}
+        />
+      ) : null}
+    </Dialog>
+  );
+}
+
+interface EditChannelFormProps {
+  channelId: string;
+  bid: string;
+  channel: ChannelWithFlags;
+  onDone: () => void;
+}
+
+function EditChannelForm({ channelId, bid, channel, onDone }: EditChannelFormProps) {
+  const qc = useQueryClient();
+  // Initial state derived from the latest channel data on mount.
+  const [name, setName] = useState(channel.name);
+  const [description, setDescription] = useState(channel.description);
+  const [links, setLinks] = useState(channel.links);
+  const [country, setCountry] = useState(channel.country);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/channels/${channelId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          browserId: bid,
+          name,
+          description,
+          links,
+          country,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error((data as { error?: string })?.error || "Update failed");
+      return data as { ok: boolean; channel: ChannelWithFlags };
+    },
+    onMutate: async () => {
+      // Optimistically update the channel cache.
+      await qc.cancelQueries({ queryKey: ["channel", channelId, bid] });
+      const prev = qc.getQueryData<{ channel: ChannelWithFlags; subscribed: boolean }>(["channel", channelId, bid]);
+      if (prev) {
+        qc.setQueryData(["channel", channelId, bid], {
+          ...prev,
+          channel: { ...prev.channel, name, description, links, country },
+        });
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      // Roll back on error.
+      if (ctx?.prev) {
+        qc.setQueryData(["channel", channelId, bid], ctx.prev);
+      }
+      toast.error("Could not save channel — please try again.");
+    },
+    onSuccess: (data) => {
+      // Use the server's authoritative response.
+      qc.setQueryData(["channel", channelId, bid], (old: { channel: ChannelWithFlags; subscribed: boolean } | undefined) => {
+        if (!old) return old;
+        return { ...old, channel: data.channel };
+      });
+      toast.success("Channel updated");
+      onDone();
+    },
+  });
+
+  const handleSubmit = () => {
+    if (!bid) {
+      toast.error("Please wait for your session to load.");
+      return;
+    }
+    if (!name.trim()) {
+      toast.error("Channel name cannot be empty.");
+      return;
+    }
+    mutation.mutate();
+  };
+
+  return (
+    <DialogContent className="max-w-md">
+      <DialogTitle>Edit channel</DialogTitle>
+      <DialogDescription>
+        Update your channel name, description, social links, or country.
+      </DialogDescription>
+
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="channel-edit-name" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Channel name
+          </label>
+          <Input
+            id="channel-edit-name"
+            value={name}
+            onChange={(e) => setName(e.target.value.slice(0, 200))}
+            maxLength={200}
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <label htmlFor="channel-edit-description" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Description
+          </label>
+          <Textarea
+            id="channel-edit-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
+            rows={4}
+            maxLength={2000}
+            className="mt-1 resize-none"
+          />
+        </div>
+        <div>
+          <label htmlFor="channel-edit-links" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Links
+          </label>
+          <Input
+            id="channel-edit-links"
+            value={links}
+            onChange={(e) => setLinks(e.target.value.slice(0, 500))}
+            placeholder="e.g. twitter=@handle|website=https://..."
+            maxLength={500}
+            className="mt-1"
+          />
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Pipe-separated key=value pairs.
+          </p>
+        </div>
+        <div>
+          <label htmlFor="channel-edit-country" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Country
+          </label>
+          <Input
+            id="channel-edit-country"
+            value={country}
+            onChange={(e) => setCountry(e.target.value.slice(0, 200))}
+            placeholder="ISO code, e.g. US or SA"
+            maxLength={200}
+            className="mt-1"
+          />
+        </div>
+      </div>
+
+      <DialogFooter className="mt-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="rounded-full"
+          onClick={onDone}
+          disabled={mutation.isPending}
+        >
+          Cancel
+        </Button>
+        <Button
+          size="sm"
+          className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+          onClick={handleSubmit}
+          disabled={mutation.isPending || !name.trim()}
+        >
+          {mutation.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+              Saving…
+            </>
+          ) : (
+            "Save changes"
+          )}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
   );
 }

@@ -204,10 +204,11 @@ export function CreateChannel({
         {step === "details" && (
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <label htmlFor="channel-name" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Channel name (required)
               </label>
               <Input
+                id="channel-name"
                 value={channelName}
                 onChange={(e) => setChannelName(e.target.value)}
                 placeholder="e.g. Wander Lens"
@@ -216,7 +217,7 @@ export function CreateChannel({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <label htmlFor="channel-handle" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Handle
               </label>
               <div className="flex items-center mt-1">
@@ -224,6 +225,7 @@ export function CreateChannel({
                   @
                 </span>
                 <Input
+                  id="channel-handle"
                   value={handle}
                   onChange={(e) =>
                     setHandle(
@@ -242,10 +244,11 @@ export function CreateChannel({
               </p>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <label htmlFor="channel-description" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Description
               </label>
               <textarea
+                id="channel-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Tell viewers what your channel is about"
@@ -278,10 +281,11 @@ export function CreateChannel({
               </p>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 block">
+              <label htmlFor="channel-id-upload" className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 block">
                 Upload your ID document
               </label>
               <label
+                htmlFor="channel-id-upload"
                 className={cn(
                   "flex flex-col items-center justify-center gap-2 py-10 px-4 rounded-xl border-2 border-dashed cursor-pointer transition-colors",
                   idFile
@@ -309,6 +313,7 @@ export function CreateChannel({
                   </>
                 )}
                 <input
+                  id="channel-id-upload"
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"

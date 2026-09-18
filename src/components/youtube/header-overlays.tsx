@@ -309,10 +309,11 @@ export function CreateButton() {
 
           {/* Title */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <label htmlFor="upload-video-title" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Title (required)
             </label>
             <input
+              id="upload-video-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Give your video a compelling title"
@@ -324,10 +325,11 @@ export function CreateButton() {
 
           {/* Description */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <label htmlFor="upload-video-description" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Description
             </label>
             <textarea
+              id="upload-video-description"
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
               placeholder="Tell viewers about your video"
@@ -340,10 +342,11 @@ export function CreateButton() {
 
           {/* Category */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <label htmlFor="upload-video-category" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Category
             </label>
             <select
+              id="upload-video-category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               aria-label="Video category"
