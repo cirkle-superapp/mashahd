@@ -456,6 +456,10 @@ export function createTursoDB() {
   const client = getTursoClient();
   if (!client) return null;
 
+  // Ensure all tables exist (CREATE TABLE IF NOT EXISTS).
+  // This runs once per serverless invocation (idempotent — safe to repeat).
+  ensureAllTables(client).catch(() => { /* non-fatal — tables may already exist */ });
+
   return {
     channel: createModel(client, "Channel"),
     video: createModel(client, "Video"),
@@ -475,12 +479,110 @@ export function createTursoDB() {
     playlistItem: createModel(client, "PlaylistItem"),
     // Clips
     clip: createModel(client, "Clip"),
+    // New models (pass 5+)
+    outboxEvent: createModel(client, "OutboxEvent"),
+    notification: createModel(client, "Notification"),
+    notificationPreference: createModel(client, "NotificationPreference"),
+    share: createModel(client, "Share"),
+    userPreference: createModel(client, "UserPreference"),
+    recommendationFeedback: createModel(client, "RecommendationFeedback"),
+    userBlock: createModel(client, "UserBlock"),
+    continueWatching: createModel(client, "ContinueWatching"),
+    contentProvenance: createModel(client, "ContentProvenance"),
+    interestProfile: createModel(client, "InterestProfile"),
+    smartPlaylist: createModel(client, "SmartPlaylist"),
+    recommendationChangelog: createModel(client, "RecommendationChangelog"),
+    playlistFolder: createModel(client, "PlaylistFolder"),
+    activeSession: createModel(client, "ActiveSession"),
+    commentMeta: createModel(client, "CommentMeta"),
+    videoRelationship: createModel(client, "VideoRelationship"),
+    videoCorrection: createModel(client, "VideoCorrection"),
+    rightsClaim: createModel(client, "RightsClaim"),
+    rightsDispute: createModel(client, "RightsDispute"),
+    livePoll: createModel(client, "LivePoll"),
+    liveQA: createModel(client, "LiveQA"),
+    adDisclosure: createModel(client, "AdDisclosure"),
+    channelRole: createModel(client, "ChannelRole"),
+    sponsoredHashtag: createModel(client, "SponsoredHashtag"),
+    factCheckNote: createModel(client, "FactCheckNote"),
     $queryRaw: async (sql: string) => {
       const result = await client.execute(sql);
       return result.rows;
     },
     _client: client,
   };
+}
+
+/** Create all tables if they don't exist (idempotent). */
+async function ensureAllTables(client: Client): Promise<void> {
+  const tables: { name: string; sql: string }[] = [
+    { name: "OutboxEvent", sql: "CREATE TABLE IF NOT EXISTS OutboxEvent (id TEXT PRIMARY KEY, aggregateType TEXT, aggregateId TEXT, eventType TEXT, schemaVersion INTEGER DEFAULT 1, payload TEXT, tenantId TEXT DEFAULT 'default', createdAt TEXT, processedAt TEXT, attemptCount INTEGER DEFAULT 0, status TEXT DEFAULT 'PENDING', lastError TEXT DEFAULT '', idempotencyKey TEXT, correlationId TEXT, causationId TEXT)" },
+    { name: "Notification", sql: "CREATE TABLE IF NOT EXISTS Notification (id TEXT PRIMARY KEY, recipientId TEXT, type TEXT, payload TEXT, read INTEGER DEFAULT 0, createdAt TEXT)" },
+    { name: "NotificationPreference", sql: "CREATE TABLE IF NOT EXISTS NotificationPreference (id TEXT PRIMARY KEY, userId TEXT UNIQUE, newVideos INTEGER DEFAULT 1, comments INTEGER DEFAULT 1, subscribers INTEGER DEFAULT 1, tips INTEGER DEFAULT 1, mentions INTEGER DEFAULT 1, emailEnabled INTEGER DEFAULT 1, pushEnabled INTEGER DEFAULT 0, createdAt TEXT, updatedAt TEXT)" },
+    { name: "Share", sql: "CREATE TABLE IF NOT EXISTS Share (id TEXT PRIMARY KEY, videoId TEXT, sharerId TEXT, platform TEXT DEFAULT 'copy_link', createdAt TEXT)" },
+    { name: "UserPreference", sql: "CREATE TABLE IF NOT EXISTS UserPreference (id TEXT PRIMARY KEY, ownerId TEXT UNIQUE, preferredQuality TEXT DEFAULT 'auto', preferredSpeed REAL DEFAULT 1, preferredVolume INTEGER DEFAULT 100, preferredSubtitleLang TEXT DEFAULT '', preferredAudioLang TEXT DEFAULT '', disableShorts INTEGER DEFAULT 0, aiContentFilter TEXT DEFAULT 'show_all', homeMode TEXT DEFAULT 'smart', discoveryFamiliar INTEGER DEFAULT 60, discoveryNewCreators INTEGER DEFAULT 25, discoveryUnexpected INTEGER DEFAULT 15, searchSort TEXT DEFAULT 'relevance', pauseRecommendationLearning INTEGER DEFAULT 0, reducedMotion INTEGER DEFAULT 0, highContrast INTEGER DEFAULT 0, largeControls INTEGER DEFAULT 0, continueWatchingEnabled INTEGER DEFAULT 1, autoplayNext INTEGER DEFAULT 0, uiMode TEXT DEFAULT 'simple', likesVisibility TEXT DEFAULT 'private', subscriptionsVisibility TEXT DEFAULT 'private', historyVisibility TEXT DEFAULT 'private', playlistsVisibility TEXT DEFAULT 'public', commentsVisibility TEXT DEFAULT 'public', createdAt TEXT, updatedAt TEXT)" },
+    { name: "RecommendationFeedback", sql: "CREATE TABLE IF NOT EXISTS RecommendationFeedback (id TEXT PRIMARY KEY, userId TEXT, videoId TEXT, reason TEXT, note TEXT DEFAULT '', createdAt TEXT)" },
+    { name: "UserBlock", sql: "CREATE TABLE IF NOT EXISTS UserBlock (id TEXT PRIMARY KEY, userId TEXT, blockType TEXT, blockValue TEXT, createdAt TEXT)" },
+    { name: "ContinueWatching", sql: "CREATE TABLE IF NOT EXISTS ContinueWatching (id TEXT PRIMARY KEY, userId TEXT, videoId TEXT, position REAL DEFAULT 0, completed INTEGER DEFAULT 0, playbackSpeed REAL DEFAULT 1, qualityPref TEXT DEFAULT 'auto', audioLang TEXT DEFAULT '', subtitleLang TEXT DEFAULT '', updatedAt TEXT)" },
+    { name: "ContentProvenance", sql: "CREATE TABLE IF NOT EXISTS ContentProvenance (id TEXT PRIMARY KEY, videoId TEXT UNIQUE, origin TEXT DEFAULT 'unknown', components TEXT DEFAULT '{}', sourceNote TEXT DEFAULT '', declared INTEGER DEFAULT 0, createdAt TEXT, updatedAt TEXT)" },
+    { name: "InterestProfile", sql: "CREATE TABLE IF NOT EXISTS InterestProfile (id TEXT PRIMARY KEY, userId TEXT, name TEXT, categories TEXT DEFAULT '', isActive INTEGER DEFAULT 0, createdAt TEXT, updatedAt TEXT)" },
+    { name: "SmartPlaylist", sql: "CREATE TABLE IF NOT EXISTS SmartPlaylist (id TEXT PRIMARY KEY, userId TEXT, name TEXT, description TEXT DEFAULT '', rules TEXT DEFAULT '{}', createdAt TEXT, updatedAt TEXT)" },
+    { name: "RecommendationChangelog", sql: "CREATE TABLE IF NOT EXISTS RecommendationChangelog (id TEXT PRIMARY KEY, userId TEXT, eventType TEXT, description TEXT, metadata TEXT DEFAULT '{}', createdAt TEXT)" },
+    { name: "PlaylistFolder", sql: "CREATE TABLE IF NOT EXISTS PlaylistFolder (id TEXT PRIMARY KEY, userStateId TEXT, name TEXT, parentId TEXT, position INTEGER DEFAULT 0, createdAt TEXT, updatedAt TEXT)" },
+    { name: "ActiveSession", sql: "CREATE TABLE IF NOT EXISTS ActiveSession (id TEXT PRIMARY KEY, userId TEXT, deviceFingerprint TEXT, deviceName TEXT DEFAULT 'Unknown device', ipAddress TEXT DEFAULT '', userAgent TEXT DEFAULT '', lastSeenAt TEXT, isCurrent INTEGER DEFAULT 0, createdAt TEXT)" },
+    { name: "CommentMeta", sql: "CREATE TABLE IF NOT EXISTS CommentMeta (id TEXT PRIMARY KEY, commentId TEXT UNIQUE, isQuestion INTEGER DEFAULT 0, isCreatorReply INTEGER DEFAULT 0, pinnedBy TEXT, pinnedAt TEXT, createdAt TEXT, updatedAt TEXT)" },
+    { name: "VideoRelationship", sql: "CREATE TABLE IF NOT EXISTS VideoRelationship (id TEXT PRIMARY KEY, videoId TEXT, relatedVideoId TEXT, relationType TEXT, note TEXT DEFAULT '', createdBy TEXT DEFAULT 'system', createdAt TEXT)" },
+    { name: "VideoCorrection", sql: "CREATE TABLE IF NOT EXISTS VideoCorrection (id TEXT PRIMARY KEY, videoId TEXT, timestamp INTEGER DEFAULT 0, originalText TEXT, correctedText TEXT, note TEXT DEFAULT '', viewersNotified INTEGER DEFAULT 0, createdAt TEXT, updatedAt TEXT)" },
+    { name: "RightsClaim", sql: "CREATE TABLE IF NOT EXISTS RightsClaim (id TEXT PRIMARY KEY, videoId TEXT, claimant TEXT, claimType TEXT, matchedMaterial TEXT, timestampStart INTEGER DEFAULT 0, timestampEnd INTEGER DEFAULT 0, action TEXT DEFAULT 'monetize', territory TEXT DEFAULT '', status TEXT DEFAULT 'active', evidence TEXT DEFAULT '', createdAt TEXT, updatedAt TEXT)" },
+    { name: "RightsDispute", sql: "CREATE TABLE IF NOT EXISTS RightsDispute (id TEXT PRIMARY KEY, claimId TEXT, disputant TEXT, reason TEXT, evidence TEXT DEFAULT '', status TEXT DEFAULT 'submitted', resolution TEXT DEFAULT '', createdAt TEXT, updatedAt TEXT)" },
+    { name: "LivePoll", sql: "CREATE TABLE IF NOT EXISTS LivePoll (id TEXT PRIMARY KEY, videoId TEXT, question TEXT, options TEXT DEFAULT '[]', status TEXT DEFAULT 'active', createdAt TEXT, closedAt TEXT)" },
+    { name: "LiveQA", sql: "CREATE TABLE IF NOT EXISTS LiveQA (id TEXT PRIMARY KEY, videoId TEXT, askerName TEXT, askerAvatar TEXT DEFAULT '', question TEXT, answer TEXT DEFAULT '', answeredBy TEXT DEFAULT '', answeredAt TEXT, upvotes INTEGER DEFAULT 0, createdAt TEXT)" },
+    { name: "AdDisclosure", sql: "CREATE TABLE IF NOT EXISTS AdDisclosure (id TEXT PRIMARY KEY, videoId TEXT, adType TEXT, sponsor TEXT, product TEXT DEFAULT '', isPaid INTEGER DEFAULT 1, disclosureNote TEXT DEFAULT '', createdAt TEXT)" },
+    { name: "ChannelRole", sql: "CREATE TABLE IF NOT EXISTS ChannelRole (id TEXT PRIMARY KEY, channelId TEXT, userId TEXT, role TEXT DEFAULT 'viewer', accepted INTEGER DEFAULT 0, invitedBy TEXT DEFAULT '', createdAt TEXT, updatedAt TEXT)" },
+    { name: "SponsoredHashtag", sql: "CREATE TABLE IF NOT EXISTS SponsoredHashtag (id TEXT PRIMARY KEY, hashtag TEXT UNIQUE, advertiser TEXT DEFAULT '', city TEXT DEFAULT '', budget INTEGER DEFAULT 0, startsAt TEXT, endsAt TEXT, active INTEGER DEFAULT 1, createdAt TEXT)" },
+    { name: "FactCheckNote", sql: "CREATE TABLE IF NOT EXISTS FactCheckNote (id TEXT PRIMARY KEY, videoId TEXT, timestamp INTEGER, claim TEXT, verdict TEXT, evidence TEXT DEFAULT '', submitterId TEXT, submitterName TEXT DEFAULT 'Anonymous', upvotes INTEGER DEFAULT 0, downvotes INTEGER DEFAULT 0, status TEXT DEFAULT 'pending', createdAt TEXT, updatedAt TEXT)" },
+    // Also ensure existing tables that might be missing on Turso
+    { name: "UserState", sql: "CREATE TABLE IF NOT EXISTS UserState (id TEXT PRIMARY KEY, browserId TEXT UNIQUE, likedVideoIds TEXT DEFAULT '', dislikedVideoIds TEXT DEFAULT '', subscribedChannelIds TEXT DEFAULT '', watchedVideoIds TEXT DEFAULT '', favoriteVideoIds TEXT DEFAULT '', watchLaterIds TEXT DEFAULT '', createdAt TEXT, updatedAt TEXT)" },
+    { name: "Clip", sql: "CREATE TABLE IF NOT EXISTS Clip (id TEXT PRIMARY KEY, videoId TEXT, creatorId TEXT, creatorName TEXT DEFAULT 'Anonymous', title TEXT, startSec INTEGER, endSec INTEGER, note TEXT DEFAULT '', views INTEGER DEFAULT 0, createdAt TEXT)" },
+    { name: "Playlist", sql: "CREATE TABLE IF NOT EXISTS Playlist (id TEXT PRIMARY KEY, userStateId TEXT, title TEXT, description TEXT DEFAULT '', visibility TEXT DEFAULT 'public', coverUrl TEXT DEFAULT '', createdAt TEXT, updatedAt TEXT)" },
+    { name: "PlaylistItem", sql: "CREATE TABLE IF NOT EXISTS PlaylistItem (id TEXT PRIMARY KEY, playlistId TEXT, videoId TEXT, position INTEGER DEFAULT 0, addedAt TEXT)" },
+  ];
+
+  for (const { name, sql } of tables) {
+    try {
+      await client.execute(sql);
+      // Create indexes.
+      const indexes: Record<string, string[]> = {
+        "Notification": ["CREATE INDEX IF NOT EXISTS idx_notif_recipient ON Notification (recipientId, createdAt)", "CREATE INDEX IF NOT EXISTS idx_notif_recipient_read ON Notification (recipientId, read)"],
+        "RecommendationFeedback": ["CREATE INDEX IF NOT EXISTS idx_recfb_user ON RecommendationFeedback (userId)", "CREATE INDEX IF NOT EXISTS idx_recfb_video ON RecommendationFeedback (videoId)"],
+        "UserBlock": ["CREATE INDEX IF NOT EXISTS idx_block_user ON UserBlock (userId)", "CREATE INDEX IF NOT EXISTS idx_block_type ON UserBlock (blockType)"],
+        "ContinueWatching": ["CREATE INDEX IF NOT EXISTS idx_cw_user ON ContinueWatching (userId)", "CREATE INDEX IF NOT EXISTS idx_cw_updated ON ContinueWatching (updatedAt)"],
+        "VideoRelationship": ["CREATE INDEX IF NOT EXISTS idx_vrel_video ON VideoRelationship (videoId)", "CREATE INDEX IF NOT EXISTS idx_vrel_related ON VideoRelationship (relatedVideoId)"],
+        "VideoCorrection": ["CREATE INDEX IF NOT EXISTS idx_vc_video ON VideoCorrection (videoId)"],
+        "RightsClaim": ["CREATE INDEX IF NOT EXISTS idx_rc_video ON RightsClaim (videoId)", "CREATE INDEX IF NOT EXISTS idx_rc_status ON RightsClaim (status)"],
+        "RightsDispute": ["CREATE INDEX IF NOT EXISTS idx_rd_claim ON RightsDispute (claimId)", "CREATE INDEX IF NOT EXISTS idx_rd_status ON RightsDispute (status)"],
+        "LivePoll": ["CREATE INDEX IF NOT EXISTS idx_lp_video ON LivePoll (videoId)", "CREATE INDEX IF NOT EXISTS idx_lp_status ON LivePoll (status)"],
+        "LiveQA": ["CREATE INDEX IF NOT EXISTS idx_lqa_video ON LiveQA (videoId)"],
+        "AdDisclosure": ["CREATE INDEX IF NOT EXISTS idx_ad_video ON AdDisclosure (videoId)", "CREATE INDEX IF NOT EXISTS idx_ad_type ON AdDisclosure (adType)"],
+        "ChannelRole": ["CREATE INDEX IF NOT EXISTS idx_cr_channel ON ChannelRole (channelId)", "CREATE INDEX IF NOT EXISTS idx_cr_user ON ChannelRole (userId)", "CREATE INDEX IF NOT EXISTS idx_cr_role ON ChannelRole (role)"],
+        "SponsoredHashtag": ["CREATE INDEX IF NOT EXISTS idx_sh_active ON SponsoredHashtag (active)", "CREATE INDEX IF NOT EXISTS idx_sh_hashtag ON SponsoredHashtag (hashtag)"],
+        "FactCheckNote": ["CREATE INDEX IF NOT EXISTS idx_fcn_video ON FactCheckNote (videoId)", "CREATE INDEX IF NOT EXISTS idx_fcn_status ON FactCheckNote (status)"],
+        "ActiveSession": ["CREATE INDEX IF NOT EXISTS idx_as_user ON ActiveSession (userId)", "CREATE INDEX IF NOT EXISTS idx_as_fp ON ActiveSession (deviceFingerprint)"],
+        "CommentMeta": ["CREATE INDEX IF NOT EXISTS idx_cm_comment ON CommentMeta (commentId)", "CREATE INDEX IF NOT EXISTS idx_cm_question ON CommentMeta (isQuestion)"],
+        "RecommendationChangelog": ["CREATE INDEX IF NOT EXISTS idx_rcl_user ON RecommendationChangelog (userId, createdAt)"],
+        "InterestProfile": ["CREATE INDEX IF NOT EXISTS idx_ip_user ON InterestProfile (userId)"],
+        "SmartPlaylist": ["CREATE INDEX IF NOT EXISTS idx_sp_user ON SmartPlaylist (userId)"],
+        "PlaylistFolder": ["CREATE INDEX IF NOT EXISTS idx_pf_user ON PlaylistFolder (userStateId)", "CREATE INDEX IF NOT EXISTS idx_pf_parent ON PlaylistFolder (parentId)"],
+      };
+      if (indexes[name]) {
+        for (const idxSql of indexes[name]) {
+          await client.execute(idxSql).catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.warn(`[turso] Failed to ensure table ${name}:`, e);
+    }
+  }
 }
 
 export type TursoDB = ReturnType<typeof createTursoDB>;
