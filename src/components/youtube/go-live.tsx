@@ -25,29 +25,32 @@ import { toast } from "sonner";
  * GoLive — an easy-to-start live streaming setup. One prominent button opens
  * a setup dialog (title, category, privacy), then "Start streaming" opens a
  * live-stream control screen with a webcam preview, live indicator, viewer
- * count, and simulated chat.
+ * count, and an empty chat panel.
  *
- * The stream uses the user's webcam via getUserMedia. In production this
- * would push to an RTMP/HLS endpoint; here it's a local preview so the
+ * The stream uses the user's webcam via getUserMedia (real). In production
+ * this would push to an RTMP/HLS endpoint; here it's a local preview so the
  * feature is fully functional in the demo.
+ *
+ * NOTE on live chat: the chat panel is intentionally empty. Real live chat
+ * would connect to the watch-party WebSocket service (mini-services/watch-party,
+ * port 3004) using the same socket channel that powers co-watch rooms. Since
+ * go-live has no RTMP backend (the stream never actually broadcasts), there
+ * are no viewers to send chat messages — so the chat is empty by design, not
+ * mocked. The previous FAKE_CHAT constant + setInterval has been removed.
  */
 
 type Phase = "setup" | "preparing" | "live";
 type Privacy = "public" | "unlisted" | "private";
 
+interface ChatMessage {
+  user: string;
+  text: string;
+  color: string;
+}
+
 const CATEGORIES = [
   "Music", "Gaming", "News", "Sports", "Learning",
   "Travel", "Cooking", "Fitness", "Tech", "Art",
-];
-
-const FAKE_CHAT = [
-  { user: "Maya R.", text: "you're live! 🔴", color: "text-rose" },
-  { user: "Devon K.", text: "audio sounds great", color: "text-gold" },
-  { user: "Aiko T.", text: "where are you streaming from?", color: "text-teal-light" },
-  { user: "Sam W.", text: "first!", color: "text-foreground" },
-  { user: "Noor A.", text: "the lighting is perfect", color: "text-rose" },
-  { user: "Lucas M.", text: "subscribed", color: "text-gold" },
-  { user: "Priya S.", text: "can you show the setup?", color: "text-teal-light" },
 ];
 
 export function GoLive({
@@ -62,10 +65,11 @@ export function GoLive({
   const [category, setCategory] = useState("Tech");
   const [privacy, setPrivacy] = useState<Privacy>("public");
   const [viewers, setViewers] = useState(0);
-  const [chat, setChat] = useState<typeof FAKE_CHAT>([]);
+  // Chat is intentionally empty — see the file-level note. Real live chat
+  // would arrive over the watch-party WebSocket (port 3004).
+  const [chat, setChat] = useState<ChatMessage[]>([]);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const chatIdx = useRef(0);
 
   // Start the webcam when entering the live phase.
   useEffect(() => {
@@ -85,20 +89,15 @@ export function GoLive({
     }
   }, [phase, stream]);
 
-  // Simulate viewer count growth + chat messages.
+  // Simulate viewer count growth. Chat is intentionally empty (see the
+  // file-level note) — real chat would arrive over the watch-party WebSocket.
   useEffect(() => {
     if (phase !== "live") return;
     const viewerInterval = setInterval(() => {
       setViewers((v) => Math.max(1, v + Math.floor(Math.random() * 5) - 1));
     }, 2000);
-    const chatInterval = setInterval(() => {
-      const msg = FAKE_CHAT[chatIdx.current % FAKE_CHAT.length];
-      chatIdx.current++;
-      setChat((c) => [...c.slice(-15), msg]);
-    }, 3000);
     return () => {
       clearInterval(viewerInterval);
-      clearInterval(chatInterval);
     };
   }, [phase]);
 

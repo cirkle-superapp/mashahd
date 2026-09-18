@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useBrowserId } from "@/hooks/use-browser-id";
 
 const PRESETS = [
   { id: "coffee", amount: 5, label: "Coffee", icon: Coffee, note: "Buy them a coffee" },
@@ -24,9 +25,11 @@ const PRESETS = [
 
 /**
  * SupportCreator — a dialog for tipping a creator. Mashahd's creator-economy
- * feature: cosmetic demo of direct creator support (0% fees narrative, like
- * CIRKLE's CirkleMint concept). The tip isn't actually charged — the dialog
- * simulates the flow and records the tip locally for the creator's stats.
+ * feature: direct creator support (0% fees narrative, like CIRKLE's
+ * CirkleMint concept). The tip is not actually charged (no payment provider
+ * — zero-cost), but it has a real side-effect: the API records a
+ * `tip_received` Notification in the channel owner's inbox so the creator is
+ * actually notified. See `src/app/api/support/route.ts`.
  */
 export function SupportCreator({
   open,
@@ -44,6 +47,7 @@ export function SupportCreator({
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const bid = useBrowserId();
 
   const preset = PRESETS.find((p) => p.id === selected);
   const amount = preset ? preset.amount : custom ? Math.max(1, parseInt(custom, 10) || 0) : 0;
@@ -53,26 +57,51 @@ export function SupportCreator({
       toast.error("Please enter an amount of at least 1");
       return;
     }
-    setSubmitting(true);
-    // Simulate the tip flow (in production this would integrate a payment
-    // provider or CirkleMint). Wait ~1.2s for the "confirming" beat.
-    await new Promise((r) => setTimeout(r, 1200));
-    setSubmitting(false);
-    setDone(true);
-
-    // Persist a record so the creator's support count can be surfaced.
-    try {
-      const key = `mashahd-supports:${channelId}`;
-      const existing = JSON.parse(localStorage.getItem(key) || "[]");
-      existing.push({
-        amount,
-        message: message.trim(),
-        at: new Date().toISOString(),
+    if (!bid) {
+      toast.error("Still preparing your session…", {
+        description: "Please try again in a moment.",
       });
-      localStorage.setItem(key, JSON.stringify(existing));
-      window.dispatchEvent(new CustomEvent("mashahd:support-given", { detail: { channelId, amount } }));
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          browserId: bid,
+          channelId,
+          amount,
+          message: message.trim(),
+        }),
+      });
+      if (res.status === 429) {
+        toast.error("Too many tips from your network", {
+          description: "Please wait a minute and try again.",
+        });
+        return;
+      }
+      if (res.status === 403) {
+        toast.error("Session expired", {
+          description: "Please refresh and try again.",
+        });
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        toast.error(data.error || "Tip failed", {
+          description: "Please try again.",
+        });
+        return;
+      }
+      setDone(true);
+      toast.success("Tip sent! The creator has been notified.");
     } catch {
-      /* storage may be blocked */
+      toast.error("Network error", {
+        description: "Please check your connection and try again.",
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 

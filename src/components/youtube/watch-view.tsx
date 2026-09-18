@@ -102,6 +102,97 @@ async function fetchQualitySignals(id: string): Promise<QualitySignalsResponse |
   return (await res.json()) as QualitySignalsResponse;
 }
 
+// §45 — live polls. Returns active + closed polls for the video. Only
+// fetched when the video title heuristically looks like a live stream.
+interface PollOption { text: string; votes: number; }
+interface PollItem {
+  id: string;
+  question: string;
+  options: PollOption[];
+  status: string;
+  totalVotes: number;
+  createdAt?: string;
+}
+interface PollsResponse { polls: PollItem[]; }
+async function fetchPolls(id: string): Promise<PollsResponse> {
+  const res = await fetch(`/api/videos/${id}/polls`);
+  if (!res.ok) return { polls: [] };
+  const data = await res.json();
+  return { polls: (data?.polls as PollItem[]) || [] };
+}
+
+// §45 — live Q&A. Returns answered + unanswered questions for the video.
+interface QAItem {
+  id: string;
+  askerName: string;
+  question: string;
+  answer: string | null;
+  upvotes: number;
+  isAnswered: boolean;
+  createdAt?: string;
+}
+interface QAResponse { entries: QAItem[]; }
+async function fetchQA(id: string): Promise<QAResponse> {
+  const res = await fetch(`/api/videos/${id}/qa`);
+  if (!res.ok) return { entries: [] };
+  const data = await res.json();
+  return { entries: (data?.entries as QAItem[]) || [] };
+}
+
+// §53 — rights claims. Shown as a collapsible "Rights" section in the
+// description area when any active claims exist (transparency).
+interface RightsClaimItem {
+  id: string;
+  claimant: string;
+  claimType: string;
+  matchedMaterial: string;
+  action: string;
+  status: string;
+}
+interface RightsClaimsResponse { claims: RightsClaimItem[]; }
+async function fetchRightsClaims(id: string): Promise<RightsClaimsResponse> {
+  const res = await fetch(`/api/videos/${id}/rights-claims`);
+  if (!res.ok) return { claims: [] };
+  const data = await res.json();
+  return { claims: (data?.claims as RightsClaimItem[]) || [] };
+}
+
+// §66 — creator corrections. Shown as a collapsible "Corrections" section
+// in the description area when any corrections exist.
+interface CorrectionItem {
+  id: string;
+  timestamp: number;
+  originalText: string;
+  correctedText: string;
+  note?: string;
+  viewersNotified?: boolean;
+  createdAt?: string;
+}
+interface CorrectionsResponse { corrections: CorrectionItem[]; }
+async function fetchCorrections(id: string): Promise<CorrectionsResponse> {
+  const res = await fetch(`/api/videos/${id}/corrections`);
+  if (!res.ok) return { corrections: [] };
+  const data = await res.json();
+  return { corrections: (data?.corrections as CorrectionItem[]) || [] };
+}
+
+// §41 — video relationships. Shown as a small "Related" list below the
+// "Continue watching" carousel when any relationships exist.
+interface RelationshipItem {
+  id: string;
+  relationType: string;
+  note: string;
+  createdBy: string;
+  video: { id: string; title: string; thumbnailUrl: string; channel: { name: string } } | null;
+}
+interface RelationshipsResponse { relationships: RelationshipItem[]; }
+async function fetchRelationships(id: string): Promise<RelationshipsResponse> {
+  const res = await fetch(`/api/videos/${id}/relationships`);
+  if (!res.ok) return { relationships: [] };
+  const data = await res.json();
+  return { relationships: (data?.relationships as RelationshipItem[]) || [] };
+}
+
 export function WatchView({ videoId }: { videoId: string }) {
   const bid = useBrowserId();
   const qc = useQueryClient();
@@ -133,6 +224,12 @@ export function WatchView({ videoId }: { videoId: string }) {
   });
 
   const video = data?.video;
+  // §45 — heuristic: if the title mentions "live", treat this as a live
+  // stream and surface the polls + Q&A panel. Computed from the loaded
+  // video data so the polls/qa useQuery hooks can re-enable once data
+  // arrives. The useQuery hooks below use this in `enabled`, so the
+  // hook order is stable (React doesn't conditionally call them).
+  const isLiveStream = !!(video?.title && /\blive\b/i.test(video.title));
 
   const { data: related } = useQuery({
     queryKey: ["related", videoId],
@@ -158,6 +255,47 @@ export function WatchView({ videoId }: { videoId: string }) {
   const { data: contextData } = useQuery({
     queryKey: ["video-context", videoId],
     queryFn: () => fetchVideoContext(videoId),
+    enabled: !!videoId,
+    staleTime: 60_000,
+  });
+
+  // §45 — live polls + Q&A (only fetched for live-stream videos, per the
+  // title heuristic above). Both panels render together below the description.
+  const { data: pollsData, refetch: refetchPolls } = useQuery({
+    queryKey: ["video-polls", videoId],
+    queryFn: () => fetchPolls(videoId),
+    enabled: !!videoId && isLiveStream,
+    staleTime: 30_000,
+  });
+  const { data: qaData, refetch: refetchQA } = useQuery({
+    queryKey: ["video-qa", videoId],
+    queryFn: () => fetchQA(videoId),
+    enabled: !!videoId && isLiveStream,
+    staleTime: 30_000,
+  });
+
+  // §53 — rights claims. Shown as a collapsible section in the description
+  // area when any claims exist. Non-blocking (no spinner).
+  const { data: rightsClaimsData } = useQuery({
+    queryKey: ["rights-claims", videoId],
+    queryFn: () => fetchRightsClaims(videoId),
+    enabled: !!videoId,
+    staleTime: 60_000,
+  });
+
+  // §66 — creator corrections. Same pattern as rights claims.
+  const { data: correctionsData } = useQuery({
+    queryKey: ["corrections", videoId],
+    queryFn: () => fetchCorrections(videoId),
+    enabled: !!videoId,
+    staleTime: 60_000,
+  });
+
+  // §41 — video relationships. Shown as a small "Related" list below the
+  // "Continue watching" carousel when any relationships exist.
+  const { data: relationshipsData } = useQuery({
+    queryKey: ["video-relationships", videoId],
+    queryFn: () => fetchRelationships(videoId),
     enabled: !!videoId,
     staleTime: 60_000,
   });
@@ -749,8 +887,122 @@ export function WatchView({ videoId }: { videoId: string }) {
                   </div>
                 </details>
               )}
+              {/* §53 — Rights claims. Shown only when claims exist. Collapsible
+                  so it doesn't intrude on the description. Lists claimant,
+                  claimType, matchedMaterial, action (per spec). */}
+              {rightsClaimsData && rightsClaimsData.claims.length > 0 && (
+                <details className="mt-2 group rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+                  <summary className="cursor-pointer list-none flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
+                    <Info className="h-3.5 w-3.5" />
+                    Rights ({rightsClaimsData.claims.length})
+                    <span className="ml-auto text-muted-foreground/70 group-open:rotate-180 transition-transform" aria-hidden>⌄</span>
+                  </summary>
+                  <ul className="mt-2 space-y-2 text-xs">
+                    {rightsClaimsData.claims.map((c) => (
+                      <li key={c.id} className="rounded-md border border-border/60 bg-background/40 p-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-medium text-foreground">{c.claimant}</span>
+                          <Badge variant="outline" className="text-[10px] py-0">{c.claimType}</Badge>
+                          <Badge variant="outline" className="text-[10px] py-0">{c.action}</Badge>
+                          {c.status !== "active" && <Badge variant="secondary" className="text-[10px] py-0">{c.status}</Badge>}
+                        </div>
+                        {c.matchedMaterial && <p className="mt-1 text-muted-foreground">Matched: {c.matchedMaterial}</p>}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              {/* §66 — Creator corrections. Same pattern. Lists timestamp,
+                  originalText → correctedText (per spec). */}
+              {correctionsData && correctionsData.corrections.length > 0 && (
+                <details className="mt-2 group rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+                  <summary className="cursor-pointer list-none flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
+                    <Info className="h-3.5 w-3.5" />
+                    Corrections ({correctionsData.corrections.length})
+                    <span className="ml-auto text-muted-foreground/70 group-open:rotate-180 transition-transform" aria-hidden>⌄</span>
+                  </summary>
+                  <ul className="mt-2 space-y-2 text-xs">
+                    {correctionsData.corrections.map((c) => {
+                      const m = Math.floor(c.timestamp / 60);
+                      const s = c.timestamp % 60;
+                      return (
+                        <li key={c.id} className="rounded-md border border-border/60 bg-background/40 p-2">
+                          <p className="text-[10px] text-muted-foreground mb-0.5">@ {m}:{String(s).padStart(2, "0")}</p>
+                          <p className="text-muted-foreground line-through/0"><span className="opacity-70">original: </span>{c.originalText}</p>
+                          <p className="text-foreground"><span className="opacity-70">corrected: </span>{c.correctedText}</p>
+                          {c.note && <p className="mt-1 italic text-muted-foreground/80">{c.note}</p>}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </details>
+              )}
             </div>
           </div>
+
+          {/* §45 — Live polls + Q&A panel. Shown only when the video title
+              heuristically looks like a live stream. Both polls and Q&A
+              are minimal — small cards, not full views. */}
+          {isLiveStream && (
+            <div className="mt-4 px-4 sm:px-0 grid sm:grid-cols-2 gap-3">
+              <div className="rounded-xl border border-border bg-card p-3">
+                <div className="flex items-center gap-1.5 text-sm font-semibold mb-2">
+                  <span className="h-2 w-2 rounded-full bg-rose animate-pulse" aria-hidden />
+                  Live Polls
+                </div>
+                {pollsData && pollsData.polls.length > 0 ? (
+                  <ul className="space-y-3 text-xs">
+                    {pollsData.polls.slice(0, 3).map((p) => (
+                      <li key={p.id}>
+                        <p className="font-medium">{p.question}</p>
+                        <div className="mt-1 space-y-1">
+                          {p.options.map((o, i) => (
+                            <button
+                              key={i}
+                              onClick={async () => {
+                                try {
+                                  await fetch(`/api/videos/${videoId}/polls`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ pollId: p.id, action: "vote", optionIndex: i }),
+                                  });
+                                  refetchPolls();
+                                } catch {
+                                  toast.error("Vote failed");
+                                }
+                              }}
+                              disabled={p.status !== "active"}
+                              className="block w-full text-left px-2 py-1 rounded-md border border-border hover:bg-accent disabled:opacity-60 disabled:cursor-not-allowed"
+                              title={p.status !== "active" ? "Poll closed" : `Vote: ${o.text}`}
+                            >
+                              {o.text} <span className="text-muted-foreground">({o.votes})</span>
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-muted-foreground mt-1">
+                          {p.totalVotes} total votes{p.status !== "active" && " · closed"}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No active polls.</p>
+                )}
+              </div>
+              <div className="rounded-xl border border-border bg-card p-3">
+                <div className="flex items-center gap-1.5 text-sm font-semibold mb-2">
+                  <span className="h-2 w-2 rounded-full bg-rose animate-pulse" aria-hidden />
+                  Live Q&A
+                </div>
+                <LiveQAList
+                  videoId={videoId}
+                  bid={bid}
+                  entries={qaData?.entries}
+                  refetch={refetchQA}
+                />
+              </div>
+            </div>
+          )}
 
           {/* AI features — Mashahd (adapted from CIRKLE overlays).
               Triggered via ⌘K command palette or the gold ⭐ chip row below. */}
@@ -881,6 +1133,35 @@ export function WatchView({ videoId }: { videoId: string }) {
               </div>
             </section>
           )}
+          {/* §41 — Video relationships. Shown as a small "Related" list
+              below the "Continue watching" carousel when any exist. Each
+              item is a clickable row that navigates to the related video. */}
+          {!theater && relationshipsData && relationshipsData.relationships.length > 0 && (
+            <section className="mt-6 px-4 sm:px-0">
+              <h2 className="text-sm font-semibold mb-2 font-display">Related videos</h2>
+              <ul className="space-y-1.5">
+                {relationshipsData.relationships.map((r) => (
+                  <li key={r.id}>
+                    {r.video ? (
+                      <button
+                        onClick={() => navigate({ kind: "watch", videoId: r.video!.id })}
+                        className="flex items-center gap-2 text-sm hover:bg-accent rounded-md px-2 py-1 -mx-2 text-left w-full"
+                      >
+                        <Badge variant="outline" className="text-[10px] py-0 shrink-0">{r.relationType}</Badge>
+                        <span className="truncate">Related: {r.video.title}</span>
+                        <span className="ml-auto text-xs text-muted-foreground shrink-0">{r.video.channel.name}</span>
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground px-2 py-1">
+                        <Badge variant="outline" className="text-[10px] py-0 shrink-0">{r.relationType}</Badge>
+                        <span>Related video unavailable</span>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
       </div>
 
@@ -911,6 +1192,116 @@ function playNext(
   if (related && related.length > 0) {
     navigate({ kind: "watch", videoId: related[0].id });
   }
+}
+
+/**
+ * §45 — Live Q&A list. A minimal panel: shows up to 5 questions with
+ * upvote buttons, plus an input to submit a new question. Used inside the
+ * WatchView's "Live Q&A" card when the video is heuristically a live stream.
+ */
+function LiveQAList({
+  videoId,
+  bid,
+  entries,
+  refetch,
+}: {
+  videoId: string;
+  bid: string;
+  entries?: QAItem[];
+  refetch: () => void;
+}) {
+  const [text, setText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async () => {
+    if (!text.trim() || !bid) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/videos/${videoId}/qa`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ askerName: "You", question: text.trim() }),
+      });
+      if (!res.ok) throw new Error("failed");
+      setText("");
+      refetch();
+      toast.success("Question submitted");
+    } catch {
+      toast.error("Could not submit question");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const upvote = async (qaId: string) => {
+    try {
+      await fetch(`/api/videos/${videoId}/qa`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qaId, action: "upvote" }),
+      });
+      refetch();
+    } catch {
+      toast.error("Upvote failed");
+    }
+  };
+
+  return (
+    <div className="space-y-2 text-xs">
+      <ul className="space-y-2">
+        {entries && entries.length > 0 ? (
+          entries.slice(0, 5).map((e) => (
+            <li key={e.id} className="rounded-md border border-border/60 bg-background/40 p-2">
+              <div className="flex items-start gap-1.5">
+                <button
+                  onClick={() => upvote(e.id)}
+                  className="shrink-0 mt-0.5 flex flex-col items-center text-muted-foreground hover:text-foreground"
+                  aria-label="Upvote question"
+                >
+                  <ThumbsUp className="h-3.5 w-3.5" />
+                  <span className="text-[10px] tabular-nums">{e.upvotes}</span>
+                </button>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground">{e.question}</p>
+                  <p className="text-muted-foreground text-[10px]">— {e.askerName}</p>
+                  {e.answer && (
+                    <p className="mt-1 rounded bg-gold/10 border border-gold/30 px-1.5 py-1 text-foreground">
+                      <span className="text-[10px] text-muted-foreground">answer: </span>{e.answer}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </li>
+          ))
+        ) : (
+          <li className="text-muted-foreground">No questions yet.</li>
+        )}
+      </ul>
+      <div className="flex gap-1.5">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          placeholder="Ask a question..."
+          aria-label="Ask a question"
+          className="flex-1 bg-transparent border-b border-border pb-1 text-xs focus:outline-none focus:border-foreground transition-colors"
+        />
+        <Button
+          size="sm"
+          className="rounded-full h-7 px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+          onClick={submit}
+          disabled={submitting || !text.trim() || !bid}
+        >
+          Ask
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function CommentsSection({

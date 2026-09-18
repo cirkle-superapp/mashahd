@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, Share2, MoreHorizontal, Heart, Sparkles } from "lucide-react";
+import { Bell, Share2, MoreHorizontal, Heart, Sparkles, BarChart3, Download, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBrowserId } from "@/hooks/use-browser-id";
-import { formatSubs, formatViews } from "@/lib/format";
+import { formatSubs, formatViews, formatCount } from "@/lib/format";
 import type { ChannelWithFlags, Video } from "@/lib/types";
 import { SupportCreator } from "./support-creator";
 import { VideoCard } from "./video-card";
@@ -32,6 +34,79 @@ async function fetchChannelVideos(id: string) {
   return data.videos as Video[];
 }
 
+// §49 — Creator Studio overview. Returns aggregate stats (total views,
+// total likes, engagement rate), recent videos, and top categories for
+// the channel owner. Fetched only when the Studio section is opened.
+interface StudioRecentVideo {
+  id: string;
+  title: string;
+  views: number;
+  likes: number;
+  likeRatio: number;
+  category?: string;
+  createdAt?: string;
+}
+interface StudioOverview {
+  totalViews: number;
+  totalLikes: number;
+  engagementRate: number;
+  avgViewsPerVideo: number;
+}
+interface StudioResponse {
+  channel: { id: string; name: string; subscribers: number; videoCount: number };
+  overview: StudioOverview;
+  recentVideos: StudioRecentVideo[];
+  audience: { topCategories: Array<{ category: string; views: number }> };
+}
+async function fetchStudio(id: string, bid: string): Promise<StudioResponse | null> {
+  const sp = new URLSearchParams();
+  if (bid) sp.set("bid", bid);
+  const res = await fetch(`/api/channels/${id}/studio?${sp.toString()}`);
+  if (!res.ok) return null;
+  return (await res.json()) as StudioResponse;
+}
+
+// §50 — Distribution diagnostics (last N days). Returns total
+// impressions, avg CTR, and a topic-demand list. Per the spec, these
+// are heuristic proxies — the API labels them as probabilistic signals.
+interface DistributionTopicDemand {
+  category: string;
+  videoCount: number;
+  avgViews: number;
+}
+interface DistributionResponse {
+  summary: { totalImpressions: number; avgCTR: number; totalVideos: number };
+  topicDemand: DistributionTopicDemand[];
+}
+async function fetchDistribution(id: string, days: number): Promise<DistributionResponse | null> {
+  const res = await fetch(`/api/channels/${id}/distribution?days=${days}`);
+  if (!res.ok) return null;
+  return (await res.json()) as DistributionResponse;
+}
+
+// §51 — Revenue transparency (gross, deductions, net, model). In the
+// zero-cost model all amounts are $0 but the structure is shown for
+// transparency (per spec: "Every deduction must be explainable").
+interface RevenueResponse {
+  channel: { id: string; name: string };
+  revenue: {
+    summary: {
+      gross: number;
+      totalDeductions: number;
+      netEarnings: number;
+      currency: string;
+      model: string;
+    };
+  };
+}
+async function fetchRevenue(id: string, bid: string): Promise<RevenueResponse | null> {
+  const sp = new URLSearchParams();
+  if (bid) sp.set("bid", bid);
+  const res = await fetch(`/api/channels/${id}/revenue?${sp.toString()}`);
+  if (!res.ok) return null;
+  return (await res.json()) as RevenueResponse;
+}
+
 export function ChannelView({ channelId }: { channelId: string }) {
   const bid = useBrowserId();
   const qc = useQueryClient();
@@ -48,8 +123,32 @@ export function ChannelView({ channelId }: { channelId: string }) {
     queryFn: () => fetchChannelVideos(channelId),
   });
 
-  const channel = data?.channel;
+  // §49-52 — Creator Studio panel state. When open, three queries fire
+  // (studio / distribution / revenue). Gated on `studioOpen` so we don't
+  // fetch studio data until the creator opens the panel.
   const [supportOpen, setSupportOpen] = useState(false);
+  const [studioOpen, setStudioOpen] = useState(false);
+
+  const { data: studioData, isLoading: studioLoading } = useQuery({
+    queryKey: ["channel-studio", channelId, bid],
+    queryFn: () => fetchStudio(channelId, bid),
+    enabled: !!bid && studioOpen,
+    staleTime: 60_000,
+  });
+  const { data: distributionData } = useQuery({
+    queryKey: ["channel-distribution", channelId, 30],
+    queryFn: () => fetchDistribution(channelId, 30),
+    enabled: studioOpen,
+    staleTime: 60_000,
+  });
+  const { data: revenueData } = useQuery({
+    queryKey: ["channel-revenue", channelId, bid],
+    queryFn: () => fetchRevenue(channelId, bid),
+    enabled: !!bid && studioOpen,
+    staleTime: 60_000,
+  });
+
+  const channel = data?.channel;
 
   const subMutation = useMutation({
     mutationFn: async (action: "subscribe" | "unsubscribe") => {
@@ -148,6 +247,25 @@ export function ChannelView({ channelId }: { channelId: string }) {
             <Button variant="secondary" size="sm" className="rounded-full h-9 px-4 bg-muted hover:bg-accent">
               <Share2 className="h-4 w-4 mr-1.5" /> Share
             </Button>
+            {/* §49 — Creator Studio button. Always visible in dev (spec:
+                "for now, always show it since we're in dev"). Toggles the
+                Creator Studio section at the bottom of the channel view. */}
+            <Button
+              variant="secondary"
+              size="sm"
+              className={cn(
+                "rounded-full h-9 px-4 border",
+                studioOpen
+                  ? "bg-gold/15 border-gold/40 text-[hsl(var(--gold))]"
+                  : "bg-muted hover:bg-accent border-border"
+              )}
+              onClick={() => setStudioOpen((s) => !s)}
+              aria-pressed={studioOpen}
+              aria-label="Open Creator Studio"
+              title="Open Creator Studio"
+            >
+              <BarChart3 className="h-4 w-4 mr-1.5" /> Studio
+            </Button>
             <Button variant="secondary" size="icon" className="rounded-full h-9 w-9 bg-muted hover:bg-accent" aria-label="More">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
@@ -210,6 +328,180 @@ export function ChannelView({ channelId }: { channelId: string }) {
               </dl>
             </div>
           </div>
+        </section>
+
+        {/* §49-52 — Creator Studio. Collapsible section at the bottom of
+            the channel view. The Studio button at the top toggles this
+            section. When open, three queries fire in parallel:
+            studio (§49), distribution (§50), revenue (§51). The Download
+            button (§52) fetches the creator export and triggers a blob
+            download — same pattern as the data-export button in Settings. */}
+        <section>
+          <details
+            open={studioOpen}
+            onToggle={(e) => setStudioOpen((e.currentTarget as HTMLDetailsElement).open)}
+            className="group rounded-2xl border border-border bg-card/50 overflow-hidden"
+          >
+            <summary className="cursor-pointer list-none flex items-center gap-2 px-4 py-3 hover:bg-accent/50 transition-colors">
+              <BarChart3 className="h-4 w-4 text-[hsl(var(--gold))]" />
+              <span className="text-base font-semibold font-display">Creator Studio</span>
+              <Badge variant="outline" className="ml-1 text-[10px] py-0">dev</Badge>
+              <span className="ml-auto text-muted-foreground/70 group-open:rotate-180 transition-transform" aria-hidden>⌄</span>
+            </summary>
+            <div className="px-4 pb-4 space-y-4">
+              {studioLoading ? (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-20 rounded-xl" />
+                  ))}
+                </div>
+              ) : studioData ? (
+                <>
+                  {/* §49 — Studio overview cards */}
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <Card className="gap-2 py-3">
+                      <CardHeader className="py-0"><CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">Total views</CardTitle></CardHeader>
+                      <CardContent className="py-0"><p className="text-lg font-semibold tabular-nums">{formatViews(studioData.overview.totalViews)}</p></CardContent>
+                    </Card>
+                    <Card className="gap-2 py-3">
+                      <CardHeader className="py-0"><CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">Total likes</CardTitle></CardHeader>
+                      <CardContent className="py-0"><p className="text-lg font-semibold tabular-nums">{formatCount(studioData.overview.totalLikes)}</p></CardContent>
+                    </Card>
+                    <Card className="gap-2 py-3">
+                      <CardHeader className="py-0"><CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">Engagement</CardTitle></CardHeader>
+                      <CardContent className="py-0"><p className="text-lg font-semibold tabular-nums">{studioData.overview.engagementRate}%</p></CardContent>
+                    </Card>
+                    <Card className="gap-2 py-3">
+                      <CardHeader className="py-0"><CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">Avg views/video</CardTitle></CardHeader>
+                      <CardContent className="py-0"><p className="text-lg font-semibold tabular-nums">{formatCount(studioData.overview.avgViewsPerVideo)}</p></CardContent>
+                    </Card>
+                  </div>
+
+                  {/* §49 — Recent videos table */}
+                  <Card className="gap-2 py-3">
+                    <CardHeader className="py-0"><CardTitle className="text-sm">Recent videos</CardTitle></CardHeader>
+                    <CardContent className="py-0">
+                      {studioData.recentVideos.length > 0 ? (
+                        <ul className="divide-y divide-border">
+                          {studioData.recentVideos.slice(0, 6).map((v) => (
+                            <li key={v.id} className="py-1.5 flex items-center gap-2 text-xs">
+                              <button
+                                onClick={() => navigate({ kind: "watch", videoId: v.id })}
+                                className="flex-1 min-w-0 text-left hover:text-[hsl(var(--gold))] truncate"
+                                title={v.title}
+                              >
+                                {v.title}
+                              </button>
+                              {v.category && <Badge variant="outline" className="text-[10px] py-0 shrink-0">{v.category}</Badge>}
+                              <span className="tabular-nums text-muted-foreground shrink-0">{formatCount(v.views)} views</span>
+                              <span className="tabular-nums text-muted-foreground shrink-0 w-12 text-right">{v.likeRatio}%</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No videos yet.</p>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* §49 — Top categories */}
+                  {studioData.audience.topCategories.length > 0 && (
+                    <div>
+                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Top categories</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {studioData.audience.topCategories.map((c) => (
+                          <Badge key={c.category} variant="secondary" className="text-xs">
+                            {c.category} <span className="ml-1 text-muted-foreground">{formatCount(c.views)}</span>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">Studio data unavailable.</p>
+              )}
+
+              {/* §50 — Distribution diagnostics (last 30 days) */}
+              {distributionData && (
+                <Card className="gap-2 py-3">
+                  <CardHeader className="py-0"><CardTitle className="text-sm">Distribution (last 30 days)</CardTitle></CardHeader>
+                  <CardContent className="py-0 space-y-2">
+                    <div className="grid grid-cols-3 gap-3 text-xs">
+                      <div><dt className="text-muted-foreground">Impressions</dt><dd className="font-medium tabular-nums">{formatCount(distributionData.summary.totalImpressions)}</dd></div>
+                      <div><dt className="text-muted-foreground">Avg CTR</dt><dd className="font-medium tabular-nums">{distributionData.summary.avgCTR}%</dd></div>
+                      <div><dt className="text-muted-foreground">Videos</dt><dd className="font-medium tabular-nums">{distributionData.summary.totalVideos}</dd></div>
+                    </div>
+                    {distributionData.topicDemand.length > 0 && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Topic demand</p>
+                        <ul className="text-xs space-y-0.5">
+                          {distributionData.topicDemand.slice(0, 5).map((t) => (
+                            <li key={t.category} className="flex items-center gap-2">
+                              <span className="font-medium">{t.category}</span>
+                              <span className="text-muted-foreground">{t.videoCount} videos · {formatCount(t.avgViews)} avg views</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <p className="text-[10px] text-muted-foreground/80 italic">Per spec §50: signals are probabilistic, not deterministic.</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* §51 — Revenue transparency */}
+              {revenueData && (
+                <Card className="gap-2 py-3">
+                  <CardHeader className="py-0">
+                    <CardTitle className="text-sm flex items-center gap-1.5">
+                      <Wallet className="h-3.5 w-3.5 text-[hsl(var(--gold))]" />
+                      Revenue
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="py-0">
+                    <div className="grid grid-cols-3 gap-3 text-xs">
+                      <div><dt className="text-muted-foreground">Gross</dt><dd className="font-medium tabular-nums">{revenueData.revenue.summary.currency} ${revenueData.revenue.summary.gross.toFixed(2)}</dd></div>
+                      <div><dt className="text-muted-foreground">Deductions</dt><dd className="font-medium tabular-nums">${revenueData.revenue.summary.totalDeductions.toFixed(2)}</dd></div>
+                      <div><dt className="text-muted-foreground">Net</dt><dd className="font-medium tabular-nums">${revenueData.revenue.summary.netEarnings.toFixed(2)}</dd></div>
+                    </div>
+                    <p className="mt-2 text-[10px] text-muted-foreground">
+                      Model: <span className="font-medium text-foreground">{revenueData.revenue.summary.model}</span>. Zero-cost: all amounts $0.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* §52 — Creator data export (download button). Same blob +
+                  download pattern as the data-export button in Settings. */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                onClick={async () => {
+                  if (!bid) { toast.error("Please wait for your session to load."); return; }
+                  toast.info("Preparing your creator data export…");
+                  try {
+                    const res = await fetch(`/api/channels/${channelId}/export?bid=${encodeURIComponent(bid)}`);
+                    if (!res.ok) throw new Error("Export failed");
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `mashahd-creator-export-${channel.handle}-${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    toast.success("Creator data export downloaded.");
+                  } catch {
+                    toast.error("Export failed — please try again.");
+                  }
+                }}
+              >
+                <Download className="h-4 w-4 mr-1.5" />
+                Download data
+              </Button>
+            </div>
+          </details>
         </section>
       </div>
     </div>

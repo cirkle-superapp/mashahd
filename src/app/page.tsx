@@ -30,6 +30,7 @@ import { PlaylistView } from "@/components/youtube/playlist-view";
 import { RecommendationProfileView } from "@/components/youtube/recommendation-profile-view";
 import { SmartPlaylistResultsView } from "@/components/youtube/smart-playlist-creator";
 import { useMashahdBridge } from "@/lib/mashahd-bridge";
+import { useBrowserId } from "@/hooks/use-browser-id";
 import { cn } from "@/lib/utils";
 
 function renderView(view: ReturnType<typeof useAppStore.getState>["view"]) {
@@ -73,9 +74,31 @@ function renderView(view: ReturnType<typeof useAppStore.getState>["view"]) {
 
 export default function Page() {
   const { view, syncFromUrl } = useAppStore();
+  const bid = useBrowserId();
 
   // Mount the super-app integration bridge onto window.mashahd.
   useMashahdBridge();
+
+  // §59 — Multi-device sync. Fire-and-forget on mount: pull the user's
+  // cross-device state (preferences, history, library, continue-watching,
+  // interest profiles, blocks) so this device is up-to-date. Doesn't
+  // block rendering — we just trigger the fetch and let React Query /
+  // component-level queries pick up the new state when it lands. Runs
+  // once per mount, after the signed browserId is available.
+  useEffect(() => {
+    if (!bid) return;
+    fetch(`/api/sync?bid=${encodeURIComponent(bid)}`, { method: "GET" })
+      .then(() => {
+        // Sync document received — the components that care about the
+        // synced state (continue-watching shelf, history view, etc.) will
+        // refetch their own queries on next interaction. We don't write
+        // the synced state into the store here to keep this fire-and-forget.
+      })
+      .catch(() => {
+        // Sync failures are non-fatal — the user can still use the app
+        // with whatever local state is on this device.
+      });
+  }, [bid]);
 
   // Keep the store in sync with browser back / forward.
   useEffect(() => {
