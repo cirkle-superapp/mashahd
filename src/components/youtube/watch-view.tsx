@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2, MessageSquarePlus, Compass, Wand2, Heart, Bookmark, Check, ListPlus, Users, FileText, Scissors, Info } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2, MessageSquarePlus, Compass, Wand2, Heart, Bookmark, Check, ListPlus, Users, FileText, Scissors, Info, Search, RefreshCw, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/store/app-store";
 import { useMiniPlayer } from "@/store/mini-player-store";
 import { useBrowserId } from "@/hooks/use-browser-id";
@@ -193,6 +194,94 @@ async function fetchRelationships(id: string): Promise<RelationshipsResponse> {
   return { relationships: (data?.relationships as RelationshipItem[]) || [] };
 }
 
+// §38 — AI search-in-video. Returns a list of { start, end, reason, deepLink }
+// timestamps where the topic is discussed. The deep link seeks the player.
+interface SearchInVideoResult {
+  start: number;
+  end: number;
+  reason: string;
+  deepLink: string;
+}
+interface SearchInVideoResponse {
+  results: SearchInVideoResult[];
+  source?: string;
+  query?: string;
+  note?: string;
+}
+async function searchInVideo(videoId: string, query: string): Promise<SearchInVideoResponse> {
+  const res = await fetch("/api/ai/search-in-video", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ videoId, query }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string })?.error || "Search failed");
+  }
+  return (await res.json()) as SearchInVideoResponse;
+}
+
+// §23 — moderation transparency. Returns moderation actions count, appeal
+// availability, entity breakdown (platform vs creator), ad transparency
+// list, and community feedback summary. Shown as a collapsible section.
+interface ModerationAction {
+  id: string;
+  type: string;
+  action: string;
+  reason: string;
+  claimant?: string;
+  automated: boolean;
+  status: string;
+  appealAvailable?: boolean;
+  appealStatus?: string | null;
+  appealResult?: string | null;
+  entity: "platform" | "creator";
+}
+interface ModerationAdTransparency {
+  adType: string;
+  sponsor: string;
+  isPaid: boolean;
+  label: string;
+}
+interface ModerationResponse {
+  videoId: string;
+  moderationActions: ModerationAction[];
+  moderationCount: number;
+  appealAvailable: boolean;
+  entityBreakdown: { platform: number; creator: number };
+  adTransparency: ModerationAdTransparency[];
+  communityFeedback: {
+    summary: Record<string, number>;
+    total: number;
+    note: string;
+  };
+}
+async function fetchModeration(id: string): Promise<ModerationResponse | null> {
+  const res = await fetch(`/api/moderation?videoId=${encodeURIComponent(id)}`);
+  if (!res.ok) return null;
+  return (await res.json()) as ModerationResponse;
+}
+
+// §46 — live-to-VOD conversion. POST returns the produced artifacts (replay,
+// transcript, chapters, etc.) — surfaced to the user as a toast.
+interface LiveToVodResponse {
+  ok: boolean;
+  videoId: string;
+  wasLive: boolean;
+  newVisibility: string;
+  producedArtifacts: string[];
+  jobId: string | null;
+  note: string;
+  artifacts: {
+    replay: boolean;
+    transcript: string;
+    chapters: string;
+    highlights: string;
+    clips: string;
+    searchableMoments: string;
+  };
+}
+
 export function WatchView({ videoId }: { videoId: string }) {
   const bid = useBrowserId();
   const qc = useQueryClient();
@@ -298,6 +387,48 @@ export function WatchView({ videoId }: { videoId: string }) {
     queryFn: () => fetchRelationships(videoId),
     enabled: !!videoId,
     staleTime: 60_000,
+  });
+
+  // §23 — moderation transparency. Fetched for the description's collapsible
+  // "Moderation" section. Non-blocking (no spinner); shown once data arrives.
+  const { data: moderationData } = useQuery({
+    queryKey: ["video-moderation", videoId],
+    queryFn: () => fetchModeration(videoId),
+    enabled: !!videoId,
+    staleTime: 60_000,
+  });
+
+  // §38 — AI search-in-video. Mutation so the loading state is shown while
+  // the AI thinks. Results are stored in local state (per-search).
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchMutation = useMutation({
+    mutationFn: ({ q }: { q: string }) => searchInVideo(videoId, q),
+  });
+
+  // §46 — live-to-VOD conversion. Fire-and-forget POST; the produced
+  // artifacts are surfaced to the user via toast.
+  const liveToVodMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/videos/${videoId}/live-to-vod`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string })?.error || "Conversion failed");
+      }
+      return (await res.json()) as LiveToVodResponse;
+    },
+    onSuccess: (data) => {
+      const artifacts = data.producedArtifacts.join(", ");
+      toast.success(`Converted to VOD`, {
+        description: `Artifacts: ${artifacts || "none"}. ${data.note}`.slice(0, 200),
+      });
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Conversion failed";
+      toast.error(msg);
+    },
   });
 
   // Record a view once when the watch page opens
@@ -741,6 +872,27 @@ export function WatchView({ videoId }: { videoId: string }) {
                 </button>
               </div>
               <ShareButton videoId={video.id} title={video.title} />
+              {/* §46 — Live-to-VOD button. Only shown when the video title
+                  heuristically looks like a live stream (same regex as the
+                  polls/Q&A panel below). On click: POST to
+                  /api/videos/[id]/live-to-vod and toast the produced
+                  artifacts (replay, transcript, chapters, etc.). This is an
+                  admin/creator action — in production it would require
+                  ownership verification before the API write fires. */}
+              {isLiveStream && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full h-9 px-4 bg-muted hover:bg-accent hidden sm:inline-flex"
+                  onClick={() => liveToVodMutation.mutate()}
+                  disabled={liveToVodMutation.isPending}
+                  aria-label="Convert this live stream to VOD"
+                  title="Produce replay, transcript, chapters, and searchable moments from this live stream"
+                >
+                  <RefreshCw className={cn("h-4 w-4 mr-1.5", liveToVodMutation.isPending && "animate-spin")} />
+                  {liveToVodMutation.isPending ? "Converting…" : "Convert to VOD"}
+                </Button>
+              )}
               <Button
                 variant="secondary"
                 size="sm"
@@ -937,7 +1089,186 @@ export function WatchView({ videoId }: { videoId: string }) {
                   </ul>
                 </details>
               )}
+              {/* §23 — Moderation transparency. Collapsible <details> in the
+                  description area (after Context/Rights/Corrections). Shows
+                  moderation actions count, appeal availability, entity
+                  breakdown (platform vs creator), ad transparency list, and
+                  a community feedback summary. Per spec §22-23: do not make
+                  enforcement unnecessarily opaque. */}
+              {moderationData && (
+                <details className="mt-2 group rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+                  <summary className="cursor-pointer list-none flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
+                    <Shield className="h-3.5 w-3.5" />
+                    Moderation ({moderationData.moderationCount})
+                    {moderationData.appealAvailable && (
+                      <Badge variant="outline" className="text-[10px] py-0 ml-1 border-amber-500/40 text-amber-600">
+                        Appeal available
+                      </Badge>
+                    )}
+                    <span className="ml-auto text-muted-foreground/70 group-open:rotate-180 transition-transform" aria-hidden>⌄</span>
+                  </summary>
+                  <div className="mt-2 space-y-2 text-xs text-muted-foreground">
+                    <p>
+                      Actions:{" "}
+                      <span className="text-foreground font-medium tabular-nums">{moderationData.moderationCount}</span>
+                      {" · "}
+                      Platform: <span className="text-foreground tabular-nums">{moderationData.entityBreakdown.platform}</span>
+                      {" · "}
+                      Creator: <span className="text-foreground tabular-nums">{moderationData.entityBreakdown.creator}</span>
+                    </p>
+                    {moderationData.moderationActions.length > 0 && (
+                      <ul className="space-y-1.5">
+                        {moderationData.moderationActions.map((a) => (
+                          <li key={a.id} className="rounded-md border border-border/60 bg-background/40 p-2">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Badge variant="outline" className="text-[10px] py-0">{a.entity}</Badge>
+                              <Badge variant="outline" className="text-[10px] py-0">{a.action}</Badge>
+                              <Badge variant="secondary" className="text-[10px] py-0">
+                                {a.automated ? "automated" : "human"}
+                              </Badge>
+                              {a.appealAvailable && (
+                                <Badge variant="outline" className="text-[10px] py-0 border-amber-500/40 text-amber-600">
+                                  appeal: {a.appealStatus || "available"}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="mt-1">{a.reason}</p>
+                            {a.appealResult && (
+                              <p className="mt-1 italic">Appeal result: {a.appealResult}</p>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {moderationData.adTransparency.length > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide">Ad transparency</p>
+                        <ul className="mt-1 space-y-0.5">
+                          {moderationData.adTransparency.map((a, i) => (
+                            <li key={i}>
+                              <span className="text-foreground">{a.label}</span>
+                              {a.sponsor && ` — ${a.sponsor}`}
+                              {a.isPaid && " (paid)"}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide">Community feedback</p>
+                      <p className="mt-0.5 tabular-nums">
+                        {moderationData.communityFeedback.total} report{moderationData.communityFeedback.total === 1 ? "" : "s"}
+                      </p>
+                      {Object.keys(moderationData.communityFeedback.summary).length > 0 && (
+                        <ul className="mt-1 space-y-0.5">
+                          {Object.entries(moderationData.communityFeedback.summary).map(([reason, count]) => (
+                            <li key={reason}>
+                              {reason}: <span className="tabular-nums">{count}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <p className="mt-1 italic text-[10px]">{moderationData.communityFeedback.note}</p>
+                    </div>
+                  </div>
+                </details>
+              )}
             </div>
+          </div>
+
+          {/* §38 — AI Search-in-video. A small input + results list below the
+              description. On Enter: POST to /api/ai/search-in-video with
+              { videoId, query } via useMutation. Results render as clickable
+              timestamps (formatted m:ss) that seek the player to the start
+              second. Falls back gracefully when no transcript or no match. */}
+          <div className="mt-4 px-4 sm:px-0">
+            <details className="group rounded-xl border border-border bg-card p-3">
+              <summary className="cursor-pointer list-none flex items-center gap-1.5 text-sm font-medium">
+                <Search className="h-4 w-4" />
+                Search in video
+                <span className="ml-auto text-muted-foreground/70 group-open:rotate-180 transition-transform" aria-hidden>⌄</span>
+              </summary>
+              <div className="mt-3 space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey && searchQuery.trim()) {
+                        e.preventDefault();
+                        searchMutation.mutate({ q: searchQuery.trim() });
+                      }
+                    }}
+                    placeholder="Where does this video discuss…? (e.g. customs clearance)"
+                    aria-label="Search inside this video"
+                    className="h-9 text-sm"
+                  />
+                  <Button
+                    size="sm"
+                    className="rounded-full h-9 px-4 shrink-0"
+                    onClick={() => searchQuery.trim() && searchMutation.mutate({ q: searchQuery.trim() })}
+                    disabled={searchMutation.isPending || !searchQuery.trim()}
+                  >
+                    {searchMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                    Find
+                  </Button>
+                </div>
+                {searchMutation.data && (
+                  <div className="text-xs">
+                    {searchMutation.data.results.length > 0 ? (
+                      <ul className="space-y-1.5">
+                        {searchMutation.data.results.map((r, i) => {
+                          const m = Math.floor(r.start / 60);
+                          const s = Math.floor(r.start % 60);
+                          return (
+                            <li key={i}>
+                              <a
+                                href={r.deepLink}
+                                onClick={(e) => {
+                                  // Seek the player instead of navigating —
+                                  // we're already on the watch page.
+                                  e.preventDefault();
+                                  const v = videoRef.current;
+                                  if (v) {
+                                    v.currentTime = r.start;
+                                    v.play().catch(() => {});
+                                  }
+                                }}
+                                className="flex items-start gap-2 rounded-md border border-border/60 bg-background/40 p-2 hover:bg-accent transition-colors"
+                                title={`Seek to ${m}:${String(s).padStart(2, "0")} — ${r.deepLink}`}
+                              >
+                                <span className="shrink-0 font-mono tabular-nums px-1.5 py-0.5 rounded-full bg-[hsl(var(--gold)/0.12)] border border-gold/30 text-[hsl(var(--gold))]">
+                                  {m}:{String(s).padStart(2, "0")}
+                                </span>
+                                <span className="text-muted-foreground">{r.reason}</span>
+                              </a>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : (
+                      <p className="text-muted-foreground">
+                        {searchMutation.data.note || "No results found. Try a different query."}
+                      </p>
+                    )}
+                    {searchMutation.data.source && (
+                      <p className="mt-2 italic text-[10px] text-muted-foreground">
+                        Source: {searchMutation.data.source}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {searchMutation.isError && (
+                  <p className="text-xs text-destructive">
+                    {searchMutation.error instanceof Error ? searchMutation.error.message : "Search failed"}
+                  </p>
+                )}
+              </div>
+            </details>
           </div>
 
           {/* §45 — Live polls + Q&A panel. Shown only when the video title

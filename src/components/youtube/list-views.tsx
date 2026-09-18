@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Heart, Bookmark } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Heart, Bookmark, Wand2, Loader2, ChevronDown } from "lucide-react";
 import { VideoCardHorizontal, VideoCard } from "./video-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -16,6 +19,8 @@ import type { Video } from "@/lib/types";
 import { useAppStore } from "@/store/app-store";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { SmartPlaylistCreator } from "./smart-playlist-creator";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 // Spec §12 — deterministic search sort options. The backend /api/videos
 // endpoint supports all of these. `relevance` is the default for searches;
@@ -47,6 +52,39 @@ async function fetchVideosRaw(params: Record<string, string>) {
   return data.videos as Video[];
 }
 
+// §13 — AI advanced search. POST { query } → returns parsed filters +
+// matching videos. The parser extracts topic, categories, minDuration,
+// dateRange, excludeShorts from natural-language queries like "show videos
+// about music uploaded last 30 days longer than 5 minutes excluding shorts".
+interface ParsedFilters {
+  topic: string;
+  categories: string[];
+  minDuration?: number;
+  maxDuration?: number;
+  dateRange?: "today" | "7d" | "30d" | "90d" | "all";
+  excludeShorts: boolean;
+  excludeLong: boolean;
+}
+interface AdvancedSearchResponse {
+  query: string;
+  parsedFilters: ParsedFilters;
+  videos: Video[];
+  count: number;
+  note: string;
+}
+async function fetchAdvancedSearch(query: string): Promise<AdvancedSearchResponse> {
+  const res = await fetch("/api/ai/advanced-search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string })?.error || "Search failed");
+  }
+  return (await res.json()) as AdvancedSearchResponse;
+}
+
 async function fetchUserState(bid: string) {
   if (!bid) return { likedVideoIds: [], subscribedChannelIds: [], watchedVideoIds: [] };
   const res = await fetch(`/api/user-state?bid=${bid}`);
@@ -56,23 +94,46 @@ async function fetchUserState(bid: string) {
 
 export function SearchView({ query }: { query: string }) {
   const [sort, setSort] = useState<SearchSort>("relevance");
+  // §13 — Advanced search toggle. When on, show a Textarea + Run button
+  // and submit to /api/ai/advanced-search instead of the standard /api/videos
+  // search. Parsed filters + matching videos render via VideoCard.
+  const [advanced, setAdvanced] = useState(false);
+  const [advancedQuery, setAdvancedQuery] = useState(
+    `show videos about ${query || "music"} uploaded last 30 days longer than 5 minutes excluding shorts`
+  );
+  const advancedSearch = useMutation({
+    mutationFn: () => fetchAdvancedSearch(advancedQuery.trim()),
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Search failed";
+      toast.error(msg);
+    },
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ["videos", "search", query, sort],
     queryFn: () => fetchVideosRaw({ q: query, sort }),
+    // Hide the standard search when advanced results are showing.
+    enabled: !(advanced && advancedSearch.data),
   });
+
+  const showAdvancedResults = advanced && advancedSearch.data;
+  const pf = advancedSearch.data?.parsedFilters;
 
   return (
     <div className="px-4 sm:px-6 py-6 max-w-[1100px] mx-auto">
       <h1 className="text-sm text-muted-foreground mb-3">
         Showing results for{" "}
         <span className="text-foreground font-medium">&ldquo;{query}&rdquo;</span>
-        {data && (
+        {!showAdvancedResults && data && (
           <span className="ml-2">— {data.length} video{data.length === 1 ? "" : "s"}</span>
+        )}
+        {showAdvancedResults && (
+          <span className="ml-2">— {advancedSearch.data.count} matched advanced query</span>
         )}
       </h1>
       {/* Sort dropdown — spec §12 deterministic search sorts. Replaces the
           old 2-button filter with the full 7-option set backed by /api/videos. */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
         <span className="text-xs text-muted-foreground">Sort:</span>
         <Select value={sort} onValueChange={(v) => setSort(v as SearchSort)}>
           <SelectTrigger size="sm" className="h-8 w-[160px] text-xs">
@@ -86,29 +147,128 @@ export function SearchView({ query }: { query: string }) {
             ))}
           </SelectContent>
         </Select>
+        {/* §13 — Advanced search toggle. Switches the result source from
+            /api/videos (deterministic) to /api/ai/advanced-search (NL parser). */}
+        <Button
+          variant={advanced ? "default" : "outline"}
+          size="sm"
+          className="ml-auto h-8 rounded-full text-xs"
+          onClick={() => setAdvanced((a) => !a)}
+          aria-pressed={advanced}
+          aria-expanded={advanced}
+          title="Natural-language advanced search — e.g. 'videos about music uploaded last 30 days longer than 5 minutes excluding shorts'"
+        >
+          <Wand2 className="h-3.5 w-3.5 mr-1.5" />
+          Advanced
+          <ChevronDown className={cn("h-3 w-3 ml-1 transition-transform", advanced && "rotate-180")} />
+        </Button>
       </div>
-      <div className="flex flex-col gap-4">
-        {isLoading
-          ? Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex gap-3">
-                <Skeleton className="w-[168px] sm:w-[280px] aspect-video rounded-lg shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                  <Skeleton className="h-3 w-1/3" />
-                </div>
-              </div>
-            ))
-          : data?.map((v) => <VideoCardHorizontal key={v.id} video={v} />)}
-        {!isLoading && data && data.length === 0 && (
-          <div className="py-16 text-center">
-            <p className="text-lg font-medium">No results found</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Try different keywords or remove search filters.
-            </p>
+
+      {/* Advanced search panel — Textarea + Run button + parsed filters + results */}
+      {advanced && (
+        <div className="mb-6 space-y-3">
+          <Textarea
+            value={advancedQuery}
+            onChange={(e) => setAdvancedQuery(e.target.value)}
+            rows={3}
+            placeholder="show videos about music uploaded last 30 days longer than 5 minutes excluding shorts"
+            aria-label="Natural-language advanced search query"
+            className="text-sm resize-none"
+          />
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              className="rounded-full"
+              onClick={() => advancedQuery.trim() && advancedSearch.mutate()}
+              disabled={advancedSearch.isPending || !advancedQuery.trim()}
+            >
+              {advancedSearch.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+              ) : (
+                <Wand2 className="h-4 w-4 mr-1.5" />
+              )}
+              {advancedSearch.isPending ? "Searching…" : "Run advanced search"}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Natural-language query parsed into structured filters.
+            </span>
           </div>
-        )}
-      </div>
+          {/* Parsed filters — shows what the NL parser extracted. */}
+          {pf && (
+            <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-muted/40 p-2.5">
+              <span className="text-xs text-muted-foreground shrink-0">Parsed:</span>
+              {pf.topic && <Badge variant="outline" className="text-[10px] py-0">topic: {pf.topic}</Badge>}
+              {pf.categories.length > 0 && pf.categories.map((c) => (
+                <Badge key={c} variant="outline" className="text-[10px] py-0">category: {c}</Badge>
+              ))}
+              {typeof pf.minDuration === "number" && (
+                <Badge variant="outline" className="text-[10px] py-0">min: {Math.round(pf.minDuration / 60)}min</Badge>
+              )}
+              {typeof pf.maxDuration === "number" && (
+                <Badge variant="outline" className="text-[10px] py-0">max: {Math.round(pf.maxDuration / 60)}min</Badge>
+              )}
+              {pf.dateRange && (
+                <Badge variant="outline" className="text-[10px] py-0">date: {pf.dateRange}</Badge>
+              )}
+              {pf.excludeShorts && (
+                <Badge variant="outline" className="text-[10px] py-0">no shorts</Badge>
+              )}
+              {pf.excludeLong && (
+                <Badge variant="outline" className="text-[10px] py-0">no long-form</Badge>
+              )}
+              {!pf.topic && pf.categories.length === 0 && typeof pf.minDuration !== "number" && typeof pf.maxDuration !== "number" && !pf.dateRange && !pf.excludeShorts && !pf.excludeLong && (
+                <span className="text-xs text-muted-foreground italic">No structured filters extracted — treating the whole text as a topic.</span>
+              )}
+            </div>
+          )}
+          {advancedSearch.isError && (
+            <p className="text-xs text-destructive">
+              {advancedSearch.error instanceof Error ? advancedSearch.error.message : "Search failed"}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Result list — either the standard search (VideoCardHorizontal) or the
+          advanced search results (VideoCard grid). When advanced results are
+          present, we hide the standard list to avoid duplicate content. */}
+      {showAdvancedResults ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6">
+          {advancedSearch.data.videos.length > 0 ? (
+            advancedSearch.data.videos.map((v) => <VideoCard key={v.id} video={v} />)
+          ) : (
+            <div className="col-span-full py-16 text-center">
+              <p className="text-lg font-medium">No videos match this query</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Try a different natural-language query.
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {isLoading
+            ? Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex gap-3">
+                  <Skeleton className="w-[168px] sm:w-[280px] aspect-video rounded-lg shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-3 w-1/3" />
+                  </div>
+                </div>
+              ))
+            : data?.map((v) => <VideoCardHorizontal key={v.id} video={v} />)}
+          {!isLoading && data && data.length === 0 && (
+            <div className="py-16 text-center">
+              <p className="text-lg font-medium">No results found</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Try different keywords or remove search filters.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

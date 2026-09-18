@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Settings as SettingsIcon, Flag, HelpCircle, MessageSquare, Bell, Globe, Moon, Sun, Shield, Info, Sliders, Ban, Eye, Sparkles, RotateCcw, Activity, AlertTriangle, Download, Monitor, Smartphone, Trash2 } from "lucide-react";
+import { Settings as SettingsIcon, Flag, HelpCircle, MessageSquare, Bell, Globe, Moon, Sun, Shield, Info, Sliders, Ban, Eye, Sparkles, RotateCcw, Activity, AlertTriangle, Download, Monitor, Smartphone, Trash2, Code } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,7 @@ const TABS = [
   { id: "accessibility", label: "Accessibility", icon: Sparkles },
   { id: "premium", label: "Premium", icon: Sparkles },
   { id: "changelog", label: "Updates", icon: Activity },
+  { id: "api", label: "API Catalog", icon: Code },
   { id: "report", label: "Report history", icon: Flag },
   { id: "help", label: "Help", icon: HelpCircle },
   { id: "feedback", label: "Send feedback", icon: MessageSquare },
@@ -530,6 +531,8 @@ export function SettingsView({ initialTab = "general" }: { initialTab?: string }
           {tab === "premium" && <PremiumSection bid={bid} />}
 
           {tab === "changelog" && <ChangelogSection />}
+
+          {tab === "api" && <ApiCatalogSection />}
 
           {tab === "help" && (
             <div className="space-y-3">
@@ -1118,6 +1121,114 @@ function ChangelogSection() {
             </Card>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ApiCatalogSection — §71. Wires the Settings → API Catalog tab to the
+ * /api/catalog endpoint. Shows totalDomains, totalEndpoints, and a list
+ * of domains each with its endpoints (method, path, description) in a card.
+ *
+ * Per spec §71: "Every major capability should have a modular boundary/API."
+ * Per spec §82: "Before adding any API, inspect whether an equivalent API
+ * already exists. Reuse and extend rather than duplicate." This catalog is
+ * the developer-facing reference for what already exists.
+ */
+interface CatalogEndpoint {
+  method: string;
+  path: string;
+  description: string;
+}
+interface CatalogDomain {
+  domain: string;
+  specSection: string;
+  endpoints: CatalogEndpoint[];
+}
+interface CatalogResponse {
+  generatedAt: string;
+  totalDomains: number;
+  totalEndpoints: number;
+  domains: CatalogDomain[];
+  principle: string;
+}
+
+const METHOD_COLORS: Record<string, string> = {
+  GET: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30",
+  POST: "bg-sky-500/15 text-sky-600 border-sky-500/30",
+  PATCH: "bg-amber-500/15 text-amber-600 border-amber-500/30",
+  PUT: "bg-amber-500/15 text-amber-600 border-amber-500/30",
+  DELETE: "bg-rose/15 text-rose border-rose/30",
+};
+
+function ApiCatalogSection() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["api-catalog"],
+    queryFn: async () => {
+      const res = await fetch("/api/catalog");
+      if (!res.ok) throw new Error("failed");
+      return (await res.json()) as CatalogResponse;
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  if (isLoading) {
+    return <Skeleton className="h-40 w-full rounded-xl" />;
+  }
+  if (!data) {
+    return (
+      <p className="text-sm text-muted-foreground py-6 text-center">
+        Could not load API catalog.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border bg-muted/40 p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Code className="h-5 w-5 text-[hsl(var(--gold))]" />
+          <p className="text-sm font-semibold">API Catalog</p>
+          <Badge variant="outline" className="ml-auto bg-gold/15 text-[hsl(var(--gold))] border-gold/40">
+            {data.totalDomains} domains
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {data.totalEndpoints} endpoints across {data.totalDomains} domains.
+        </p>
+        <p className="text-xs text-muted-foreground mt-2">{data.principle}</p>
+      </div>
+
+      <div className="space-y-2">
+        {data.domains.map((d) => (
+          <Card key={d.domain} className="py-3 gap-2">
+            <div className="px-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-semibold">{d.domain}</p>
+                <Badge variant="secondary" className="text-[10px] py-0">{d.specSection}</Badge>
+                <Badge variant="outline" className="text-[10px] py-0 ml-auto">
+                  {d.endpoints.length} endpoint{d.endpoints.length === 1 ? "" : "s"}
+                </Badge>
+              </div>
+              <ul className="mt-2 space-y-1">
+                {d.endpoints.map((e, i) => {
+                  const primary = e.method.split("/")[0].toUpperCase();
+                  const colorClass = METHOD_COLORS[primary] || "bg-muted text-muted-foreground border-border";
+                  return (
+                    <li key={i} className="flex items-start gap-2 text-xs">
+                      <Badge variant="outline" className={`text-[10px] py-0 shrink-0 font-mono ${colorClass}`}>
+                        {e.method}
+                      </Badge>
+                      <code className="shrink-0 font-mono text-foreground break-all">{e.path}</code>
+                      <span className="text-muted-foreground min-w-0">— {e.description}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </Card>
+        ))}
       </div>
     </div>
   );

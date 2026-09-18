@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Search as SearchIcon, Loader2, FlaskConical } from "lucide-react";
 import { VideoCard } from "./video-card";
 import { CategoryChips } from "./category-chips";
 import { MoodFilter, moodToCategory, type MoodId } from "./mood-filter";
@@ -9,9 +10,20 @@ import { ShortsShelf } from "./shorts-shelf";
 import { TrendingDigest } from "./trending-digest";
 import { ContinueWatchingShelf } from "./continue-watching-shelf";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter, DialogHeader,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { cn } from "@/lib/utils";
 import type { Video } from "@/lib/types";
+import { toast } from "sonner";
 
 type FeedMode = "fyp" | "discovery" | "diversity";
 
@@ -73,12 +85,58 @@ async function fetchDiversityFeed(bid: string): Promise<ForYouPayload> {
   };
 }
 
+// §40 — AI multi-video research. POST { videoIds, operation } → returns the
+// AI's analysis (compare / summarize / agreements / differences /
+// contradictions / sources / organize). Falls back to a deterministic
+// listing when AI is unavailable.
+type ResearchOperation =
+  | "compare" | "summarize" | "agreements" | "differences"
+  | "contradictions" | "sources" | "organize";
+
+const RESEARCH_OPERATIONS: { value: ResearchOperation; label: string }[] = [
+  { value: "compare", label: "Compare" },
+  { value: "summarize", label: "Summarize" },
+  { value: "agreements", label: "Find agreements" },
+  { value: "differences", label: "Find differences" },
+  { value: "contradictions", label: "Identify contradictions" },
+  { value: "sources", label: "Surface sources" },
+  { value: "organize", label: "Organize by topic" },
+];
+
+interface MultiResearchResponse {
+  operation: string;
+  videoIds: string[];
+  videoTitles: { id: string; title: string; channel: string }[];
+  result: string;
+  source: string;
+  disclaimer: string;
+}
+async function fetchMultiVideoResearch(
+  videoIds: string[],
+  operation: ResearchOperation
+): Promise<MultiResearchResponse> {
+  const res = await fetch("/api/ai/multi-video-research", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ videoIds, operation }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string })?.error || "Research failed");
+  }
+  return (await res.json()) as MultiResearchResponse;
+}
+
 export function HomeView() {
   const [category, setCategory] = useState("All");
   const [mood, setMood] = useState<MoodId | null>(null);
   // §63-64 — feed mode toggle. Default is FYP (personalized). User can
   // switch to Discovery (intentionally different) or Diversity (max spread).
   const [feedMode, setFeedMode] = useState<FeedMode>("fyp");
+  // §40 — Multi-video research dialog. Opened by the "Research" button
+  // in the feed mode toggle row. The dialog shows the current feed's
+  // videos (capped at 10) and lets the user pick an operation.
+  const [researchOpen, setResearchOpen] = useState(false);
   const bid = useBrowserId();
 
   // When a mood is active, derive a category from it (overrides the chip
@@ -217,8 +275,29 @@ export function HomeView() {
           >
             Diverse
           </button>
+          {/* §40 — Research button. Opens a dialog where the user picks up
+              to 10 videos from the current feed + an operation, then POSTs
+              to /api/ai/multi-video-research. Always shown (even on category
+              or mood feeds) so the user can analyze whatever they're looking
+              at. */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto h-8 rounded-full text-xs border-gold/30 bg-gold/5 hover:bg-gold/10 text-foreground"
+            onClick={() => setResearchOpen(true)}
+            disabled={!displayVideos || displayVideos.length === 0}
+            title="Pick multiple videos and run AI research (compare, summarize, etc.)"
+          >
+            <FlaskConical className="h-3.5 w-3.5 text-[hsl(var(--gold))]" />
+            Research
+          </Button>
         </div>
       )}
+      <ResearchDialog
+        open={researchOpen}
+        onOpenChange={setResearchOpen}
+        videos={(displayVideos || []).slice(0, 10)}
+      />
       <div className="px-4 sm:px-6 py-4">
         {mood && (
           <p className="text-xs text-muted-foreground mb-3">
@@ -267,5 +346,192 @@ export function VideoCardSkeleton() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * §40 — ResearchDialog. Lets the user pick up to N videos from the current
+ * feed + an operation, then POSTs to /api/ai/multi-video-research. Shows
+ * the AI-generated analysis in a scrollable area, plus the disclaimer
+ * (per spec §40: "Do not manufacture consensus").
+ */
+function ResearchDialog({
+  open,
+  onOpenChange,
+  videos,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  videos: Video[];
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [operation, setOperation] = useState<ResearchOperation>("compare");
+
+  // Reset selection when the dialog opens (so stale picks don't persist).
+  useEffect(() => {
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelected(new Set());
+    }
+  }, [open]);
+
+  const toggle = (id: string) => {
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) {
+        next.delete(id);
+      } else if (next.size < 10) {
+        next.add(id);
+      } else {
+        toast.info("You can select up to 10 videos.");
+      }
+      return next;
+    });
+  };
+
+  const mutation = useMutation({
+    mutationFn: () => fetchMultiVideoResearch(Array.from(selected), operation),
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Research failed";
+      toast.error(msg);
+    },
+  });
+
+  const run = () => {
+    if (selected.size < 2) {
+      toast.error("Select at least 2 videos to run research.");
+      return;
+    }
+    mutation.mutate();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FlaskConical className="h-5 w-5 text-[hsl(var(--gold))]" />
+            Multi-video research
+          </DialogTitle>
+          <DialogDescription>
+            Pick 2–10 videos from your current feed and an operation. Mashahd AI will analyze them together.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          {/* Operation picker */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground shrink-0">Operation:</span>
+            <Select value={operation} onValueChange={(v) => setOperation(v as ResearchOperation)}>
+              <SelectTrigger size="sm" className="h-8 text-xs flex-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RESEARCH_OPERATIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Video multi-select list (capped at the videos passed in) */}
+          <div className="rounded-lg border border-border max-h-[260px] overflow-y-auto custom-scroll">
+            {videos.length === 0 ? (
+              <p className="p-3 text-xs text-muted-foreground text-center">
+                No videos in the current feed. Try a different category or refresh.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {videos.map((v) => {
+                  const checked = selected.has(v.id);
+                  return (
+                    <li key={v.id}>
+                      <label
+                        className={cn(
+                          "flex items-start gap-2 p-2 cursor-pointer hover:bg-accent transition-colors",
+                          checked && "bg-accent/40"
+                        )}
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => toggle(v.id)}
+                          className="mt-0.5"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{v.title}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {v.channel.name} · {v.category}
+                          </p>
+                        </div>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            <span className="text-foreground font-medium tabular-nums">{selected.size}</span> selected ·
+            max 10 · need at least 2 to run research.
+          </p>
+
+          {/* Result */}
+          {mutation.data && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge variant="outline" className="text-[10px] py-0">{mutation.data.operation}</Badge>
+                <Badge variant="secondary" className="text-[10px] py-0">{mutation.data.source}</Badge>
+              </div>
+              <ScrollArea className="h-[280px] rounded-lg border border-border bg-muted/40 p-3">
+                <pre className="text-xs whitespace-pre-wrap break-words font-sans leading-relaxed">
+                  {mutation.data.result}
+                </pre>
+              </ScrollArea>
+              <p className="text-[10px] italic text-muted-foreground">
+                {mutation.data.disclaimer}
+              </p>
+            </div>
+          )}
+          {mutation.isError && (
+            <p className="text-xs text-destructive">
+              {mutation.error instanceof Error ? mutation.error.message : "Research failed"}
+            </p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-full"
+            onClick={() => onOpenChange(false)}
+            disabled={mutation.isPending}
+          >
+            Close
+          </Button>
+          <Button
+            size="sm"
+            className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={run}
+            disabled={mutation.isPending || selected.size < 2}
+          >
+            {mutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                Researching…
+              </>
+            ) : (
+              <>
+                <SearchIcon className="h-4 w-4 mr-1.5" />
+                Run research
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
