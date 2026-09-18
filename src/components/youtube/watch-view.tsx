@@ -909,7 +909,7 @@ export function WatchView({ videoId }: { videoId: string }) {
                   <span className="tabular-nums">{formatCount(video.dislikes)}</span>
                 </button>
               </div>
-              <ShareButton videoId={video.id} title={video.title} />
+              <ShareButton videoId={video.id} title={video.title} currentTime={liveCurrentTime} />
               {/* §46 — Live-to-VOD button. Only shown when the video title
                   heuristically looks like a live stream (same regex as the
                   polls/Q&A panel below). On click: POST to

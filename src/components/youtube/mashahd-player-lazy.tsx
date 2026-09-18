@@ -26,6 +26,12 @@ export type MashahdPlayerProps = {
   manifestVersion?: string;
   swarmId?: string;
   autoPlay?: boolean;
+  /** Optional start position (seconds). The player seeks here once metadata
+   *  has loaded — used by the clip permalink page to deep-link to a segment. */
+  startAt?: number;
+  /** Optional end position (seconds). When the clip range ends, playback
+   *  pauses + fires onEnded so the UI can show the up-next state. */
+  endAt?: number;
   onPlay?: () => void;
   onPause?: () => void;
   onEnded?: () => void;

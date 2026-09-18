@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, Video as VideoIcon, X, Upload, Link2, Check, Twitter, Facebook, Mail, ChevronRight } from "lucide-react";
+import { Bell, Video as VideoIcon, X, Upload, Link2, Check, Twitter, Facebook, Mail, ChevronRight, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -400,27 +400,51 @@ export function CreateButton() {
 export function ShareButton({
   videoId,
   title,
+  currentTime,
 }: {
   videoId: string;
   title: string;
+  currentTime?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedAt, setCopiedAt] = useState(false);
   const bid = useBrowserId();
+
   // Build the share URL safely — use a state + effect to avoid hydration
   // mismatch (server renders a relative URL, client renders the full origin).
+  // Only the base URL needs to live in state (window.location.origin is
+  // undefined during SSR). The timestamped URL is DERIVED from the base +
+  // the `currentTime` prop so we don't trigger set-state-in-effect cascades.
   const [url, setUrl] = useState<string>(`/?v=watch&id=${videoId}`);
   useEffect(() => {
     setUrl(`${window.location.origin}/?v=watch&id=${videoId}`);
   }, [videoId]);
 
+  // Timestamped URL — derived from `url` + the current playback position.
+  // When no timestamp is available, falls back to the full-video URL.
+  const urlAtTime =
+    typeof currentTime === "number" && currentTime > 0
+      ? `${url}${url.includes("?") ? "&" : "?"}t=${Math.floor(currentTime)}`
+      : url;
+
   // Pass 4 upgrade: record share events to /api/videos/[id]/share so we can
-  // track virality + power recommendations. Fire-and-forget (non-blocking).
-  const recordShare = (platform: string) => {
+  // track virality + power recommendations. Fire-and-forget (non-critical).
+  // §44 — shareType can be "full" (default), "timestamp", "clip", "chapter",
+  // or "transcript". The timestamp type carries a `timestamp` (seconds).
+  const recordShare = (
+    platform: string,
+    shareType: "full" | "timestamp" | "clip" | "chapter" | "transcript" = "full",
+    timestamp?: number
+  ) => {
+    const body: Record<string, unknown> = { browserId: bid, platform, shareType };
+    if (shareType === "timestamp" && typeof timestamp === "number") {
+      body.timestamp = Math.max(0, Math.floor(timestamp));
+    }
     fetch(`/api/videos/${videoId}/share`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ browserId: bid, platform }),
+      body: JSON.stringify(body),
     }).catch(() => {/* non-critical */});
   };
 
@@ -428,7 +452,7 @@ export function ShareButton({
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      recordShare("copy_link");
+      recordShare("copy_link", "full");
       toast.success("Link copied to clipboard");
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -436,11 +460,36 @@ export function ShareButton({
     }
   };
 
+  // "Copy at current time" — sends shareType: "timestamp" with the current
+  // playback position so the backend can build a `?v=watch&id=…&t=<sec>` URL
+  // and analytics can attribute shares to a specific moment.
+  const copyAtTime = async () => {
+    if (!currentTime || currentTime <= 0) return;
+    try {
+      await navigator.clipboard.writeText(urlAtTime);
+      setCopiedAt(true);
+      recordShare("copy_link", "timestamp", currentTime);
+      toast.success("Timestamped link copied", {
+        description: `Link starts at ${formatSeconds(currentTime)}`,
+      });
+      setTimeout(() => setCopiedAt(false), 2000);
+    } catch {
+      toast.error("Couldn't copy link");
+    }
+  };
+
+  // The social buttons continue to share the FULL video (shareType: "full")
+  // because Twitter / Facebook / Email sharers don't deep-link to timestamps
+  // in the same way the in-app copy does.
   const socials: { label: string; icon: React.ComponentType<{ className?: string }>; tint: string; href: string; platform: string }[] = [
     { label: "Twitter", icon: Twitter, tint: "hover:bg-sky-500/10 hover:text-sky-500", href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`, platform: "twitter" },
     { label: "Facebook", icon: Facebook, tint: "hover:bg-blue-600/10 hover:text-blue-600", href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, platform: "facebook" },
     { label: "Email", icon: Mail, tint: "hover:bg-rose-500/10 hover:text-rose-500", href: `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(url)}`, platform: "email" },
   ];
+
+  // Only show the timestamp options when a non-zero currentTime is provided
+  // (i.e. when the player has started + has a position worth sharing from).
+  const hasTimestamp = typeof currentTime === "number" && currentTime > 0;
 
   return (
     <>
@@ -457,7 +506,7 @@ export function ShareButton({
           <DialogTitle>Share video</DialogTitle>
           <DialogDescription>{title}</DialogDescription>
 
-          {/* Copy link */}
+          {/* Copy link — full video URL (shareType: "full") */}
           <div className="flex items-center gap-2 mt-2">
             <input
               readOnly
@@ -476,7 +525,32 @@ export function ShareButton({
             </Button>
           </div>
 
-          {/* Social row */}
+          {/* Copy link at current time — shareType: "timestamp" §44.
+              Only shown when the parent passed a non-zero currentTime. */}
+          {hasTimestamp && (
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                readOnly
+                value={urlAtTime}
+                aria-label="Timestamped share URL"
+                className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-gold/60"
+                onFocus={(e) => e.target.select()}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-lg border-gold/40 hover:bg-gold/10 px-4"
+                onClick={copyAtTime}
+              >
+                {copiedAt ? <Check className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
+                {copiedAt ? "Copied" : "Copy at current time"}
+              </Button>
+            </div>
+          )}
+
+          {/* Social row — full-video shares (shareType: "full"). Twitter,
+              Facebook, and Email sharers don't deep-link to a timestamp in
+              the way the in-app copy does, so they always share the full URL. */}
           <div className="grid grid-cols-3 gap-2 mt-4">
             {socials.map((s) => {
               const Icon = s.icon;
@@ -486,7 +560,7 @@ export function ShareButton({
                   href={s.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => recordShare(s.platform)}
+                  onClick={() => recordShare(s.platform, "full")}
                   className={cn(
                     "flex flex-col items-center gap-1.5 py-3 rounded-xl border border-border bg-surface transition-colors",
                     s.tint
@@ -502,4 +576,18 @@ export function ShareButton({
       </Dialog>
     </>
   );
+}
+
+/* Format seconds → m:ss or h:mm:ss for the share toast. Mirrors the
+   backend's formatTimestamp in /api/videos/[id]/share/route.ts. */
+function formatSeconds(s: number): string {
+  if (!isFinite(s) || s < 0) s = 0;
+  const total = Math.floor(s);
+  const m = Math.floor(total / 60);
+  const sec = total % 60;
+  if (m >= 60) {
+    const h = Math.floor(m / 60);
+    return `${h}:${String(m % 60).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  }
+  return `${m}:${String(sec).padStart(2, "0")}`;
 }

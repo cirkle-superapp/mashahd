@@ -27,6 +27,7 @@ import { KeyboardShortcuts } from "@/components/youtube/keyboard-shortcuts";
 import { MiniPlayer } from "@/components/youtube/mini-player";
 import { OnboardingTour } from "@/components/youtube/onboarding-tour";
 import { PlaylistView } from "@/components/youtube/playlist-view";
+import { ClipView } from "@/components/youtube/clip-view";
 import { RecommendationProfileView } from "@/components/youtube/recommendation-profile-view";
 import { SmartPlaylistResultsView } from "@/components/youtube/smart-playlist-creator";
 import { useMashahdBridge } from "@/lib/mashahd-bridge";
@@ -67,6 +68,8 @@ function renderView(view: ReturnType<typeof useAppStore.getState>["view"]) {
       return <PlaylistView playlistId={view.playlistId} />;
     case "smartPlaylist":
       return <SmartPlaylistResultsView playlistId={view.playlistId} />;
+    case "clip":
+      return <ClipView clipId={view.clipId} />;
     case "recommendationProfile":
       return <RecommendationProfileView />;
   }

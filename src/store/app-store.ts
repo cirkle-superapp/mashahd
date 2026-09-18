@@ -19,6 +19,7 @@ export type View =
   | { kind: "watchLater" }
   | { kind: "playlist"; playlistId: string }
   | { kind: "smartPlaylist"; playlistId: string }
+  | { kind: "clip"; clipId: string }
   | { kind: "recommendationProfile" };
 
 type AppState = {
@@ -71,6 +72,8 @@ export function viewToQuery(v: View): string {
       return `?v=playlist&id=${encodeURIComponent(v.playlistId)}`;
     case "smartPlaylist":
       return `?v=smartPlaylist&id=${encodeURIComponent(v.playlistId)}`;
+    case "clip":
+      return `?v=clip&id=${encodeURIComponent(v.clipId)}`;
     case "recommendationProfile":
       return `?v=recommendationProfile`;
   }
@@ -111,6 +114,8 @@ export function queryToView(search: string): View {
       return { kind: "playlist", playlistId: sp.get("id") || "" };
     case "smartPlaylist":
       return { kind: "smartPlaylist", playlistId: sp.get("id") || "" };
+    case "clip":
+      return { kind: "clip", clipId: sp.get("id") || "" };
     case "recommendationProfile":
       return { kind: "recommendationProfile" };
     default:

@@ -13,8 +13,13 @@ import {
   Link2,
   Lock,
   MoreHorizontal,
+  FolderPlus,
+  Folder,
+  Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { useAppStore } from "@/store/app-store";
@@ -227,6 +232,12 @@ export function PlaylistView({ playlistId }: { playlistId: string }) {
         </div>
       </div>
 
+      {/* Folders — §29. The playlist-folders API exists for organizing the
+          user's playlists into folders. We surface them here as a small
+          horizontal chip row above the videos so the user can browse +
+          create folders without leaving the playlist view. */}
+      <PlaylistFolders bid={bid} />
+
       {/* Videos list */}
       {videos.length === 0 ? (
         <div className="text-center py-12">
@@ -290,6 +301,178 @@ export function PlaylistView({ playlistId }: { playlistId: string }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * PlaylistFolders — minimal folder-organization surface (§29).
+ *
+ * Fetches /api/playlist-folders?bid=… via useQuery and shows a horizontal
+ * chip row of folders. A "Create folder" button opens an inline input that
+ * POSTs to /api/playlist-folders. The schema doesn't yet expose a
+ * playlist→folder foreign key (the backend route intentionally avoids a
+ * destructive migration), so folders are surfaced as standalone
+ * organizational containers — the user can see + create them here, and
+ * future work will wire folder→playlist assignment once the schema migrates.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+type Folder = {
+  id: string;
+  name: string;
+  parentId: string | null;
+  position: number;
+  createdAt?: string;
+};
+
+async function fetchFolders(bid: string): Promise<Folder[]> {
+  if (!bid) return [];
+  const r = await fetch(`/api/playlist-folders?bid=${encodeURIComponent(bid)}`);
+  if (!r.ok) return [];
+  const data = await r.json();
+  return (data.folders || []) as Folder[];
+}
+
+function PlaylistFolders({ bid }: { bid: string }) {
+  const qc = useQueryClient();
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["playlist-folders", bid],
+    queryFn: () => fetchFolders(bid),
+    enabled: !!bid,
+    staleTime: 60_000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const r = await fetch("/api/playlist-folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ browserId: bid, name: name.trim() }),
+      });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        throw new Error(e.error || "failed");
+      }
+      return r.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["playlist-folders", bid] });
+      toast.success("Folder created");
+      setName("");
+      setCreating(false);
+    },
+    onError: (e: Error) => toast.error(e.message || "Couldn't create folder"),
+  });
+
+  const folders = data ?? [];
+
+  // Nothing to show yet AND the user isn't mid-create? Hide the row entirely
+  // to keep the playlist view uncluttered for users who haven't opted into
+  // folders. The "Create folder" button stays accessible so they can opt in.
+  if (folders.length === 0 && !creating) {
+    return (
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-full"
+          onClick={() => setCreating(true)}
+        >
+          <FolderPlus className="h-4 w-4 mr-1.5" />
+          Create folder
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Folders
+        </p>
+        <button
+          onClick={() => setCreating((c) => !c)}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+        >
+          <FolderPlus className="h-3.5 w-3.5" />
+          New folder
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scroll">
+        {isLoading ? (
+          <Skeleton className="h-9 w-24 rounded-full" />
+        ) : (
+          folders.map((f) => (
+            <div
+              key={f.id}
+              className="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-surface border border-border text-sm hover:bg-accent transition-colors"
+              title={f.createdAt ? `Created ${timeAgo(f.createdAt)}` : f.name}
+            >
+              <Folder className="h-3.5 w-3.5 text-gold" />
+              <span className="truncate max-w-[12ch]">{f.name}</span>
+            </div>
+          ))
+        )}
+
+        {creating && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!name.trim()) return;
+              createMutation.mutate();
+            }}
+            className="shrink-0 inline-flex items-center gap-1.5 h-9 pl-2 pr-1 rounded-full bg-surface border border-gold/40"
+          >
+            <Input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Folder name"
+              maxLength={100}
+              aria-label="New folder name"
+              className="h-7 w-32 border-0 bg-transparent px-1.5 text-sm focus-visible:ring-0"
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setName("");
+                  setCreating(false);
+                }
+              }}
+            />
+            <Button
+              type="submit"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 rounded-full hover:bg-gold/10"
+              disabled={!name.trim() || createMutation.isPending}
+              aria-label="Create folder"
+            >
+              {createMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Check className="h-3.5 w-3.5 text-gold" />
+              )}
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 rounded-full hover:bg-accent"
+              onClick={() => {
+                setName("");
+                setCreating(false);
+              }}
+              aria-label="Cancel"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

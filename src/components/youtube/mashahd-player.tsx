@@ -56,6 +56,8 @@ export function MashahdPlayer({
   manifestVersion = "v1",
   swarmId,
   autoPlay = true,
+  startAt,
+  endAt,
   onPlay,
   onPause,
   onEnded,
@@ -63,11 +65,17 @@ export function MashahdPlayer({
   children,
 }: {
   src: string;
-  poster: string;
+  poster?: string;
   videoId: string;
   manifestVersion?: string;
   swarmId?: string | null;
   autoPlay?: boolean;
+  /** Optional start position (seconds). The player seeks here once metadata
+   *  has loaded — used by the clip permalink page to deep-link to a segment. */
+  startAt?: number;
+  /** Optional end position (seconds). When playback reaches endAt, the player
+   *  pauses + fires onEnded so the host UI can show the up-next state. */
+  endAt?: number;
   onPlay?: () => void;
   onPause?: () => void;
   onEnded?: () => void;
@@ -328,6 +336,35 @@ export function MashahdPlayer({
     return () => v.removeEventListener("waiting", onWaiting);
   }, []);
 
+  // ── Clip range: seek to startAt once metadata loads + track endAt.
+  //
+  // The clip permalink page passes startAt/endAt so the player deep-links
+  // into a segment and stops at its end. We attach a one-time loadedmetadata
+  // listener (separate from the init effect) so we don't have to thread
+  // startAt through the source-detection branches — the listener fires
+  // for direct MP4, hls.js, AND native HLS (Safari) alike.
+  const endFiredRef = useRef(false);
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (typeof startAt !== "number" || !isFinite(startAt) || startAt <= 0) return;
+    const onMeta = () => {
+      // Clamp to a sane range — startAt can't exceed the clip's endAt (if
+      // provided) or the video's duration.
+      const cap = typeof endAt === "number" && isFinite(endAt) ? Math.min(endAt, v.duration || Infinity) : (v.duration || Infinity);
+      const target = Math.max(0, Math.min(startAt, cap));
+      try {
+        // Setting currentTime may throw if the media isn't seekable yet;
+        // we retry on the next seeked event by ignoring the error.
+        v.currentTime = target;
+      } catch {
+        /* not seekable yet — ignore */
+      }
+    };
+    v.addEventListener("loadedmetadata", onMeta);
+    return () => v.removeEventListener("loadedmetadata", onMeta);
+  }, [startAt, endAt]);
+
   const changeVolume = (val: number) => {
     const v = videoRef.current;
     if (!v) return;
@@ -414,6 +451,19 @@ export function MashahdPlayer({
             onTimeUpdate?.(videoRef.current.currentTime);
             if (videoRef.current.buffered.length > 0) {
               setBuffered(videoRef.current.buffered.end(videoRef.current.buffered.length - 1));
+            }
+            // Clip range: when playback crosses endAt, pause + fire onEnded
+            // so the host UI can show the up-next state. Guarded by a ref
+            // so onEnded fires exactly once per clip view.
+            if (
+              typeof endAt === "number" &&
+              isFinite(endAt) &&
+              videoRef.current.currentTime >= endAt &&
+              !endFiredRef.current
+            ) {
+              endFiredRef.current = true;
+              try { videoRef.current.pause(); } catch { /* ignore */ }
+              onEnded?.();
             }
           }
         }}
@@ -545,14 +595,14 @@ export function MashahdPlayer({
             )}
           </div>
           {pipSupported && (
-            <button onClick={togglePiP} className="grid place-items-center h-8 w-8 rounded-full hover:bg-white/15 text-white" aria-label="Picture in picture">
+            <button onClick={togglePiP} className="grid place-items-center h-9 w-9 rounded-full hover:bg-white/15 text-white" aria-label="Picture in picture">
               <PictureInPicture2 className="h-4 w-4" />
             </button>
           )}
-          <button onClick={() => setShowSpeedMenu((s) => !s)} className="grid place-items-center h-8 w-8 rounded-full hover:bg-white/15 text-white" aria-label="Settings">
+          <button onClick={() => setShowSpeedMenu((s) => !s)} className="grid place-items-center h-9 w-9 rounded-full hover:bg-white/15 text-white" aria-label="Settings">
             <Settings2 className="h-4 w-4" />
           </button>
-          <button onClick={toggleFullscreen} className="grid place-items-center h-8 w-8 rounded-full hover:bg-white/15 text-white" aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}>
+          <button onClick={toggleFullscreen} className="grid place-items-center h-9 w-9 rounded-full hover:bg-white/15 text-white" aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}>
             {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </button>
         </div>

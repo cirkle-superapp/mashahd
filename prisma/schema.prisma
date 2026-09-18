@@ -74,6 +74,7 @@ model Video {
   renditions   VideoRendition[]
   manifests    VideoManifest[]
   jobs         MediaProcessingJob[]
+  clips        Clip[]
 
   @@index([category])
   @@index([channelId])
@@ -174,6 +175,8 @@ model Clip {
   note        String   @default("")
   views       Int      @default(0)
   createdAt   DateTime @default(now())
+
+  video       Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@index([videoId])
   @@index([creatorId])
@@ -704,6 +707,29 @@ model ActiveSession {
 
   @@index([userId])
   @@index([deviceFingerprint])
+}
+
+// ── Channel Roles (§49 — owner/manager/editor/viewer) ──
+// Per the social-media audit: solo creators only. This model enables
+// creator teams with role-based access control.
+model ChannelRole {
+  id          String   @id @default(cuid())
+  channelId   String
+  // The user invited to the channel team.
+  userId      String
+  // The role assigned (§49).
+  role        String   @default("viewer") // owner | manager | editor | viewer
+  // Whether the invitation has been accepted.
+  accepted    Boolean  @default(false)
+  // Who invited this user.
+  invitedBy   String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([channelId, userId])
+  @@index([channelId])
+  @@index([userId])
+  @@index([role])
 }
 
 // ── Content Rights System (§53-54 — ownership, licenses, claims, disputes) ──
