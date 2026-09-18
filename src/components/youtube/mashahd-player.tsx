@@ -595,14 +595,14 @@ export function MashahdPlayer({
             )}
           </div>
           {pipSupported && (
-            <button onClick={togglePiP} className="grid place-items-center h-9 w-9 rounded-full hover:bg-white/15 text-white" aria-label="Picture in picture">
+            <button onClick={togglePiP} className="grid place-items-center min-h-[44px] min-w-[44px] h-11 w-11 rounded-full hover:bg-white/15 text-white" aria-label="Picture in picture">
               <PictureInPicture2 className="h-4 w-4" />
             </button>
           )}
-          <button onClick={() => setShowSpeedMenu((s) => !s)} className="grid place-items-center h-9 w-9 rounded-full hover:bg-white/15 text-white" aria-label="Settings">
+          <button onClick={() => setShowSpeedMenu((s) => !s)} className="grid place-items-center min-h-[44px] min-w-[44px] h-11 w-11 rounded-full hover:bg-white/15 text-white" aria-label="Settings">
             <Settings2 className="h-4 w-4" />
           </button>
-          <button onClick={toggleFullscreen} className="grid place-items-center h-9 w-9 rounded-full hover:bg-white/15 text-white" aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}>
+          <button onClick={toggleFullscreen} className="grid place-items-center min-h-[44px] min-w-[44px] h-11 w-11 rounded-full hover:bg-white/15 text-white" aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}>
             {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </button>
         </div>

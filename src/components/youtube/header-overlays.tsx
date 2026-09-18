@@ -572,6 +572,41 @@ export function ShareButton({
               );
             })}
           </div>
+
+          {/* §44 — Share at timestamp via social platforms (when currentTime > 0). */}
+          {hasTimestamp && (
+            <div className="mt-3 p-3 rounded-lg bg-gold/5 border border-gold/20">
+              <p className="text-xs text-muted-foreground mb-2">
+                Share this moment ({formatSeconds(currentTime || 0)}) on social media:
+              </p>
+              <div className="flex gap-2">
+                {socials.map((s) => {
+                  const Icon = s.icon;
+                  const timestampUrl = `${url}?v=watch&id=${videoId}&t=${Math.floor(currentTime || 0)}`;
+                  const timestampText = `${title} (at ${formatSeconds(currentTime || 0)}) — watch on Mashahd`;
+                  const socialTimestampHref =
+                    s.platform === "twitter"
+                      ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(timestampText)}&url=${encodeURIComponent(timestampUrl)}`
+                      : s.platform === "facebook"
+                      ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(timestampUrl)}`
+                      : `mailto:?subject=${encodeURIComponent(timestampText)}&body=${encodeURIComponent(timestampUrl)}`;
+                  return (
+                    <a
+                      key={`ts-${s.label}`}
+                      href={socialTimestampHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => recordShare(s.platform, "timestamp", currentTime || 0)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border border-border bg-surface hover:bg-gold/10 transition-colors"
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {s.label} @ {formatSeconds(currentTime || 0)}
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>

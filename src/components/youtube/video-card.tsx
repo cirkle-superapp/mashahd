@@ -202,7 +202,7 @@ export function VideoCard({ video, reasons }: { video: Video; reasons?: string[]
           <button
             onClick={toggleFav}
             className={cn(
-              "grid place-items-center h-9 w-9 rounded-full backdrop-blur transition-colors",
+              "grid place-items-center min-h-[44px] min-w-[44px] h-11 w-11 rounded-full backdrop-blur transition-colors",
               fav ? "bg-rose text-white" : "bg-black/70 text-white hover:bg-black/90"
             )}
             aria-label={fav ? "Remove from Favorites" : "Add to Favorites"}
@@ -213,7 +213,7 @@ export function VideoCard({ video, reasons }: { video: Video; reasons?: string[]
           <button
             onClick={toggleLater}
             className={cn(
-              "grid place-items-center h-9 w-9 rounded-full backdrop-blur transition-colors",
+              "grid place-items-center min-h-[44px] min-w-[44px] h-11 w-11 rounded-full backdrop-blur transition-colors",
               later ? "bg-gold text-charcoal" : "bg-black/70 text-white hover:bg-black/90"
             )}
             aria-label={later ? "Remove from Watch Later" : "Add to Watch Later"}

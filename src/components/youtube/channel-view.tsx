@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, Share2, MoreHorizontal, Heart, Sparkles, BarChart3, Download, Wallet, Pencil, Loader2 } from "lucide-react";
+import { Bell, Share2, MoreHorizontal, Heart, Sparkles, BarChart3, Download, Wallet, Pencil, Loader2, Users, UserPlus, Trash2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -304,6 +304,9 @@ export function ChannelView({ channelId }: { channelId: string }) {
           </div>
         </div>
       </div>
+
+      {/* §49 — Channel Roles management (team members) */}
+      <ChannelRolesSection channelId={channel.id} bid={bid} />
 
       {/* Single-scroll story view — no tabs, just continuous sections */}
       <div className="px-4 sm:px-6 mt-6 max-w-[1500px] mx-auto space-y-8">
@@ -765,5 +768,194 @@ function EditChannelForm({ channelId, bid, channel, onDone }: EditChannelFormPro
         </Button>
       </DialogFooter>
     </DialogContent>
+  );
+}
+
+/**
+ * ChannelRolesSection — §49: Channel team management UI.
+ * Shows team members with their roles, allows inviting new members,
+ * accepting invitations, changing roles, and removing members.
+ */
+function ChannelRolesSection({ channelId, bid }: { channelId: string; bid: string }) {
+  const qc = useQueryClient();
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteUserId, setInviteUserId] = useState("");
+  const [inviteRole, setInviteRole] = useState("editor");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["channel-roles", channelId, bid],
+    queryFn: async () => {
+      if (!bid) return { roles: [] };
+      const res = await fetch(`/api/channels/${channelId}/roles?bid=${encodeURIComponent(bid)}`);
+      if (!res.ok) return { roles: [] };
+      return res.json();
+    },
+    enabled: !!bid,
+    staleTime: 30_000,
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/channels/${channelId}/roles`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ browserId: bid, userId: inviteUserId, role: inviteRole }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to invite");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["channel-roles", channelId, bid] });
+      toast.success("Team member invited");
+      setShowInvite(false);
+      setInviteUserId("");
+    },
+    onError: (e: any) => toast.error(e.message || "Failed to invite"),
+  });
+
+  const acceptMutation = useMutation({
+    mutationFn: async (roleId: string) => {
+      const res = await fetch(`/api/channels/${channelId}/roles`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ browserId: bid, roleId, action: "accept" }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["channel-roles", channelId, bid] });
+      toast.success("Invitation accepted");
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async (roleId: string) => {
+      const res = await fetch(`/api/channels/${channelId}/roles`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ browserId: bid, roleId }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["channel-roles", channelId, bid] });
+      toast.success("Team member removed");
+    },
+  });
+
+  const roles = data?.roles || [];
+
+  if (isLoading) return null;
+  if (roles.length === 0 && !showInvite) return null;
+
+  const roleColors: Record<string, string> = {
+    owner: "bg-gold/15 text-[hsl(var(--gold))] border-gold/30",
+    manager: "bg-teal/15 text-teal border-teal/30",
+    editor: "bg-steel/15 text-steel border-steel/30",
+    viewer: "bg-muted text-muted-foreground border-border",
+  };
+
+  return (
+    <div className="px-4 sm:px-6 mt-2">
+      <details className="group rounded-xl border border-border bg-card overflow-hidden">
+        <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer list-none text-sm font-medium">
+          <Users className="h-4 w-4 text-[hsl(var(--gold))]" />
+          <span className="flex-1">Team ({roles.length})</span>
+          <span className="text-muted-foreground group-open:rotate-180 transition-transform">⌄</span>
+        </summary>
+        <div className="px-4 pb-4 space-y-2">
+          {roles.map((r: any) => (
+            <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background">
+              <div className="grid place-items-center h-8 w-8 rounded-full bg-muted shrink-0">
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{r.userId.slice(0, 20)}…</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className={cn("text-[10px] px-2 py-0.5 rounded-full border font-medium", roleColors[r.role] || roleColors.viewer)}>
+                    {r.role}
+                  </span>
+                  {!r.accepted && (
+                    <span className="text-[10px] text-muted-foreground">Pending</span>
+                  )}
+                </div>
+              </div>
+              {!r.accepted && r.role !== "owner" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full text-xs h-7"
+                  onClick={() => acceptMutation.mutate(r.id)}
+                  disabled={acceptMutation.isPending}
+                >
+                  <Check className="h-3 w-3 mr-1" /> Accept
+                </Button>
+              )}
+              {r.role !== "owner" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 h-8 w-8 hover:text-rose"
+                  onClick={() => removeMutation.mutate(r.id)}
+                  disabled={removeMutation.isPending}
+                  aria-label="Remove member"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          ))}
+
+          {showInvite ? (
+            <div className="p-3 rounded-lg border border-border bg-background space-y-2">
+              <input
+                value={inviteUserId}
+                onChange={(e) => setInviteUserId(e.target.value.slice(0, 60))}
+                placeholder="User ID to invite"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60"
+                aria-label="User ID to invite"
+              />
+              <div className="flex items-center gap-2">
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value)}
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  aria-label="Role"
+                >
+                  <option value="manager">Manager</option>
+                  <option value="editor">Editor</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+                <Button
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => inviteMutation.mutate()}
+                  disabled={inviteMutation.isPending || !inviteUserId.trim()}
+                >
+                  {inviteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Invite"}
+                </Button>
+                <Button variant="ghost" size="sm" className="rounded-full" onClick={() => setShowInvite(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={() => setShowInvite(true)}
+            >
+              <UserPlus className="h-4 w-4 mr-1.5" /> Invite member
+            </Button>
+          )}
+        </div>
+      </details>
+    </div>
   );
 }
