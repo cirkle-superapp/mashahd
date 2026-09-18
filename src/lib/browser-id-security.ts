@@ -28,6 +28,7 @@
  */
 
 import { createHmac, timingSafeEqual, randomBytes } from "node:crypto";
+import { NextResponse } from "next/server";
 
 const BID_PREFIX = "bid_";
 const OLD_PREFIX = "b_";
@@ -121,10 +122,10 @@ export function verifyBrowserId(bid: string): { valid: boolean; id: string; lega
  */
 export function requireValidBrowserId(
   bid: string | undefined
-): { error: import("next/server").NextResponse | null; id: string } {
+): { error: NextResponse | null; id: string } {
   if (!bid) {
     return {
-      error: import("next/server").NextResponse.json(
+      error: NextResponse.json(
         { error: "browserId required" },
         { status: 400 }
       ),
@@ -134,7 +135,7 @@ export function requireValidBrowserId(
   const result = verifyBrowserId(bid);
   if (!result.valid) {
     return {
-      error: import("next/server").NextResponse.json(
+      error: NextResponse.json(
         { error: "invalid browserId — fetch a new one from /api/user-state" },
         { status: 403 }
       ),

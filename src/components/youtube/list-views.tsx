@@ -364,7 +364,7 @@ export function SubscriptionsView() {
     enabled: !!bid,
   });
   const subIds = state?.subscribedChannelIds || [];
-  const watchedIds = new Set(state?.watchedVideoIds || []);
+  const watchedIds = new Set<string>((state?.watchedVideoIds || []) as string[]);
 
   return (
     <div className="px-4 sm:px-6 py-6 max-w-[1400px] mx-auto">
@@ -888,7 +888,7 @@ export function WatchLaterView() {
     enabled: !!bid,
   });
   const ids = state?.watchLaterIds || [];
-  const watchedIds = new Set(state?.watchedVideoIds || []);
+  const watchedIds = new Set<string>((state?.watchedVideoIds || []) as string[]);
   const { data, isLoading: vLoading } = useQuery({
     queryKey: ["videos", "watchLater", ids.join("|")],
     queryFn: () => fetchVideosRaw({ ids: ids.join("|") }),

@@ -136,7 +136,8 @@ async function getSponsoredVideoIds(videoIds: string[]): Promise<string[]> {
       where: { videoId: { in: videoIds } },
       select: { videoId: true },
     });
-    return [...new Set(disclosures.map((d: any) => d.videoId))];
+    const ids: string[] = disclosures.map((d: any) => String(d.videoId));
+    return [...new Set(ids)];
   } catch {
     return [];
   }

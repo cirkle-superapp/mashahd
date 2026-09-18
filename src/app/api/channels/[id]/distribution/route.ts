@@ -71,9 +71,9 @@ export async function GET(
 
   // Build per-video diagnostics.
   const diagnostics = videos.map((v: any) => {
-    const shares = sharesMap.get(v.id) || 0;
-    const continueCount = continueMap.get(v.id) || 0;
-    const commentCount = commentsMap.get(v.id) || 0;
+    const shares = Number(sharesMap.get(v.id) || 0);
+    const continueCount = Number(continueMap.get(v.id) || 0);
+    const commentCount = Number(commentsMap.get(v.id) || 0);
     const views = v.views || 0;
     const likes = v.likes || 0;
     const dislikes = v.dislikes || 0;
