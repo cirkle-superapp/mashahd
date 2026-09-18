@@ -62,17 +62,19 @@ export async function POST(
 
   // 3. Trigger transcript + chapters generation (fire-and-forget).
   // These are async — they'll complete independently.
+  // Use env-based URL so this works in any deployment (not just localhost).
+  const baseUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
   const producedArtifacts: string[] = ["replay_available", "vod_packaging_queued"];
 
   // Try to trigger transcript generation.
   try {
-    fetch(`http://localhost:3000/api/ai/transcript?videoId=${id}`).catch(() => {});
+    fetch(`${baseUrl}/api/ai/transcript?videoId=${id}`).catch(() => {});
     producedArtifacts.push("transcript_generation_triggered");
   } catch { /* ignore */ }
 
   // Try to trigger chapter generation.
   try {
-    fetch(`http://localhost:3000/api/ai/chapters?videoId=${id}`).catch(() => {});
+    fetch(`${baseUrl}/api/ai/chapters?videoId=${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ videoId: id }) }).catch(() => {});
     producedArtifacts.push("chapters_generation_triggered");
   } catch { /* ignore */ }
 

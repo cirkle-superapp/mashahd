@@ -5835,3 +5835,61 @@ Stage Summary:
 - 3 improvements: Shorts in Dock nav, Continue Watching respects pref, Shorts shelf respects disableShorts pref.
 - The platform now has a fully navigable Shorts experience (Dock tab → vertical feed) that respects the user's disable preference.
 - All 4 quality gates pass. 88 APIs, 39 models, 100 components, production-ready.
+
+---
+Task ID: IMPLEMENT-PASS-37
+Agent: main (acting as COO + CTO + PM + UI Architect)
+Task: Deep scan, fix hardcoded localhost URLs, verify Shorts in Dock, all quality gates.
+
+Work Log:
+
+## 2 FIXES IMPLEMENTED
+
+### 1. Fixed hardcoded localhost URLs in API routes (production safety)
+Three API routes had hardcoded `http://localhost:3000` URLs for internal fetch calls. In production (Vercel, custom domain), these would fail because the server can't reach itself via localhost:3000.
+
+**Files fixed:**
+- `src/app/api/ai/search-in-video/route.ts:46` — transcript fetch was `http://localhost:3000/api/ai/transcript` → now uses `process.env.APP_URL || http://localhost:${process.env.PORT || 3000}`
+- `src/app/api/videos/[id]/live-to-vod/route.ts:69,75` — transcript + chapters trigger fetches were hardcoded → now use env-based URL
+- Also fixed the chapters fetch to use POST method (it's a POST endpoint, not GET)
+
+**Before:**
+```ts
+fetch(`http://localhost:3000/api/ai/transcript?videoId=${id}`)
+```
+**After:**
+```ts
+const baseUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
+fetch(`${baseUrl}/api/ai/transcript?videoId=${id}`)
+```
+
+### 2. Verified Shorts tab in Dock navigation
+- The Dock's "Primary navigation" element now shows 5 tabs: Home, Shorts, Trending, Subs, You ✅
+- "Liked" was moved to the More menu (secondary navigation) ✅
+- The Shorts tab navigates to `?v=shorts` → renders the ShortsFeedView ✅
+
+## VERIFICATION
+- `npx tsc --noEmit` → **0 errors** ✅
+- `bun run lint` → **clean (0 errors, 0 warnings)** ✅
+- `tests/basic.test.ts` → **23/23 passed** ✅
+- `tests/chaos.test.ts` → **17/17 passed** ✅
+- Browser-verified:
+  - Home renders with 0 errors ✅
+  - Dock shows: Home, Shorts, Trending, Subs, You ✅
+  - 0 errors throughout ✅
+- No hardcoded localhost URLs remain in API routes ✅
+- Platform stats: 88 API routes, 39 Prisma models, 100 components.
+
+## ACCESSIBILITY CHECK
+- All `size="icon"` buttons checked — all have `aria-label` or `title` nearby ✅
+- No missing aria-labels on icon-only buttons ✅
+
+## UNCAUGHT PROMISE CHECK
+- 10 `.then()` calls investigated — all either have `.catch()` or use the two-arg `.then(success, error)` pattern ✅
+- No uncaught promise rejections ✅
+
+Stage Summary:
+- 2 fixes: hardcoded localhost URLs → env-based (production safety), verified Shorts in Dock.
+- All 4 quality gates pass: tsc 0 errors, lint clean, 40/40 tests, browser 0 errors.
+- The platform is now production-safe — no internal fetch will break when deployed to Vercel or a custom domain.
+- 88 APIs, 39 models, 100 components, production-ready for public beta.

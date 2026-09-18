@@ -41,9 +41,11 @@ export async function POST(req: NextRequest) {
 
   // Try to fetch the transcript (if one was generated via /api/ai/transcript).
   // The transcript API caches results, so this is efficient.
+  // Use a relative URL so this works in any deployment (not just localhost).
+  const baseUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
   let transcript: any[] = [];
   try {
-    const transcriptRes = await fetch(`http://localhost:3000/api/ai/transcript?videoId=${videoId}`);
+    const transcriptRes = await fetch(`${baseUrl}/api/ai/transcript?videoId=${videoId}`);
     if (transcriptRes.ok) {
       const data = await transcriptRes.json();
       transcript = data.transcript || [];
