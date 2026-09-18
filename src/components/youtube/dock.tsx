@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Home, Flame, ListVideo, Clock, ThumbsUp, User, LayoutGrid, X, Compass, Sparkles, Settings, HelpCircle, MessageSquare, Heart, Bookmark, ListMusic } from "lucide-react";
+import { Home, Flame, ListVideo, Clock, ThumbsUp, User, LayoutGrid, X, Compass, Sparkles, Settings, HelpCircle, MessageSquare, Heart, Bookmark, ListMusic, Zap } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -34,9 +34,9 @@ type DockTab = {
 
 const PRIMARY_TABS: DockTab[] = [
   { id: "home", label: "Home", icon: Home, view: { kind: "home" } },
+  { id: "shorts", label: "Shorts", icon: Zap, view: { kind: "shorts" } },
   { id: "trending", label: "Trending", icon: Flame, view: { kind: "trending" } },
   { id: "subs", label: "Subs", icon: ListVideo, view: { kind: "subscriptions" } },
-  { id: "liked", label: "Liked", icon: ThumbsUp, view: { kind: "liked" } },
   { id: "profile", label: "You", icon: User, view: { kind: "profile" } },
 ];
 
@@ -44,6 +44,7 @@ const MORE_LINKS: { label: string; icon: React.ComponentType<{ className?: strin
   { label: "Favorites", icon: Heart, view: { kind: "favorites" } },
   { label: "Watch Later", icon: Bookmark, view: { kind: "watchLater" } },
   { label: "Library", icon: LayoutGrid, view: { kind: "library" } },
+  { label: "Liked", icon: ThumbsUp, view: { kind: "liked" } },
   { label: "Playlists", icon: ListMusic, view: { kind: "library" } },
   { label: "History", icon: Clock, view: { kind: "history" } },
   { label: "Settings", icon: Settings, view: { kind: "settings", tab: "general" } },

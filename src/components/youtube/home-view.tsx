@@ -139,6 +139,21 @@ export function HomeView() {
   const [researchOpen, setResearchOpen] = useState(false);
   const bid = useBrowserId();
 
+  // Fetch user preferences to respect continueWatchingEnabled + disableShorts.
+  const { data: prefs } = useQuery({
+    queryKey: ["preferences", bid],
+    queryFn: async () => {
+      if (!bid) return null;
+      const res = await fetch(`/api/preferences?bid=${encodeURIComponent(bid)}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!bid,
+    staleTime: 60_000,
+  });
+  const continueWatchingEnabled = prefs?.preferences?.continueWatchingEnabled ?? true;
+  const disableShorts = prefs?.preferences?.disableShorts ?? false;
+
   // When a mood is active, derive a category from it (overrides the chip
   // selection so the two don't fight each other).
   const effectiveCategory = useMemo(() => {
@@ -220,10 +235,10 @@ export function HomeView() {
       {isDefaultHome && <TrendingDigest />}
       {/* Continue Watching shelf — shows unfinished videos with resume positions.
           Per spec §32. Only on the default home view. */}
-      {isDefaultHome && <ContinueWatchingShelf />}
+      {isDefaultHome && continueWatchingEnabled && <ContinueWatchingShelf />}
       {/* Shorts shelf — only on the default home feed (not when a mood or
-          specific category is selected). */}
-      {isDefaultHome && <ShortsShelf />}
+          specific category is selected). Respects disableShorts preference (§16). */}
+      {isDefaultHome && !disableShorts && <ShortsShelf />}
       {/* Feed mode toggles — §63-64. Three small toggle buttons next to
           the FYP badge area. "Discovery" fetches intentionally different
           content; "Diverse" maximizes creator/topic/format spread. */}
