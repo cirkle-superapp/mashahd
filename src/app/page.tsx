@@ -30,6 +30,7 @@ import { PlaylistView } from "@/components/youtube/playlist-view";
 import { ClipView } from "@/components/youtube/clip-view";
 import { RecommendationProfileView } from "@/components/youtube/recommendation-profile-view";
 import { SmartPlaylistResultsView } from "@/components/youtube/smart-playlist-creator";
+import { ShortsFeedView } from "@/components/youtube/shorts-feed-view";
 import { useMashahdBridge } from "@/lib/mashahd-bridge";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { cn } from "@/lib/utils";
@@ -72,6 +73,8 @@ function renderView(view: ReturnType<typeof useAppStore.getState>["view"]) {
       return <ClipView clipId={view.clipId} />;
     case "recommendationProfile":
       return <RecommendationProfileView />;
+    case "shorts":
+      return <ShortsFeedView />;
   }
 }
 

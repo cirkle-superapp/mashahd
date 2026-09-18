@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getUserState, parseList, joinList } from "@/lib/user-state";
 import { issueBrowserId, verifyBrowserId } from "@/lib/browser-id-security";
+import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
 /**
  * GET /api/user-state?bid=<browserId>
@@ -82,6 +83,17 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
   }
+
+  // Rate limit state-changing requests.
+  const ip = getClientIP(req);
+  const rl = await rateLimit(`user-state:${ip}`, 60, 60_000);
+  if (rl.limited) {
+    return NextResponse.json(
+      { error: "rate limited" },
+      { status: 429, headers: { "Retry-After": "60" } }
+    );
+  }
+
   // If legacy bid, re-issue a signed one (caller will store + retry).
   if (verification.legacy) {
     const newBid = issueBrowserId();
