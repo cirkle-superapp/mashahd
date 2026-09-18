@@ -849,3 +849,50 @@ model AdDisclosure {
   @@index([videoId])
   @@index([adType])
 }
+
+// ── Sponsored Hashtags (from CIRKLE Mashahd — video discovery via hashtags) ──
+// Sponsored hashtags appear on the home feed as discovery chips.
+// Per spec §15: "Never make paid placements look identical to organic results."
+model SponsoredHashtag {
+  id          String   @id @default(cuid())
+  hashtag     String   @unique // e.g. "TechTuesday"
+  advertiser  String   @default("")
+  city        String   @default("") // geo-targeting (empty = worldwide)
+  budget      Int      @default(0) // remaining budget in minor units
+  startsAt    DateTime @default(now())
+  endsAt      DateTime?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([active])
+  @@index([hashtag])
+}
+
+// ── Fact-check Notes (from CIRKLE Mashahd — community fact-checking) ──
+// Community-submitted fact-check notes on videos.
+// Per spec §21: "Support differentiated signals such as: accurate, misleading."
+model FactCheckNote {
+  id          String   @id @default(cuid())
+  videoId     String
+  // The timestamp the fact-check applies to (seconds, or null for whole video).
+  timestamp   Int?
+  // The claim being fact-checked.
+  claim       String
+  // The fact-check verdict: true | false | misleading | unverified | context_needed
+  verdict     String
+  // Evidence/sources supporting the fact-check.
+  evidence    String   @default("")
+  // Who submitted the fact-check.
+  submitterId String
+  submitterName String @default("Anonymous")
+  // Community agreement: upvotes - downvotes.
+  upvotes     Int      @default(0)
+  downvotes   Int      @default(0)
+  // Status: pending | verified | disputed | resolved
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([videoId])
+  @@index([status])
+}
