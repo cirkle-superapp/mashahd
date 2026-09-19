@@ -148,38 +148,65 @@ export async function POST(req: NextRequest) {
 
 /**
  * GET /api/live-streams?status=live&limit=20
+ *        /api/live-streams?streamerBid=<bid>&status=all&limit=50
  *
  * Lists live streams. Default: only streams with status="live". The home
  * page uses this to render the "Live now" shelf. Public streams only —
  * unlisted/private are filtered out unless the requester is the streamer.
+ *
+ * If streamerBid is provided (a signed browserId), the response is scoped
+ * to streams owned by that broadcaster. In that case, ALL statuses are
+ * returned (live + ended + preparing) and private streams are included —
+ * this powers the "Past streams" section in the profile view.
  */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const statusParam = url.searchParams.get("status") || "live";
   const limit = Math.min(parseInt(url.searchParams.get("limit") || "20", 10), 50);
+  const streamerBid = url.searchParams.get("streamerBid") || "";
 
   // Only allow querying by safe status values.
   const status = ["live", "preparing", "ended", "all"].includes(statusParam)
     ? statusParam
     : "live";
 
+  // If streamerBid is provided, verify it (must be a valid signed bid).
+  // This prevents listing another user's streams by guessing their bid.
+  let verifiedStreamerId: string | null = null;
+  if (streamerBid) {
+    const v = verifyBrowserId(streamerBid);
+    if (v.valid) verifiedStreamerId = v.id;
+  }
+
   try {
-    const where: any =
-      status === "all"
-        ? {}
-        : { status };
-    // For "live" status, also filter out private streams (only the streamer
-    // should see their own private stream). Unlisted is OK to list (it's
-    // just not indexed, but if you have the link you can watch).
-    if (status === "live") {
-      where.OR = [{ privacy: "public" }, { privacy: "unlisted" }];
-      delete where.status;
-      where.status = "live";
+    const where: any = {};
+
+    // Scope by streamer if requested (for the "Past streams" profile section).
+    if (verifiedStreamerId) {
+      where.streamerId = verifiedStreamerId;
+    } else {
+      // Public listing — apply status + privacy filters.
+      if (status !== "all") {
+        where.status = status;
+      }
+      // For "live" status, also filter out private streams (only the streamer
+      // should see their own private stream). Unlisted is OK to list (it's
+      // just not indexed, but if you have the link you can watch).
+      if (status === "live") {
+        where.OR = [{ privacy: "public" }, { privacy: "unlisted" }];
+        where.status = "live";
+      }
     }
+
+    // Ordering: streamer-scoped queries sort by most recent; public live
+    // listing sorts by viewer count (busiest first).
+    const orderBy: any = verifiedStreamerId
+      ? { createdAt: "desc" as const }
+      : { viewerCount: "desc" as const };
 
     const streams = await db.liveStream.findMany({
       where,
-      orderBy: { viewerCount: "desc" },
+      orderBy,
       take: limit,
     }).catch(() => []);
 

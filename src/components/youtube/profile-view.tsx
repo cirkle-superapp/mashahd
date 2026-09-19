@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { MashahdMark } from "@/components/brand/mashahd-logo";
 import { AvatarPicker } from "./avatar-picker";
 import { AuthScreen } from "./auth-screen";
+import { PastStreams } from "./past-streams";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -42,7 +43,9 @@ export function ProfileView() {
     enabled: !!bid,
   });
 
-  // If not authenticated, show a sign-in prompt.
+  // If not authenticated, show a sign-in prompt + any past streams the
+  // anonymous browserId has broadcast (going live doesn't require signup,
+  // so a user can have past streams even without an account).
   if (!user) {
     return (
       <div className="px-4 sm:px-6 py-6 max-w-3xl mx-auto">
@@ -64,6 +67,9 @@ export function ProfileView() {
             </Button>
           </div>
         </div>
+        {/* Past streams — visible even without auth, since going live
+            only requires a signed browserId (anonymous identity). */}
+        <PastStreams />
         <AuthScreen open={authOpen} onOpenChange={setAuthOpen} />
       </div>
     );
@@ -222,6 +228,11 @@ export function ProfileView() {
       </section>
 
       {/* AI summary callout */}
+      {/* Past live streams — only shows if the user has broadcast
+          at least one stream. Reads from the LiveStream table scoped
+          to the user's signed browserId. */}
+      <PastStreams />
+
       <section className="mt-6">
         <button
           onClick={() => {

@@ -5,6 +5,7 @@ import { Radio, Users, Copy, Check } from "lucide-react";
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { useAppStore } from "@/store/app-store";
 
 interface LiveStream {
   id: string;
@@ -100,10 +101,13 @@ export function LiveNowShelf() {
 }
 
 function LiveStreamCard({ stream }: { stream: LiveStream }) {
+  const { navigate } = useAppStore();
   const [copied, setCopied] = useState(false);
   const avatarUrl = `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(stream.streamerName)}&radius=50`;
 
-  const copyCode = async () => {
+  const copyCode = async (e: React.MouseEvent) => {
+    // Stop propagation so the click doesn't also navigate to the stream.
+    e.stopPropagation();
     try {
       await navigator.clipboard.writeText(stream.watchPartyCode);
       setCopied(true);
@@ -117,7 +121,12 @@ function LiveStreamCard({ stream }: { stream: LiveStream }) {
   };
 
   return (
-    <div className="shrink-0 w-72 group">
+    // Click anywhere on the card → navigate to the live stream view
+    <button
+      onClick={() => navigate({ kind: "live", streamId: stream.id })}
+      className="shrink-0 w-72 group text-left"
+      aria-label={`Watch ${stream.streamerName}'s live stream: ${stream.title}`}
+    >
       <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black shadow-soft">
         {/* Webcam preview placeholder — the actual stream preview would be a
             live HLS pull from the broadcaster's webcam. For dev, show the
@@ -132,7 +141,7 @@ function LiveStreamCard({ stream }: { stream: LiveStream }) {
           <img
             src={avatarUrl}
             alt={stream.streamerName}
-            className="h-16 w-16 rounded-full opacity-90"
+            className="h-16 w-16 rounded-full opacity-90 transition-transform duration-300 group-hover:scale-110"
             loading="lazy"
           />
         </div>
@@ -153,6 +162,9 @@ function LiveStreamCard({ stream }: { stream: LiveStream }) {
         <div className="absolute bottom-2 left-2 text-white text-[10px] font-medium drop-shadow">
           {elapsed(stream.startedAt)}
         </div>
+
+        {/* Hover affordance */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
       </div>
 
       {/* Meta strip */}
@@ -164,18 +176,28 @@ function LiveStreamCard({ stream }: { stream: LiveStream }) {
           loading="lazy"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium line-clamp-1">{stream.title}</p>
+          <p className="text-xs font-medium line-clamp-1 group-hover:text-foreground text-muted-foreground transition-colors">
+            {stream.title}
+          </p>
           <p className="text-[11px] text-muted-foreground line-clamp-1">
             {stream.streamerName} · {stream.category}
           </p>
         </div>
       </div>
 
-      {/* Copy party code button */}
+      {/* Copy party code button — separate from the card navigation */}
       {stream.watchPartyCode && (
-        <button
+        <span
           onClick={copyCode}
-          className="mt-2 w-full flex items-center justify-center gap-1.5 text-[10px] font-medium px-2 py-1.5 rounded-md border border-border bg-muted/40 hover:bg-muted transition-colors min-h-[32px]"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              copyCode(e as any);
+            }
+          }}
+          className="mt-2 w-full flex items-center justify-center gap-1.5 text-[10px] font-medium px-2 py-1.5 rounded-md border border-border bg-muted/40 hover:bg-muted transition-colors min-h-[32px] cursor-pointer"
         >
           {copied ? (
             <>
@@ -185,11 +207,11 @@ function LiveStreamCard({ stream }: { stream: LiveStream }) {
           ) : (
             <>
               <Copy className="h-3 w-3" />
-              Join chat: {stream.watchPartyCode}
+              Copy code: {stream.watchPartyCode}
             </>
           )}
-        </button>
+        </span>
       )}
-    </div>
+    </button>
   );
 }
