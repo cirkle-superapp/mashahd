@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Search as SearchIcon, Loader2, FlaskConical } from "lucide-react";
+import { Search as SearchIcon, Loader2, FlaskConical, Sparkle } from "lucide-react";
 import { VideoCard } from "./video-card";
 import { CategoryChips } from "./category-chips";
 import { MoodFilter, moodToCategory, type MoodId } from "./mood-filter";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useBrowserId } from "@/hooks/use-browser-id";
+import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 import type { Video } from "@/lib/types";
 import { toast } from "sonner";
@@ -127,6 +128,26 @@ async function fetchMultiVideoResearch(
   return (await res.json()) as MultiResearchResponse;
 }
 
+// §15 — Sponsored hashtags. Pulled from CIRKLE's sponsored hashtag discovery.
+// Shown as a small gold-tinted chip row below the CategoryChips so paid
+// placements never look identical to organic results (always labeled).
+interface SponsoredHashtagItem {
+  id: string;
+  hashtag: string;
+  advertiser?: string;
+  city?: string;
+  sponsored: true;
+}
+interface SponsoredHashtagsResponse {
+  hashtags: SponsoredHashtagItem[];
+}
+async function fetchSponsoredHashtags(): Promise<SponsoredHashtagsResponse> {
+  const res = await fetch("/api/sponsored-hashtags");
+  if (!res.ok) return { hashtags: [] };
+  const data = await res.json();
+  return { hashtags: (data?.hashtags as SponsoredHashtagItem[]) || [] };
+}
+
 export function HomeView() {
   const [category, setCategory] = useState("All");
   const [mood, setMood] = useState<MoodId | null>(null);
@@ -138,6 +159,7 @@ export function HomeView() {
   // videos (capped at 10) and lets the user pick an operation.
   const [researchOpen, setResearchOpen] = useState(false);
   const bid = useBrowserId();
+  const navigate = useAppStore((s) => s.navigate);
 
   // Fetch user preferences to respect continueWatchingEnabled + disableShorts.
   const { data: prefs } = useQuery({
@@ -187,6 +209,16 @@ export function HomeView() {
     staleTime: 60_000,
   });
 
+  // §15 — Sponsored hashtags. Fetched only on the default home view so the
+  // gold-tinted chip row surfaces paid discovery alongside organic results.
+  // Hidden entirely when the API returns no active hashtags.
+  const { data: sponsoredHashtagsData } = useQuery({
+    queryKey: ["sponsored-hashtags"],
+    queryFn: () => fetchSponsoredHashtags(),
+    enabled: isDefaultHome,
+    staleTime: 60_000,
+  });
+
   // The currently-active feed's data — used to decide whether the category
   // fallback is needed (only when the selected feed isn't ready yet).
   const activeFeedData =
@@ -226,6 +258,41 @@ export function HomeView() {
   return (
     <div>
       <CategoryChips active={mood ? "All" : category} onSelect={(c) => { setCategory(c); setMood(null); }} />
+      {/* §15 — Trending sponsored hashtags. A single horizontal row of
+          gold-tinted chips shown only on the default home view, hidden
+          entirely when the API returns no active hashtags. Clicking a
+          hashtag filters the feed by navigating to the search view. */}
+      {isDefaultHome &&
+        sponsoredHashtagsData &&
+        sponsoredHashtagsData.hashtags.length > 0 && (
+          <div className="px-4 sm:px-6 pt-2 pb-1 flex items-center gap-2 overflow-x-auto custom-scroll-x">
+            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Trending
+            </span>
+            {sponsoredHashtagsData.hashtags.map((h) => (
+              <button
+                key={h.id}
+                onClick={() => navigate({ kind: "search", query: h.hashtag })}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-[hsl(var(--gold)/0.10)] px-3 py-1 text-xs font-medium text-foreground hover:bg-[hsl(var(--gold)/0.18)] transition-colors"
+                title={
+                  h.advertiser
+                    ? `Sponsored by ${h.advertiser} — click to filter feed by #${h.hashtag}`
+                    : `Sponsored — click to filter feed by #${h.hashtag}`
+                }
+                aria-label={`Filter feed by sponsored hashtag ${h.hashtag}`}
+              >
+                <Sparkle className="h-3 w-3 text-[hsl(var(--gold))]" aria-hidden />
+                #{h.hashtag.replace(/^#/, "")}
+                <Badge
+                  variant="outline"
+                  className="ml-1 h-4 px-1 text-[9px] py-0 border-gold/40 bg-transparent text-[hsl(var(--gold))]"
+                >
+                  Sponsored
+                </Badge>
+              </button>
+            ))}
+          </div>
+        )}
       <div className="pt-2 pb-1">
         <MoodFilter active={mood} onSelect={setMood} />
       </div>

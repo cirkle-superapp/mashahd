@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2, MessageSquarePlus, Compass, Wand2, Heart, Bookmark, Check, ListPlus, Users, FileText, Scissors, Info, Search, RefreshCw, Shield, Scale } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2, MessageSquarePlus, Compass, Wand2, Heart, Bookmark, Check, ListPlus, Users, FileText, Scissors, Info, Search, RefreshCw, Shield, Scale, Network, MapPin, BookOpen, Gavel, AlertTriangle, CircleDashed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,13 @@ import { AiWatchPanel } from "./ai-watch-panel";
 import { MashahdPlayerLazy as MashahdPlayer } from "./mashahd-player-lazy";
 import { UserAvatar } from "./user-avatar";
 import { ShareButton } from "./header-overlays";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 
 async function fetchVideo(id: string, bid: string) {
@@ -264,6 +271,62 @@ async function fetchModeration(id: string): Promise<ModerationResponse | null> {
   return (await res.json()) as ModerationResponse;
 }
 
+// §65 — Knowledge graph. Pulled from CIRKLE Mashahd — AI-powered people,
+// places, and sources extraction. Returns an array of nodes grouped by
+// kind in the watch-view description area (after Context details).
+type KnowledgeNodeKind = "person" | "place" | "source";
+interface KnowledgeNode {
+  kind: KnowledgeNodeKind;
+  name: string;
+  hint?: string;
+}
+interface KnowledgeGraphResponse {
+  nodes: KnowledgeNode[];
+  source?: string;
+}
+async function fetchKnowledgeGraph(id: string): Promise<KnowledgeGraphResponse> {
+  const res = await fetch(`/api/videos/${id}/knowledge-graph`);
+  if (!res.ok) return { nodes: [] };
+  const data = await res.json();
+  return {
+    nodes: (data?.nodes as KnowledgeNode[]) || [],
+    source: typeof data?.source === "string" ? data.source : undefined,
+  };
+}
+
+// §21 — Fact-check notes. Pulled from CIRKLE Mashahd — community fact-checking
+// with verdicts + upvote/downvote. Shown as a collapsible panel in the
+// description area (after Knowledge graph). POST submits a new note with the
+// signed browserId; PATCH votes up/down on an existing note.
+type FactCheckVerdict =
+  | "true"
+  | "false"
+  | "misleading"
+  | "unverified"
+  | "context_needed";
+interface FactCheckNote {
+  id: string;
+  timestamp: number | null;
+  claim: string;
+  verdict: FactCheckVerdict;
+  evidence?: string;
+  submitterName?: string;
+  upvotes: number;
+  downvotes: number;
+  score: number;
+  status: string;
+  createdAt?: string;
+}
+interface FactChecksResponse {
+  notes: FactCheckNote[];
+}
+async function fetchFactChecks(id: string): Promise<FactChecksResponse> {
+  const res = await fetch(`/api/videos/${id}/fact-checks`);
+  if (!res.ok) return { notes: [] };
+  const data = await res.json();
+  return { notes: (data?.notes as FactCheckNote[]) || [] };
+}
+
 // §46 — live-to-VOD conversion. POST returns the produced artifacts (replay,
 // transcript, chapters, etc.) — surfaced to the user as a toast.
 interface LiveToVodResponse {
@@ -283,6 +346,45 @@ interface LiveToVodResponse {
     searchableMoments: string;
   };
 }
+
+// CIRKLE TheaterPlayer — reactions burst emoji set. Each click floats the
+// emoji up from its button and also fires a "like" to the video (reuses the
+// existing like API). The 5-emoji row sits below the player, before the title.
+const REACTION_EMOJIS = ["👍", "❤️", "🔥", "😂", "😮"] as const;
+
+// §21 — Fact-check verdict metadata. Maps a verdict to its badge color
+// (green/red/amber/gray/blue) + display label + lucide icon. Used by the
+// FactChecksSection below to render each note's verdict badge consistently.
+const VERDICT_META: Record<
+  FactCheckVerdict,
+  { label: string; className: string; icon: ReactNode }
+> = {
+  true: {
+    label: "True",
+    className: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30",
+    icon: <Check className="h-3 w-3" />,
+  },
+  false: {
+    label: "False",
+    className: "bg-rose/15 text-rose border-rose/30",
+    icon: <ThumbsDown className="h-3 w-3" />,
+  },
+  misleading: {
+    label: "Misleading",
+    className: "bg-amber-500/15 text-amber-600 border-amber-500/30",
+    icon: <AlertTriangle className="h-3 w-3" />,
+  },
+  unverified: {
+    label: "Unverified",
+    className: "bg-muted text-muted-foreground border-border",
+    icon: <CircleDashed className="h-3 w-3" />,
+  },
+  context_needed: {
+    label: "Needs context",
+    className: "bg-sky-500/15 text-sky-600 border-sky-500/30",
+    icon: <Info className="h-3 w-3" />,
+  },
+};
 
 export function WatchView({ videoId }: { videoId: string }) {
   const bid = useBrowserId();
@@ -408,6 +510,38 @@ export function WatchView({ videoId }: { videoId: string }) {
     staleTime: 60_000,
   });
 
+  // §65 — Knowledge graph. AI-extracted people/places/sources nodes shown as
+  // a collapsible panel in the description area (after the Context details).
+  // Non-blocking (no spinner); shown once data arrives. The API falls back to
+  // a deterministic tag/url extractor when AI is unavailable.
+  const { data: knowledgeGraphData } = useQuery({
+    queryKey: ["knowledge-graph", videoId],
+    queryFn: () => fetchKnowledgeGraph(videoId),
+    enabled: !!videoId,
+    staleTime: 60_000,
+  });
+
+  // §21 — Fact-check notes. Community-submitted fact-checks with verdict +
+  // upvote/downvote. Fetched for the collapsible "Fact-checks" panel that
+  // appears after the Knowledge graph in the description area.
+  const {
+    data: factChecksData,
+    refetch: refetchFactChecks,
+  } = useQuery({
+    queryKey: ["fact-checks", videoId],
+    queryFn: () => fetchFactChecks(videoId),
+    enabled: !!videoId,
+    staleTime: 30_000,
+  });
+
+  // §4 (CIRKLE TheaterPlayer) — Reactions burst overlay. Tracks the active
+  // floating-emoji bursts (id + emoji + position) so each one can animate
+  // upward from its button and fade out. Removed after the 2s animation.
+  const [reactions, setReactions] = useState<
+    Array<{ id: number; emoji: string; x: number; y: number }>
+  >([]);
+  const reactionSeq = useRef(0);
+
   // §38 — AI search-in-video. Mutation so the loading state is shown while
   // the AI thinks. Results are stored in local state (per-search).
   const [searchQuery, setSearchQuery] = useState("");
@@ -468,6 +602,38 @@ export function WatchView({ videoId }: { videoId: string }) {
       toast.error(msg);
     },
   });
+
+  // CIRKLE TheaterPlayer — Reactions burst handler. Records the click
+  // position relative to the reactions bar, appends a floating-emoji burst
+  // to local state, and removes it after the 2s CSS animation completes.
+  // Each reaction also fires a "like" to the video (reuses the existing
+  // like API) so reactions contribute to the like counter. Fire-and-forget
+  // — we don't await or surface errors for the like (it's an enhancement,
+  // not a primary action, so a silent failure is acceptable).
+  const triggerReaction = (emoji: string, e: React.MouseEvent<HTMLButtonElement>) => {
+    const container = e.currentTarget.parentElement?.parentElement;
+    if (container) {
+      const cRect = container.getBoundingClientRect();
+      const bRect = e.currentTarget.getBoundingClientRect();
+      // Center the ~24px burst horizontally on the button, sit just above it.
+      const x = bRect.left - cRect.left + bRect.width / 2 - 12;
+      const y = bRect.top - cRect.top - 8;
+      const id = ++reactionSeq.current;
+      setReactions((rs) => [...rs, { id, emoji, x, y }]);
+      // Remove after the 2s animation. Wrapped in setTimeout so it survives
+      // re-renders + the burst element unmounts cleanly.
+      window.setTimeout(() => {
+        setReactions((rs) => rs.filter((r) => r.id !== id));
+      }, 2000);
+    }
+    if (bid) {
+      fetch(`/api/videos/${videoId}/like`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ browserId: bid, action: "like" }),
+      }).catch(() => {});
+    }
+  };
 
   // Record a view once when the watch page opens
   useEffect(() => {
@@ -803,6 +969,40 @@ export function WatchView({ videoId }: { videoId: string }) {
               onDismiss={() => setUpNext(false)}
             />
           </MashahdPlayer>
+
+          {/* Reactions burst bar — CIRKLE TheaterPlayer feature. A small
+              horizontal row of 5 emoji buttons. Each click floats the emoji
+              up from the button and fades it out (CSS animation), and also
+              sends a "like" to the video via the existing like API. Bursts
+              are tracked in local state and removed after the 2s animation. */}
+          <div className="relative mt-2 px-4 sm:px-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {REACTION_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={(e) => triggerReaction(emoji, e)}
+                  className="relative h-9 w-9 rounded-full bg-muted hover:bg-accent text-lg grid place-items-center transition-colors"
+                  aria-label={`React with ${emoji}`}
+                  title={`React with ${emoji}`}
+                >
+                  <span aria-hidden>{emoji}</span>
+                </button>
+              ))}
+            </div>
+            {/* Floating bursts overlay — absolutely positioned within the
+                relative container above. Each burst starts at the click
+                position and animates up + fades out. */}
+            {reactions.map((r) => (
+              <span
+                key={r.id}
+                className="pointer-events-none absolute text-2xl animate-reaction-burst select-none"
+                style={{ left: r.x, top: r.y }}
+                aria-hidden
+              >
+                {r.emoji}
+              </span>
+            ))}
+          </div>
 
           {/* Title */}
           <div className="mt-3 px-4 sm:px-0 flex items-start gap-2 flex-wrap">
@@ -1234,6 +1434,69 @@ export function WatchView({ videoId }: { videoId: string }) {
                   </div>
                 </details>
               )}
+              {/* §65 — Knowledge graph. AI-extracted people/places/sources
+                  shown as a collapsible panel after the Context details.
+                  Nodes are grouped by kind, each kind gets a distinct icon
+                  color (people=teal, places=gold, sources=steel). */}
+              {knowledgeGraphData && knowledgeGraphData.nodes.length > 0 && (
+                <details className="mt-2 group rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+                  <summary className="cursor-pointer list-none flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
+                    <Network className="h-3.5 w-3.5" />
+                    Knowledge graph ({knowledgeGraphData.nodes.length})
+                    <span className="ml-auto text-muted-foreground/70 group-open:rotate-180 transition-transform" aria-hidden>⌄</span>
+                  </summary>
+                  <div className="mt-2 space-y-2 text-xs">
+                    {(["person", "place", "source"] as KnowledgeNodeKind[]).map((kind) => {
+                      const nodes = knowledgeGraphData.nodes.filter((n) => n.kind === kind);
+                      if (nodes.length === 0) return null;
+                      const Icon = kind === "person" ? Users : kind === "place" ? MapPin : BookOpen;
+                      const iconColor =
+                        kind === "person"
+                          ? "text-teal-light"
+                          : kind === "place"
+                            ? "text-[hsl(var(--gold))]"
+                            : "text-steel";
+                      const label = kind === "person" ? "People" : kind === "place" ? "Places" : "Sources";
+                      return (
+                        <div key={kind}>
+                          <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                            <Icon className={cn("h-3 w-3", iconColor)} />
+                            {label}
+                          </p>
+                          <ul className="mt-1 space-y-0.5">
+                            {nodes.map((n, i) => (
+                              <li key={`${kind}-${i}`} className="flex flex-wrap items-baseline gap-1.5">
+                                <span className="text-foreground">{n.name}</span>
+                                {n.hint && (
+                                  <span className="text-muted-foreground italic">— {n.hint}</span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                    {knowledgeGraphData.source && (
+                      <p className="mt-1 italic text-[10px] text-muted-foreground">
+                        Source: {knowledgeGraphData.source}
+                      </p>
+                    )}
+                  </div>
+                </details>
+              )}
+              {/* §21 — Fact-check notes. Community fact-checking with verdicts
+                  + upvote/downvote. Collapsible panel after the Knowledge
+                  graph. Renders an "Add fact-check" button + inline form
+                  (claim, verdict, evidence) that POSTs to the API with the
+                  signed browserId. Each note has upvote/downvote buttons that
+                  PATCH the API. The whole panel lives inside the description
+                  box so it stays grouped with the other context metadata. */}
+              <FactChecksSection
+                videoId={videoId}
+                bid={bid}
+                notes={factChecksData?.notes}
+                refetch={refetchFactChecks}
+              />
             </div>
           </div>
 
@@ -1693,6 +1956,288 @@ function LiveQAList({
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * §21 — FactChecksSection. A collapsible panel rendered inside the watch
+ * view's description box (after the Knowledge graph). Lists community
+ * fact-check notes with verdict badge, evidence, submitter name, upvote/
+ * downvote counts + buttons (PATCH the API). The "Add fact-check" button
+ * opens an inline form (claim textarea, verdict dropdown, evidence textarea)
+ * that POSTs to /api/videos/[id]/fact-checks with the signed browserId.
+ *
+ * Mirrors the LiveQAList pattern: props = videoId + bid + notes + refetch;
+ * all submit/vote handlers live in this component (no external state).
+ */
+function FactChecksSection({
+  videoId,
+  bid,
+  notes,
+  refetch,
+}: {
+  videoId: string;
+  bid: string;
+  notes?: FactCheckNote[];
+  refetch: () => void;
+}) {
+  // Inline "Add fact-check" form state.
+  const [showForm, setShowForm] = useState(false);
+  const [claim, setClaim] = useState("");
+  const [verdict, setVerdict] = useState<FactCheckVerdict>("unverified");
+  const [evidence, setEvidence] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  // Track which note a vote is in-flight for (disable both vote buttons
+  // until the PATCH lands to avoid double-voting).
+  const [votingFor, setVotingFor] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setClaim("");
+    setVerdict("unverified");
+    setEvidence("");
+    setShowForm(false);
+  };
+
+  const submit = async () => {
+    if (!claim.trim() || !bid) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/videos/${videoId}/fact-checks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          browserId: bid,
+          claim: claim.trim(),
+          verdict,
+          evidence: evidence.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const errMsg = (data as { error?: string })?.error || "Failed to submit";
+        if ((data as { reissue?: boolean })?.reissue) {
+          toast.error("Session expired. Please refresh and try again.");
+        } else {
+          toast.error(errMsg);
+        }
+        return;
+      }
+      toast.success("Fact-check submitted", {
+        description: "Your note is now pending community review.",
+      });
+      resetForm();
+      refetch();
+    } catch {
+      toast.error("Could not submit fact-check");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const vote = async (noteId: string, action: "upvote" | "downvote") => {
+    if (!bid) return;
+    setVotingFor(noteId);
+    try {
+      const res = await fetch(`/api/videos/${videoId}/fact-checks`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ browserId: bid, noteId, action }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if ((data as { reissue?: boolean })?.reissue) {
+          toast.error("Session expired. Please refresh and try again.");
+        } else {
+          toast.error("Vote failed");
+        }
+        return;
+      }
+      refetch();
+    } catch {
+      toast.error("Vote failed");
+    } finally {
+      setVotingFor(null);
+    }
+  };
+
+  const count = notes?.length ?? 0;
+
+  return (
+    <details className="mt-2 group rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+      <summary className="cursor-pointer list-none flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
+        <Gavel className="h-3.5 w-3.5" />
+        Fact-checks ({count})
+        <span className="ml-auto text-muted-foreground/70 group-open:rotate-180 transition-transform" aria-hidden>⌄</span>
+      </summary>
+      <div className="mt-2 space-y-2 text-xs">
+        {/* Existing notes */}
+        {count > 0 ? (
+          <ul className="space-y-2">
+            {notes!.map((n) => {
+              const meta = VERDICT_META[n.verdict] || VERDICT_META.unverified;
+              return (
+                <li key={n.id} className="rounded-md border border-border/60 bg-background/40 p-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant="outline" className={`text-[10px] py-0 gap-1 ${meta.className}`}>
+                      {meta.icon}
+                      {meta.label}
+                    </Badge>
+                    {n.submitterName && (
+                      <span className="text-[10px] text-muted-foreground">
+                        — {n.submitterName}
+                      </span>
+                    )}
+                    {n.status && n.status !== "pending" && (
+                      <Badge variant="secondary" className="text-[10px] py-0">
+                        {n.status}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="mt-1 text-foreground">{n.claim}</p>
+                  {n.evidence && (
+                    <p className="mt-1 text-muted-foreground italic">{n.evidence}</p>
+                  )}
+                  {/* Vote row */}
+                  <div className="mt-1.5 flex items-center gap-1 text-muted-foreground">
+                    <button
+                      onClick={() => vote(n.id, "upvote")}
+                      disabled={votingFor === n.id}
+                      className="p-1.5 hover:text-foreground rounded-full hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label="Upvote fact-check"
+                      title="Upvote — this fact-check is helpful"
+                    >
+                      <ThumbsUp className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="text-[11px] tabular-nums">{n.upvotes}</span>
+                    <button
+                      onClick={() => vote(n.id, "downvote")}
+                      disabled={votingFor === n.id}
+                      className="p-1.5 hover:text-foreground rounded-full hover:bg-accent ml-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label="Downvote fact-check"
+                      title="Downvote — this fact-check is unhelpful or incorrect"
+                    >
+                      <ThumbsDown className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="text-[11px] tabular-nums">{n.downvotes}</span>
+                    {n.createdAt && (
+                      <span className="ml-auto text-[10px] text-muted-foreground">
+                        {timeAgo(n.createdAt)}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground">
+            No fact-checks yet. Be the first to add one.
+          </p>
+        )}
+
+        {/* Add fact-check button + inline form */}
+        {!showForm ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-[11px] rounded-full hover:bg-accent"
+            onClick={() => setShowForm(true)}
+            disabled={!bid}
+            aria-label="Add a fact-check"
+            title={bid ? "Submit a community fact-check note" : "Sign in to submit a fact-check"}
+          >
+            <Gavel className="h-3 w-3 mr-1" />
+            Add fact-check
+          </Button>
+        ) : (
+          <div className="rounded-md border border-border bg-background/60 p-2.5 space-y-2">
+            <div>
+              <label
+                htmlFor={`fc-claim-${videoId}`}
+                className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide"
+              >
+                Claim (required)
+              </label>
+              <Textarea
+                id={`fc-claim-${videoId}`}
+                value={claim}
+                onChange={(e) => setClaim(e.target.value.slice(0, 500))}
+                rows={2}
+                maxLength={500}
+                placeholder="State the claim being fact-checked…"
+                className="mt-1 text-xs resize-none"
+              />
+            </div>
+            <div>
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                Verdict
+              </span>
+              <Select
+                value={verdict}
+                onValueChange={(v) => setVerdict(v as FactCheckVerdict)}
+              >
+                <SelectTrigger size="sm" className="mt-1 h-8 text-xs w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(VERDICT_META) as FactCheckVerdict[]).map((v) => (
+                    <SelectItem key={v} value={v}>
+                      {VERDICT_META[v].label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label
+                htmlFor={`fc-evidence-${videoId}`}
+                className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide"
+              >
+                Evidence (optional)
+              </label>
+              <Textarea
+                id={`fc-evidence-${videoId}`}
+                value={evidence}
+                onChange={(e) => setEvidence(e.target.value.slice(0, 2000))}
+                rows={2}
+                maxLength={2000}
+                placeholder="Links, sources, or documentation supporting the verdict…"
+                className="mt-1 text-xs resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs rounded-full"
+                onClick={resetForm}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 px-3 text-xs rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={submit}
+                disabled={submitting || !claim.trim() || !bid}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    Submitting…
+                  </>
+                ) : (
+                  <>
+                    <Gavel className="h-3 w-3 mr-1" />
+                    Submit
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
 

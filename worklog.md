@@ -6311,3 +6311,109 @@ The platform is **production-ready for public beta**:
 | Unused dependencies | 0 |
 | Remaining gaps | 0 |
 | Monthly cost | $0 |
+
+---
+Task ID: WIRE-CIRKLE-FEATURES-UI
+Agent: general-purpose (React/Next.js engineer)
+Task: Wire 4 backend APIs that had no UI consumers to the Mashahd UI.
+
+## CONTEXT
+Pass 40 pulled 4 CIRKLE-derived features (Sponsored Hashtags §15, Knowledge
+Graph §65, Fact-check Notes §21, Reactions Burst) into 3 backend APIs + 2
+Prisma models, and verified them locally + on Vercel — but the UI never
+consumed them. This pass wires all 4 to the existing HomeView + WatchView
+components with React Query + existing shadcn/ui primitives.
+
+## FILES MODIFIED
+- `src/components/youtube/home-view.tsx` — sponsored hashtag chip row
+- `src/components/youtube/watch-view.tsx` — knowledge graph + fact-checks +
+  reactions burst
+- `src/app/globals.css` — `@keyframes reaction-burst` + utility class
+
+## WHAT WAS WIRED
+
+### 1. Sponsored Hashtags on Home View (§15)
+- New `fetchSponsoredHashtags()` + `SponsoredHashtagItem` interface.
+- New `useQuery` (`["sponsored-hashtags"]`) in `HomeView`, enabled only on
+  the default home view (`isDefaultHome && !mood && category === "All"`).
+- New `<Trending>` chip row rendered between `CategoryChips` and `MoodFilter`,
+  hidden entirely when the API returns no active hashtags.
+- Each chip: gold-tinted (border-gold/40 + bg-[hsl(var(--gold)/0.10)]) +
+  `Sparkle` icon + `#hashtag` + "Sponsored" `<Badge>` — per §15 the paid
+  placement is clearly labeled, never looks identical to organic chips.
+- Clicking a chip `navigate({ kind: "search", query: hashtag })` — filters
+  the feed by the hashtag via the existing search view (zero new APIs).
+- Added `useAppStore` import + `navigate` selector; added `Sparkle` icon.
+
+### 2. Knowledge Graph Panel on Watch View (§65)
+- New `fetchKnowledgeGraph()` + `KnowledgeNode`/`KnowledgeGraphResponse` types.
+- New `useQuery` (`["knowledge-graph", videoId]`) — non-blocking, 60s stale.
+- New collapsible `<details>` rendered in the description box, **after** the
+  Context / Rights / Corrections / Moderation sections.
+- Nodes grouped by `kind` (person → teal, place → gold, source → steel),
+  each kind with a distinct lucide icon (Users / MapPin / BookOpen).
+- Each node shows `name` + `hint` (italic) when the API includes it.
+- Footer shows the AI source label when present.
+
+### 3. Fact-check Notes Panel on Watch View (§21)
+- New `fetchFactChecks()` + `FactCheckNote`/`FactChecksResponse` types +
+  `FactCheckVerdict` union + `VERDICT_META` constant mapping each verdict to
+  (label, badge class, lucide icon):
+  - `true` → emerald + Check
+  - `false` → rose + ThumbsDown
+  - `misleading` → amber + AlertTriangle
+  - `unverified` → muted + CircleDashed
+  - `context_needed` → sky + Info
+- New `useQuery` (`["fact-checks", videoId]`) with 30s stale + `refetch`.
+- New `<FactChecksSection>` component (mirrors `LiveQAList` pattern) rendered
+  as a collapsible `<details>` **after** the Knowledge graph section.
+- Each note: verdict badge, claim, optional evidence (italic), submitter
+  name, upvote + downvote buttons (PATCH the API with the signed bid), and
+  upvote/downvote counts.
+- "Add fact-check" button opens an inline form (claim textarea, verdict
+  Select dropdown, evidence textarea). On submit: `POST /api/videos/[id]/
+  fact-checks` with `{ browserId, claim, verdict, evidence }`. Surfaces
+  rate-limit + `reissue` errors via toast (mirrors the like-button pattern).
+- Uses shadcn `Badge`, `Button`, `Textarea`, `Select` (no new components).
+- `useBrowserId` is used to obtain the signed bid for both POST + PATCH.
+
+### 4. Reactions Burst Overlay on Player (CIRKLE TheaterPlayer)
+- New `REACTION_EMOJIS = ["👍","❤️","🔥","😂","😮"]` constant.
+- New `reactions` state array (`{id, emoji, x, y}`) + `reactionSeq` ref.
+- New `triggerReaction(emoji, event)` handler inside `WatchView`:
+  1. computes click position relative to the reactions-bar container,
+  2. appends a floating burst to state,
+  3. removes it after the 2s CSS animation via `setTimeout`,
+  4. fire-and-forget POSTs to `/api/videos/[id]/like` with
+     `{ browserId, action: "like" }` (reuses the existing like API — the
+     server is idempotent for already-liked videos, so reactions don't
+     double-increment the like counter).
+- New horizontal row of 5 emoji buttons rendered **below the player and
+  before the title**, inside a `position: relative` container so the bursts
+  overlay it cleanly.
+- Bursts use a new `animate-reaction-burst` utility class backed by a
+  `@keyframes reaction-burst` in `globals.css` (translates up 60px +
+  scales 0.9→1.2 + fades out over 2s with `forwards` fill mode).
+- Lint + tsc clean — the `setTimeout` uses `window.setTimeout` to avoid
+  SSR/Node type ambiguity; `setReactions` is wrapped in functional updates
+  to avoid stale-state bugs.
+
+## VERIFICATION
+| Gate | Result |
+|---|---|
+| `bun run lint` | Clean (0 errors, 0 warnings) ✅ |
+| `npx tsc --noEmit` | 0 errors ✅ |
+| `bun test tests/basic.test.ts tests/chaos.test.ts` | 0 failures ✅ |
+
+## NOTHING REMOVED
+- No existing component, prop, hook, or behavior was deleted.
+- All new code is additive — wrapped in conditional renders gated on
+  `isDefaultHome` (hashtags), `enabled: !!videoId` (graph + fact-checks),
+  and a feature-barrier-free constant (reactions row).
+- The 4 new fetchers all degrade gracefully (`return {…: []}` on non-ok)
+  so a flaky API never blocks the watch page render.
+
+## PLATFORM STATS
+- 91 API routes (unchanged — this pass wires UI to existing APIs)
+- 102 components (was 100 — +FactChecksSection + chip row inline)
+- 0 dead APIs (the 4 CIRKLE-pulled APIs now have UI consumers)

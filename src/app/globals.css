@@ -343,6 +343,19 @@
     animation: shimmer 1.6s ease-in-out infinite;
   }
 
+  /* CIRKLE TheaterPlayer — reactions burst. Each emoji floats up ~60px and
+     fades out over 2s. Used by the watch-view's reactions bar below the
+     video player. */
+  @keyframes reaction-burst {
+    0% { transform: translateY(0) scale(0.9); opacity: 1; }
+    70% { opacity: 1; }
+    100% { transform: translateY(-60px) scale(1.2); opacity: 0; }
+  }
+  .animate-reaction-burst {
+    animation: reaction-burst 2s ease-out forwards;
+    will-change: transform, opacity;
+  }
+
   .scrollbar-hide::-webkit-scrollbar { display: none; }
   .scrollbar-hide { scrollbar-width: none; }
 }
