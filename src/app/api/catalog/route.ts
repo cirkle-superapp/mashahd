@@ -103,6 +103,8 @@ const API_CATALOG = [
     domain: "Live Streaming",
     specSection: "§45-46",
     endpoints: [
+      { method: "GET/POST", path: "/api/live-streams", description: "List live streams + create new (Pass 47)" },
+      { method: "GET/PATCH/DELETE", path: "/api/live-streams/[id]", description: "Get / update viewer count / end a stream (Pass 47)" },
       { method: "GET/POST/PATCH", path: "/api/videos/[id]/polls", description: "Live polls with vote + close (§45)" },
       { method: "GET/POST/PATCH", path: "/api/videos/[id]/qa", description: "Live Q&A with answer + upvote (§45)" },
     ],

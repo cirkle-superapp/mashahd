@@ -896,3 +896,45 @@ model FactCheckNote {
   @@index([videoId])
   @@index([status])
 }
+
+// ── Live Streams (real DB-backed live broadcasting) ──
+// Tracks every active and past live stream session. Replaces the previous
+// purely-client-side go-live component (which had no DB record at all).
+// Each stream has a unique streamKey (secret, used by the broadcaster to
+// push) and a watchPartyCode (public, used by viewers to join the live chat
+// room over the watch-party WebSocket on port 3004).
+model LiveStream {
+  id              String   @id @default(cuid())
+  // The channel this stream belongs to (denormalized — channelId may be empty
+  // for anonymous/guest streams which is allowed in dev).
+  channelId       String   @default("")
+  // The broadcaster's user ID (from UserState browserId). Nullable for anon.
+  streamerId      String   @default("")
+  streamerName    String   @default("Anonymous")
+  title           String
+  description     String   @default("")
+  category        String   @default("Tech")
+  // public | unlisted | private
+  privacy         String   @default("public")
+  // preparing | live | ended
+  status          String   @default("preparing")
+  // Current concurrent viewers (updated via PATCH from the broadcaster,
+  // sourced from the watch-party WebSocket member count).
+  viewerCount     Int      @default(0)
+  peakViewerCount Int      @default(0)
+  // Stream key — secret, used to authenticate the broadcaster's PATCH/DELETE.
+  streamKey       String   @unique
+  // Watch-party room code — public, viewers join via this code.
+  watchPartyCode  String   @default("")
+  // Optional thumbnail (webcam snapshot).
+  thumbnailUrl    String   @default("")
+  // ISO 8601 timestamps (SQLite stores TEXT).
+  startedAt       String   @default("")
+  endedAt         String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status])
+  @@index([channelId])
+  @@index([streamerId])
+}

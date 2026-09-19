@@ -546,6 +546,24 @@ async function ensureAllTables(client: Client): Promise<void> {
     { name: "Clip", sql: "CREATE TABLE IF NOT EXISTS Clip (id TEXT PRIMARY KEY, videoId TEXT, creatorId TEXT, creatorName TEXT DEFAULT 'Anonymous', title TEXT, startSec INTEGER, endSec INTEGER, note TEXT DEFAULT '', views INTEGER DEFAULT 0, createdAt TEXT)" },
     { name: "Playlist", sql: "CREATE TABLE IF NOT EXISTS Playlist (id TEXT PRIMARY KEY, userStateId TEXT, title TEXT, description TEXT DEFAULT '', visibility TEXT DEFAULT 'public', coverUrl TEXT DEFAULT '', createdAt TEXT, updatedAt TEXT)" },
     { name: "PlaylistItem", sql: "CREATE TABLE IF NOT EXISTS PlaylistItem (id TEXT PRIMARY KEY, playlistId TEXT, videoId TEXT, position INTEGER DEFAULT 0, addedAt TEXT)" },
+    // ── Core models (Pass 47): the audit found these 12 critical tables were
+    // NOT auto-created here, causing silent 500s on fresh Turso databases.
+    // Now they are ensured on every cold start, matching the Prisma schema.
+    { name: "Channel", sql: "CREATE TABLE IF NOT EXISTS Channel (id TEXT PRIMARY KEY, name TEXT, handle TEXT UNIQUE, avatarUrl TEXT, bannerColors TEXT, bannerUrl TEXT DEFAULT '', description TEXT, subscribers INTEGER DEFAULT 0, verified INTEGER DEFAULT 0, ownerId TEXT, links TEXT DEFAULT '', country TEXT DEFAULT '', createdAt TEXT)" },
+    { name: "Video", sql: "CREATE TABLE IF NOT EXISTS Video (id TEXT PRIMARY KEY, title TEXT, description TEXT, thumbnailUrl TEXT, videoUrl TEXT, durationSec INTEGER, views INTEGER DEFAULT 0, likes INTEGER DEFAULT 0, dislikes INTEGER DEFAULT 0, category TEXT, tags TEXT DEFAULT '', channelId TEXT, visibility TEXT DEFAULT 'public', publishedAt TEXT, language TEXT DEFAULT '', ageGated INTEGER DEFAULT 0, clipPolicy TEXT DEFAULT 'allowed', createdAt TEXT)" },
+    { name: "Comment", sql: "CREATE TABLE IF NOT EXISTS Comment (id TEXT PRIMARY KEY, videoId TEXT, author TEXT, avatarUrl TEXT, text TEXT, likes INTEGER DEFAULT 0, timestamp INTEGER, parentId TEXT, createdAt TEXT)" },
+    { name: "User", sql: "CREATE TABLE IF NOT EXISTS User (id TEXT PRIMARY KEY, email TEXT UNIQUE, phone TEXT UNIQUE, username TEXT UNIQUE, displayName TEXT, avatarUrl TEXT DEFAULT '', bio TEXT DEFAULT '', passwordHash TEXT DEFAULT '', verified INTEGER DEFAULT 0, createdAt TEXT, updatedAt TEXT)" },
+    { name: "Session", sql: "CREATE TABLE IF NOT EXISTS Session (id TEXT PRIMARY KEY, userId TEXT, token TEXT UNIQUE, browserId TEXT, createdAt TEXT, expiresAt TEXT)" },
+    { name: "VideoSource", sql: "CREATE TABLE IF NOT EXISTS VideoSource (id TEXT PRIMARY KEY, videoId TEXT, sourceHash TEXT, originalName TEXT, storagePath TEXT, fileSize INTEGER, duration REAL, width INTEGER, height INTEGER, codec TEXT, audioCodec TEXT, frameRate REAL, bitrate INTEGER, createdAt TEXT)" },
+    { name: "VideoRendition", sql: "CREATE TABLE IF NOT EXISTS VideoRendition (id TEXT PRIMARY KEY, videoId TEXT, resolution TEXT, height INTEGER, width INTEGER, bitrate INTEGER, codec TEXT, manifestPath TEXT, createdAt TEXT)" },
+    { name: "VideoManifest", sql: "CREATE TABLE IF NOT EXISTS VideoManifest (id TEXT PRIMARY KEY, videoId TEXT, version TEXT, hash TEXT, manifestPath TEXT, createdAt TEXT)" },
+    { name: "MediaProcessingJob", sql: "CREATE TABLE IF NOT EXISTS MediaProcessingJob (id TEXT PRIMARY KEY, videoId TEXT, status TEXT, progress INTEGER DEFAULT 0, error TEXT DEFAULT '', errorClass TEXT DEFAULT '', profile TEXT DEFAULT 'cpu-safe', retryCount INTEGER DEFAULT 0, maxRetries INTEGER DEFAULT 3, priority INTEGER DEFAULT 0, claimedBy TEXT, claimedAt TEXT, startedAt TEXT, completedAt TEXT, createdAt TEXT, updatedAt TEXT)" },
+    { name: "Swarm", sql: "CREATE TABLE IF NOT EXISTS Swarm (id TEXT PRIMARY KEY, swarmId TEXT UNIQUE, videoId TEXT, renditionId TEXT, manifestVersion TEXT, activePeers INTEGER DEFAULT 0, createdAt TEXT, updatedAt TEXT)" },
+    { name: "PlaybackSession", sql: "CREATE TABLE IF NOT EXISTS PlaybackSession (id TEXT PRIMARY KEY, videoId TEXT, renditionId TEXT, peerId TEXT, browserId TEXT, networkType TEXT DEFAULT 'unknown', swarmId TEXT, p2pEnabled INTEGER DEFAULT 0, startedAt TEXT, endedAt TEXT)" },
+    { name: "PlaybackTelemetry", sql: "CREATE TABLE IF NOT EXISTS PlaybackTelemetry (id TEXT PRIMARY KEY, sessionId TEXT, videoId TEXT, cdnBytes INTEGER DEFAULT 0, p2pBytes INTEGER DEFAULT 0, rebufferCount INTEGER DEFAULT 0, rebufferDuration REAL DEFAULT 0, startupTime REAL DEFAULT 0, peerCount INTEGER DEFAULT 0, p2pFailures INTEGER DEFAULT 0, httpFallbackCount INTEGER DEFAULT 0, currentRendition TEXT DEFAULT '', timestamp TEXT)" },
+    // ── LiveStream (Pass 47): real DB-backed live broadcasting. Replaces the
+    // previous client-only go-live component which had no DB record at all.
+    { name: "LiveStream", sql: "CREATE TABLE IF NOT EXISTS LiveStream (id TEXT PRIMARY KEY, channelId TEXT DEFAULT '', streamerId TEXT DEFAULT '', streamerName TEXT DEFAULT 'Anonymous', title TEXT, description TEXT DEFAULT '', category TEXT DEFAULT 'Tech', privacy TEXT DEFAULT 'public', status TEXT DEFAULT 'preparing', viewerCount INTEGER DEFAULT 0, peakViewerCount INTEGER DEFAULT 0, streamKey TEXT UNIQUE, watchPartyCode TEXT DEFAULT '', thumbnailUrl TEXT DEFAULT '', startedAt TEXT DEFAULT '', endedAt TEXT DEFAULT '', createdAt TEXT, updatedAt TEXT)" },
   ];
 
   for (const { name, sql } of tables) {
@@ -573,6 +591,19 @@ async function ensureAllTables(client: Client): Promise<void> {
         "InterestProfile": ["CREATE INDEX IF NOT EXISTS idx_ip_user ON InterestProfile (userId)"],
         "SmartPlaylist": ["CREATE INDEX IF NOT EXISTS idx_sp_user ON SmartPlaylist (userId)"],
         "PlaylistFolder": ["CREATE INDEX IF NOT EXISTS idx_pf_user ON PlaylistFolder (userStateId)", "CREATE INDEX IF NOT EXISTS idx_pf_parent ON PlaylistFolder (parentId)"],
+        // Core model indexes (Pass 47)
+        "Channel": ["CREATE INDEX IF NOT EXISTS idx_ch_owner ON Channel (ownerId)"],
+        "Video": ["CREATE INDEX IF NOT EXISTS idx_v_cat ON Video (category)", "CREATE INDEX IF NOT EXISTS idx_v_channel ON Video (channelId)", "CREATE INDEX IF NOT EXISTS idx_v_created ON Video (createdAt)", "CREATE INDEX IF NOT EXISTS idx_v_vis ON Video (visibility)"],
+        "Comment": ["CREATE INDEX IF NOT EXISTS idx_cmt_video ON Comment (videoId)", "CREATE INDEX IF NOT EXISTS idx_cmt_parent ON Comment (parentId)", "CREATE INDEX IF NOT EXISTS idx_cmt_vts ON Comment (videoId, timestamp)"],
+        "Session": ["CREATE INDEX IF NOT EXISTS idx_sess_user ON Session (userId)", "CREATE INDEX IF NOT EXISTS idx_sess_token ON Session (token)"],
+        "VideoSource": ["CREATE INDEX IF NOT EXISTS idx_vs_video ON VideoSource (videoId)"],
+        "VideoRendition": ["CREATE INDEX IF NOT EXISTS idx_vr_video ON VideoRendition (videoId)"],
+        "VideoManifest": ["CREATE INDEX IF NOT EXISTS idx_vm_video ON VideoManifest (videoId)"],
+        "MediaProcessingJob": ["CREATE INDEX IF NOT EXISTS idx_mpj_video ON MediaProcessingJob (videoId)", "CREATE INDEX IF NOT EXISTS idx_mpj_status ON MediaProcessingJob (status)", "CREATE INDEX IF NOT EXISTS idx_mpj_sp ON MediaProcessingJob (status, priority)"],
+        "Swarm": ["CREATE INDEX IF NOT EXISTS idx_sw_video ON Swarm (videoId)", "CREATE INDEX IF NOT EXISTS idx_sw_swarm ON Swarm (swarmId)"],
+        "PlaybackSession": ["CREATE INDEX IF NOT EXISTS idx_ps_video ON PlaybackSession (videoId)", "CREATE INDEX IF NOT EXISTS idx_ps_peer ON PlaybackSession (peerId)"],
+        "PlaybackTelemetry": ["CREATE INDEX IF NOT EXISTS idx_pt_sess ON PlaybackTelemetry (sessionId)", "CREATE INDEX IF NOT EXISTS idx_pt_video ON PlaybackTelemetry (videoId)"],
+        "LiveStream": ["CREATE INDEX IF NOT EXISTS idx_ls_status ON LiveStream (status)", "CREATE INDEX IF NOT EXISTS idx_ls_channel ON LiveStream (channelId)", "CREATE INDEX IF NOT EXISTS idx_ls_streamer ON LiveStream (streamerId)"],
       };
       if (indexes[name]) {
         for (const idxSql of indexes[name]) {

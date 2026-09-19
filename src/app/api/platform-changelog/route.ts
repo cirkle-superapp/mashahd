@@ -102,6 +102,16 @@ const CURATED_CHANGES = [
     replacementFor: null,
     breaking: false,
   },
+  {
+    id: "change_009",
+    date: "2026-09-19",
+    type: "added",
+    title: "Real DB-backed live streaming (Go Live)",
+    description: "The Go Live feature now writes a real LiveStream row to the database on start, syncs the real viewer count from the watch-party WebSocket every 5s, and marks the stream ended on close. Live chat is real (over the WS on port 3004) — no more empty chat panel. A 'Live now' shelf on the home page surfaces currently-broadcasting streams with their join code. Replaces the previous client-only mock that left zero DB trace.",
+    affectedFeatures: ["live_streaming", "home_feed", "live_chat"],
+    replacementFor: "client-only go-live mock (no DB record, simulated viewers, empty chat)",
+    breaking: false,
+  },
 ];
 
 export async function GET(req: NextRequest) {
