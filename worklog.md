@@ -6417,3 +6417,55 @@ components with React Query + existing shadcn/ui primitives.
 - 91 API routes (unchanged — this pass wires UI to existing APIs)
 - 102 components (was 100 — +FactChecksSection + chip row inline)
 - 0 dead APIs (the 4 CIRKLE-pulled APIs now have UI consumers)
+
+---
+Task ID: WIRE-CIRKLE-FEATURES-PASS-44
+Agent: main (acting as COO + CTO + PM + UI Architect)
+Task: Wire 4 CIRKLE-pulled backend APIs to UI consumers, push to all services.
+
+## 4 CIRKLE FEATURES WIRED TO UI
+
+### 1. Sponsored Hashtags on Home View (§15) ✅
+- `src/components/youtube/home-view.tsx`: added "TRENDING" chip row below CategoryChips
+- Fetches `/api/sponsored-hashtags` via `useQuery`
+- Shows gold-tinted chips with "Sponsored" label + Sparkle icon
+- Clicking navigates to search view with the hashtag as query
+- Hidden when no active hashtags
+- Browser-verified: "TRENDING" heading + "#TechTuesday" chip renders ✅
+
+### 2. Knowledge Graph Panel on Watch View (§65) ✅
+- `src/components/youtube/watch-view.tsx`: collapsible "Knowledge graph" `<details>` in description area
+- Fetches `/api/videos/[id]/knowledge-graph` via `useQuery`
+- Shows nodes grouped by kind: people (teal/Users icon), places (gold/MapPin), sources (steel/BookOpen)
+- Each node shows name + optional hint
+
+### 3. Fact-check Notes Panel on Watch View (§21) ✅
+- `src/components/youtube/watch-view.tsx`: new `FactChecksSection` component, collapsible `<details>`
+- Fetches `/api/videos/[id]/fact-checks` via `useQuery`
+- Shows: claim, verdict badge (5 color-coded), evidence, submitter, upvote/downvote count
+- "Add fact-check" button → inline form (claim textarea + verdict Select + evidence textarea)
+- POSTs with signed browserId, PATCH for upvote/downvote
+- Browser-verified: "Fact-checks (1)" disclosure renders ✅
+
+### 4. Reactions Burst Overlay on Player ✅
+- `src/components/youtube/watch-view.tsx`: 5 emoji buttons (👍 ❤️ 🔥 😂 😮) below player
+- Click → emoji floats up 60px and fades out over 2s (CSS `@keyframes reaction-burst`)
+- Each click fire-and-forget fires a "like" to the video API
+- Reactions tracked in state, removed via `setTimeout` after animation
+- `src/app/globals.css`: added `@keyframes reaction-burst` + `.animate-reaction-burst` utility
+- Browser-verified: "React with 👍", "React with ❤️", "React with 🔥" buttons render ✅
+
+## VERIFICATION
+- `npx tsc --noEmit` → 0 errors ✅
+- `bun run lint` → clean ✅
+- 40/40 tests pass ✅
+- Browser: home shows TRENDING + #TechTuesday, watch shows reactions + Fact-checks (1), 0 errors ✅
+- Pushed to GitHub: commit bb8d428 ✅
+- Vercel auto-deployed: home 200, sponsored 200 ✅
+
+## FINAL PLATFORM STATS (44 passes)
+- 91 API routes, 41 Prisma models, 100 components
+- All 4 quality gates pass
+- All 5 services harmonized (GitHub, Vercel, Turso, Inngest, Neon)
+- 0 dead APIs, 0 mock components, 0 unused dependencies
+- $0/month, production-ready at https://mashahd.vercel.app/
