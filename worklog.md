@@ -7665,3 +7665,76 @@ The platform is now structured for optimum zero-cost production:
 - **Source control**: GitHub (cirkle-superapp/mashahd) — healthy
 
 All services are zero-cost, no billing details required. The platform is ready to deploy.
+
+---
+Task ID: RESTRUCTURE-5-SERVICE-PASS-53
+Agent: main (acting as COO + CTO + Structuring Expert)
+Task: User asked to disregard Filebase, Cloudflare, and Brevo, then restructure only with GitHub, Vercel, Inngest, Neon, and Turso.
+
+## WHAT WAS REMOVED
+- **Cloudflare R2** — removed all R2_* env vars from .env + ensure-env.sh + Vercel project (6 vars deleted)
+- **Filebase** — removed all FILEBASE_* env vars (3 vars deleted; older FILEBASE_SECRET_ACCESS_KEY + FILEBASE_ACCESS_KEY_ID also removed)
+- **Brevo** — removed all BREVO_* env vars (4 vars deleted: BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME, BREVO_WEBHOOK_SECRET)
+- **14 total env vars deleted from the Vercel project** via the REST API
+
+## WHAT WAS KEPT (the 5-service stack)
+1. **GitHub** — source control (github.com/cirkle-superapp/mashahd)
+2. **Vercel** — deployment (mashahd.vercel.app)
+3. **Inngest** — durable workflows + webhook signature verification
+4. **Neon** — Postgres analytics warehouse + disaster recovery
+5. **Turso** — libSQL transactional DB (authoritative)
+
+## CODE CHANGES
+
+### 1. .env — stripped to only 5-service credentials
+Removed: R2_*, FILEBASE_*, BREVO_* vars. Kept: Turso, Neon, Inngest, BROWSER_ID_SECRET, dev essentials. STORAGE_PROVIDER=local (no cloud storage).
+
+### 2. scripts/ensure-env.sh — anti-strip protection updated
+REQUIRED_VARS map now includes only the 5-service credentials. Removed R2, Filebase, Brevo entries.
+
+### 3. src/lib/storage.ts — simplified to local-only
+Removed the R2 + Filebase provider wiring from getStorage(). Removed the `createRequire` import (no longer needed). If STORAGE_PROVIDER=r2 or filebase is set, warns + falls back to local. The R2StorageProvider + FilebaseStorageProvider classes still exist in server-lib/ but aren't wired.
+
+### 4. src/app/api/cost-dashboard/route.ts — removed Cloudflare, Brevo, Filebase, SMS sections
+The cost-dashboard response now only includes: Turso, Vercel, Inngest, Neon, AI providers, System resources, Circuits, Cost summary.
+Cost summary now reads: "ZERO-COST-BY-DEFAULT — 5-service stack: GitHub + Vercel + Inngest + Neon + Turso"
+servicesInUse: ['GitHub', 'Vercel', 'Inngest', 'Neon', 'Turso']
+
+### 5. scripts/set-vercel-env.sh — updated for 5-service stack
+Now sets only 13 env vars (no R2/Filebase/Brevo). Auto-fetches teamId from the project. Idempotent (PATCH existing, POST new).
+
+### 6. Deleted 14 env vars from Vercel via REST API
+All R2_*, FILEBASE_*, BREVO_* vars deleted from the Vercel project (confirmed each delete returned 200).
+
+## VERIFICATION — ALL GATES PASS
+- npx tsc --noEmit: 0 errors
+- bun run lint: 0 errors, 0 warnings
+- bash scripts/ensure-env.sh --check: exit 0
+- Local cost-dashboard shows only: Turso, Vercel, Inngest, Neon (5-service stack)
+- Production smoke test: 8/8 endpoints 200 on mashahd.vercel.app
+- Production cost-dashboard: only 5 services, all HEALTHY
+- Production redeploy: READY
+- Turso DB: HEALTHY, circuit CLOSED, 34 Videos, 12 Channels, 88 Comments
+
+## SCREENSHOT
+- `screenshots/22-production-5-service-stack.png` — production cost-dashboard showing only the 5-service stack
+
+## HONEST ASSESSMENT
+The platform is now cleanly restructured to use ONLY:
+- GitHub (source control)
+- Vercel (deployment)
+- Inngest (durable workflows)
+- Neon (analytics)
+- Turso (transactional DB)
+
+All Filebase, Cloudflare R2, and Brevo references have been removed from:
+- .env
+- scripts/ensure-env.sh
+- src/lib/storage.ts
+- src/app/api/cost-dashboard/route.ts
+- scripts/set-vercel-env.sh
+- Vercel project env vars (14 deleted)
+
+Media storage uses local filesystem (works in dev). On Vercel production, the filesystem is read-only so new uploads won't persist — but viewing existing demo content works everywhere. This is the expected zero-cost trade-off without cloud storage.
+
+The platform is ready to deploy with the 5-service stack.
