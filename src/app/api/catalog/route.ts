@@ -48,6 +48,7 @@ const API_CATALOG = [
       { method: "POST", path: "/api/videos/[id]/share", description: "Share with 5 types (§44)" },
       { method: "GET", path: "/api/videos/[id]/context", description: "Information context (§65)" },
       { method: "POST", path: "/api/videos/[id]/live-to-vod", description: "Convert live to VOD (§46)" },
+      { method: "GET", path: "/api/videos/[id]/renditions", description: "List playback resolutions (§35 multi-resolution choice)" },
     ],
   },
   {

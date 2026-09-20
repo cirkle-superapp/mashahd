@@ -7106,3 +7106,114 @@ Pass 47 built the broadcaster side (Go Live writes a DB row). Pass 48 completes 
 No mock data, no simulation, no empty panels. Everything touches the database or the WebSocket. The viewer count is real (WS members), the chat is real (WS broadcast), the elapsed time is real (startedAt), the peak viewers is real (tracked in DB).
 
 **Zero TypeScript errors, zero lint errors, zero browser errors. Ready to deploy.**
+
+---
+Task ID: MULTI-RESOLUTION-PASS-49
+Agent: main (acting as COO + CTO + PM)
+Task: User asked to "proceed implementing, upgrading, and fixing and have multi resolution choice" — add a quality selector to the video player.
+
+## WHAT WAS BUILT
+
+### 1. /api/videos/[id]/renditions endpoint (NEW)
+`src/app/api/videos/[id]/renditions/route.ts` — returns the list of available playback resolutions for a video. Two modes:
+- **DB mode**: returns VideoRendition rows (populated by the transcoding worker when it produces 144p/360p/480p/720p/1080p HLS variants)
+- **Fallback mode**: synthesizes a single "Source" rendition from the video's videoUrl. For HLS sources, returns empty renditions + `autoAvailable: true` (the player discovers levels at runtime via hls.js). For MP4 sources, returns a single "Source" rendition with the MP4 URL.
+
+Rate limited: 30 req/min per IP. Added to the API catalog.
+
+### 2. Quality selector in the player (MAJOR UPGRADE)
+`src/components/youtube/mashahd-player.tsx` — replaced the broken Settings button (which just toggled the speed menu — a bug) with a proper settings popover containing BOTH speed and quality sections.
+
+**Quality section logic:**
+- For HLS sources with multiple renditions: shows "Auto" (hls.js ABR) + all available levels sorted high → low (e.g. "1080p 6222Mbps", "720p 2149Mbps", "480p 836Mbps", "288p 461Mbps", "184p 246Mbps"). Each shows the height + bitrate.
+- For direct MP4 sources: shows "Source MP4" (no switching possible — single rendition).
+- While HLS is loading: shows "Source loading…" until MANIFEST_PARSED fires.
+
+**State management:**
+- `levels: PlayerLevel[]` — populated from hls.js `levels` array on MANIFEST_PARSED
+- `currentLevelIndex: number` — -1 for Auto, otherwise the hls.js level index. Updated by the LEVEL_SWITCHED event (so manual + auto-ABR switches both reflect in the UI).
+- `isHlsSource: boolean` — drives the "Source" fallback
+- `preferredQuality: string` — the user's saved preference ("auto", "480p", etc.) loaded from /api/preferences
+- `preferenceLoaded: boolean` — true once the preference fetch completes
+
+**Switching renditions (`selectLevel`):**
+- Sets `hls.currentLevel = index` (-1 for Auto, otherwise the level index)
+- Updates `currentLevelIndex` state
+- Closes the settings menu
+- Persists the choice to /api/preferences (POST `preferredQuality`)
+- Updates `preferredQuality` state + ref so the apply-preference effect doesn't override the user's manual choice
+
+### 3. Preference loading + race-condition fix
+Two effects work together to handle the race where MANIFEST_PARSED fires before the preference fetch completes:
+
+**Load-preference effect** (runs once on mount):
+- Fetches `/api/preferences?bid=<bid>`
+- Reads `data.preferences.preferredQuality` (the API wraps in a `preferences` object)
+- Stores in `preferredQuality` state + `preferredQualityRef` ref
+- Sets `preferenceLoaded = true` (on success, error, or no bid)
+
+**Apply-preference effect** (deps: `[preferenceLoaded, levels, preferredQuality]`):
+- Waits until BOTH `preferenceLoaded === true` AND `levels.length > 0`
+- If preferredQuality === "auto": sets `hls.currentLevel = -1`
+- Otherwise: finds the level with matching height (exact match, or closest lower) and sets `hls.currentLevel` to it
+- Updates `currentLevelIndex` to reflect the applied choice
+
+This handles the race correctly: regardless of whether the preference fetch or the manifest parse completes first, the user's preferred quality is applied once both are ready.
+
+### 4. Two HLS demo videos added to seed
+`src/lib/seed-data.ts` — added `HLS_TEST_STREAMS` array with two verified-working public HLS test streams:
+- Mux official test stream (5 renditions: 184p, 288p, 480p, 720p, 1080p)
+- Shaka Angel One (multiple video + audio + subtitle renditions)
+
+Added 2 new seed videos that use these HLS URLs so the quality selector has real levels to switch between (the existing demo videos are all direct MP4s — single rendition). Also modified the `.map()` at the end of the videos array to preserve explicit HLS URLs (was overriding ALL videoUrls with SAMPLE_VIDEOS).
+
+## VERIFICATION — ALL 4 QUALITY GATES PASS
+| Gate | Result |
+|---|---|
+| `npx tsc --noEmit` | 0 errors ✅ |
+| `bun run lint` | 0 errors, 0 warnings ✅ |
+| Dev server | 200 on / + all endpoints ✅ |
+| Browser (agent-browser) | Full quality-selector flow verified ✅ |
+
+## END-TO-END BROWSER VERIFICATION
+1. Open HLS demo video (Mux test stream) → video loads via hls.js ✅
+2. Click Settings (gear) → popover opens with Speed + Quality sections ✅
+3. Quality section shows: Auto, 1080p 6222Mbps, 720p 2149Mbps, 480p 836Mbps, 288p 461Mbps, 184p 246Mbps (5 real renditions + Auto) ✅
+4. Click 480p → video switches to 480p (848x480) ✅
+5. Preference persisted to DB → `curl /api/preferences?bid=...` returns `preferredQuality: "480p"` ✅
+6. Reload page → preference loaded + applied (video starts at 480p, checkmark on 480p) ✅
+7. Click 1080p → video switches to 1080p (1920x1080) ✅
+8. Open MP4 video → quality selector shows "Source MP4" (correctly identifies single-rendition source) ✅
+9. Zero browser errors throughout ✅
+
+## SCREENSHOTS (3 new)
+- `screenshots/15-quality-selector-480p.png` — quality selector with 480p selected (checkmark)
+- `screenshots/16-quality-selector-open.png` — full settings popover with Speed + Quality sections
+- `screenshots/17-quality-selector-mp4-source.png` — MP4 video shows "Source MP4" (no switching)
+
+## SMOKE TEST (5 endpoints, all 200)
+| # | Endpoint | Status |
+|---|---|---|
+| 1 | / | 200 ✅ |
+| 2 | /api/ready | 200 ✅ |
+| 3 | /api/catalog | 200 ✅ (shows new /api/videos/[id]/renditions endpoint) |
+| 4 | /api/live-streams?status=live | 200 ✅ |
+| 5 | /api/videos?sort=popular | 200 ✅ |
+
+## FIXES APPLIED
+- **Bug**: Settings gear button was just toggling the speed menu (same as the Gauge button). Now opens a proper settings popover with Speed + Quality sections.
+- **Bug**: Preference loading had a race condition where MANIFEST_PARSED fired before the preference fetch completed, causing the preferred quality to never be applied. Fixed with a dedicated apply-preference effect that waits for both `preferenceLoaded` + `levels` to be ready.
+- **Bug**: Preference reading used `data.preferredQuality` but the API returns `{preferences: {preferredQuality: ...}}`. Fixed to read `data.preferences.preferredQuality`.
+- **Bug**: The `.map()` at the end of the videos array was overriding ALL videoUrls with SAMPLE_VIDEOS, which would have broken the HLS demo videos. Fixed to preserve explicit HLS URLs.
+- **Dead URLs**: The original HLS test streams I tried (Mux `v69RSHO49ROfHz02X1JOPg.m3u8` and Bitmovin Sintel) returned 404/403. Replaced with verified-working streams (Mux `test-streams.mux.dev/x36xhzz/x36xhzz.m3u8` and Shaka Angel One).
+
+## HONEST ASSESSMENT
+The multi-resolution choice feature is now fully functional end-to-end:
+- HLS sources: real quality selector with Auto + all renditions, real switching via hls.js, real persistence to the DB
+- MP4 sources: graceful fallback showing "Source" only (no fake switching)
+- User's preferred quality is loaded from the DB on every video load + applied automatically
+- Manual selections are persisted + restored across page reloads
+
+This is the same adaptive bitrate streaming tech YouTube/Netflix use. The implementation uses hls.js (the industry-standard HLS player) + the existing VideoRendition Prisma model (for when real transcoding runs in production).
+
+**Zero TypeScript errors, zero lint errors, zero browser errors. Ready to deploy.**

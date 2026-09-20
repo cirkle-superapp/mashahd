@@ -24,6 +24,15 @@ import {
   type P2PPolicy,
 } from "@/lib/p2p-policy";
 
+/** A level entry exposed by hls.js — used to populate the quality selector. */
+interface PlayerLevel {
+  height: number; // 0 for "Auto"
+  width: number;
+  bitrate: number;
+  name: string; // "Auto", "1080p", "720p", etc.
+  index: number; // -1 for Auto, otherwise the hls.js level index
+}
+
 /**
  * MashahdPlayer — a production-grade HLS player with WebRTC P2P acceleration.
  *
@@ -125,6 +134,26 @@ export function MashahdPlayer({
   const [rebufferCount, setRebufferCount] = useState(0);
   const [startupTime, setStartupTime] = useState(0);
 
+  // ── Multi-resolution choice (§35) ──
+  // Quality selector state. levels are populated from hls.js when the
+  // HLS manifest parses (each level = one rendition). For direct MP4
+  // sources, levels stays empty + the selector shows "Source" only.
+  // currentLevelIndex is -1 for Auto (hls.js adapts to bandwidth).
+  const [levels, setLevels] = useState<PlayerLevel[]>([]);
+  const [currentLevelIndex, setCurrentLevelIndex] = useState(-1); // -1 = Auto
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  // Tracks whether the source is HLS (vs direct MP4). Set in the HLS
+  // init effect; drives the "Source" fallback in the selector.
+  const [isHlsSource, setIsHlsSource] = useState(false);
+  // User's preferred quality loaded from UserPreference (e.g. "720p").
+  // Stored in state so the apply-preference effect re-runs when it loads.
+  // Also mirrored in a ref for the telemetry interval + selectLevel.
+  const [preferredQuality, setPreferredQuality] = useState("auto");
+  const preferredQualityRef = useRef<string>("auto");
+  // True once the preference has been fetched from /api/preferences.
+  // The apply-preference effect waits for this before applying.
+  const [preferenceLoaded, setPreferenceLoaded] = useState(false);
+
   // Sync refs with state so the telemetry interval reads latest values.
   useEffect(() => { hudStatsRef.current = hudStats; }, [hudStats]);
   useEffect(() => { rebufferCountRef.current = rebufferCount; }, [rebufferCount]);
@@ -163,9 +192,13 @@ export function MashahdPlayer({
     // Anything else (e.g. .mp4, .webm) is a direct video file — use the native
     // <video> element, which handles MP4/WebM natively across all browsers.
     // hls.js CANNOT parse direct MP4 URLs (it expects HLS manifests).
-    const isHlsSource = /\.m3u8(\?|$)/i.test(src) || src.includes("manifest/master");
+    const sourceIsHls = /\.m3u8(\?|$)/i.test(src) || src.includes("manifest/master");
+    setIsHlsSource(sourceIsHls);
+    // Reset quality state on source change (the new manifest will populate it).
+    setLevels([]);
+    setCurrentLevelIndex(-1);
 
-    if (!isHlsSource) {
+    if (!sourceIsHls) {
       // Direct video file (MP4/WebM) — native playback, no hls.js needed.
       video.src = src;
       video.load();
@@ -234,6 +267,32 @@ export function MashahdPlayer({
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         if (autoPlay) video.play().catch(() => {});
         setStartupTime((performance.now() - startTimeRef.current) / 1000);
+
+        // ── Multi-resolution choice (§35) ──
+        // Populate the quality selector from hls.js levels. Each level is
+        // a rendition (e.g. 1080p, 720p). The "Auto" option (index -1)
+        // lets hls.js adapt to bandwidth.
+        // NOTE: the user's preferredQuality is applied by a separate effect
+        // (apply-preference) that waits for both levels + preferenceLoaded.
+        // This handler only populates levels + sets the default to Auto.
+        const hlsLevels = hls.levels || [];
+        const parsed: PlayerLevel[] = hlsLevels.map((lvl, i) => ({
+          height: lvl.height || 0,
+          width: lvl.width || 0,
+          bitrate: lvl.bitrate || 0,
+          name: lvl.height ? `${lvl.height}p` : `Rendition ${i + 1}`,
+          index: i,
+        }));
+        setLevels(parsed);
+        // Default to Auto until the apply-preference effect runs.
+        hls.currentLevel = -1;
+        setCurrentLevelIndex(-1);
+      });
+
+      // Track level switches (user or hls.js auto-abr) so the selector
+      // shows the currently-active rendition.
+      hls.on(Hls.Events.LEVEL_SWITCHED, (_evt, data) => {
+        setCurrentLevelIndex(data.level);
       });
 
       // Track rebuffers.
@@ -278,6 +337,105 @@ export function MashahdPlayer({
     const onFs = () => setFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener("fullscreenchange", onFs);
     return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  // ── Multi-resolution choice (§35) — load user's preferred quality ──
+  // Fetch the user's preferredQuality from /api/preferences on mount.
+  // Stored in state so the apply-preference effect re-runs when it loads
+  // (the HLS manifest may have already parsed before this fetch completes).
+  useEffect(() => {
+    let cancelled = false;
+    try {
+      const bid = localStorage.getItem("yt-clone-browser-id") || "";
+      if (!bid) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPreferenceLoaded(true);
+        return;
+      }
+      fetch(`/api/preferences?bid=${encodeURIComponent(bid)}`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => {
+          if (cancelled) return;
+          // The API returns { preferences: { preferredQuality: "720p", ... } }
+          // (wrapped in a "preferences" object). Read from the wrapper.
+          const pref = data?.preferences?.preferredQuality || data?.preferredQuality;
+          if (pref) {
+            setPreferredQuality(pref);
+            preferredQualityRef.current = pref;
+          }
+          setPreferenceLoaded(true);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setPreferenceLoaded(true); // still mark loaded — defaults to "auto"
+        });
+    } catch {
+      // localStorage unavailable (SSR) — non-fatal.
+      setPreferenceLoaded(true);
+    }
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── Apply preferred quality once levels + preference are both ready ──
+  // This handles the race where MANIFEST_PARSED fires before the preference
+  // fetch completes. When both are ready, we set hls.currentLevel to the
+  // user's preferred resolution (or -1 for Auto).
+  useEffect(() => {
+    if (!preferenceLoaded || levels.length === 0) return;
+    const hls = hlsRef.current;
+    if (!hls) return;
+    if (preferredQuality === "auto") {
+      hls.currentLevel = -1;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCurrentLevelIndex(-1);
+      return;
+    }
+    const targetHeight = parseInt(preferredQuality, 10);
+    if (Number.isNaN(targetHeight)) return;
+    // Find exact match first, then closest lower.
+    let matchIdx = levels.findIndex((l) => l.height === targetHeight);
+    if (matchIdx < 0) {
+      const lower = levels
+        .filter((l) => l.height > 0 && l.height <= targetHeight)
+        .sort((a, b) => b.height - a.height)[0];
+      matchIdx = lower ? lower.index : -1;
+    }
+    hls.currentLevel = matchIdx;
+    setCurrentLevelIndex(matchIdx);
+  }, [preferenceLoaded, levels, preferredQuality]);
+
+  // ── Switch rendition handler ──
+  // Called when the user picks a resolution from the selector.
+  // index = -1 → Auto (hls.js ABR), otherwise the level index.
+  const selectLevel = useCallback((index: number) => {
+    const hls = hlsRef.current;
+    if (!hls) return;
+    hls.currentLevel = index; // -1 = Auto
+    setCurrentLevelIndex(index);
+    setShowSettingsMenu(false);
+
+    // Persist the user's choice to /api/preferences (fire-and-forget).
+    // For "Auto", store "auto"; for a specific level, store its height (e.g. "720p").
+    let qualityToSave = "auto";
+    if (index >= 0 && hls.levels?.[index]?.height) {
+      qualityToSave = `${hls.levels[index].height}p`;
+    }
+    // Update state so the apply-preference effect doesn't override the
+    // user's manual choice on the next levels/preference change.
+    setPreferredQuality(qualityToSave);
+    preferredQualityRef.current = qualityToSave;
+    try {
+      const bid = localStorage.getItem("yt-clone-browser-id") || "";
+      if (bid) {
+        fetch("/api/preferences", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ browserId: bid, preferredQuality: qualityToSave }),
+        }).catch(() => { /* persistence is best-effort */ });
+      }
+    } catch {
+      /* localStorage unavailable — non-fatal */
+    }
   }, []);
 
   // ── Keyboard shortcuts ──
@@ -408,6 +566,7 @@ export function MashahdPlayer({
     v.playbackRate = s;
     setSpeed(s);
     setShowSpeedMenu(false);
+    setShowSettingsMenu(false);
   };
 
   const showControls = () => {
@@ -599,9 +758,94 @@ export function MashahdPlayer({
               <PictureInPicture2 className="h-4 w-4" />
             </button>
           )}
-          <button onClick={() => setShowSpeedMenu((s) => !s)} className="grid place-items-center min-h-[44px] min-w-[44px] h-11 w-11 rounded-full hover:bg-white/15 text-white" aria-label="Settings">
-            <Settings2 className="h-4 w-4" />
-          </button>
+          {/* ── Settings popover (gear) — speed + quality (§35 multi-resolution) ──
+              Previously this button just toggled the speed menu (same as the
+              Gauge button). Now it opens a proper settings popover with BOTH
+              speed and quality sections. The quality selector lists hls.js
+              levels (for HLS sources) or "Source" (for direct MP4). */}
+          <div className="relative">
+            <button
+              onClick={() => setShowSettingsMenu((s) => !s)}
+              className="grid place-items-center min-h-[44px] min-w-[44px] h-11 w-11 rounded-full hover:bg-white/15 text-white"
+              aria-label="Settings"
+              aria-expanded={showSettingsMenu}
+            >
+              <Settings2 className="h-4 w-4" />
+            </button>
+            {showSettingsMenu && (
+              <div className="absolute bottom-12 right-0 glass-strong rounded-xl border border-white/10 shadow-float overflow-hidden py-2 min-w-44">
+                {/* Speed section */}
+                <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-white/50 font-semibold">
+                  Speed
+                </div>
+                {SPEEDS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => changeSpeed(s)}
+                    className={cn(
+                      "w-full px-3 py-1.5 text-left text-xs hover:bg-white/15 flex items-center justify-between gap-2",
+                      speed === s ? "text-[hsl(var(--gold-light))] font-medium" : "text-white",
+                    )}
+                  >
+                    <span>{s}x</span>
+                    {speed === s && <Check className="h-3 w-3" />}
+                  </button>
+                ))}
+                {/* Quality section — multi-resolution choice (§35) */}
+                <div className="border-t border-white/10 mt-1 pt-1">
+                  <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-white/50 font-semibold">
+                    Quality
+                  </div>
+                  {isHlsSource && levels.length > 0 ? (
+                    <>
+                      {/* Auto (hls.js ABR) */}
+                      <button
+                        onClick={() => selectLevel(-1)}
+                        className={cn(
+                          "w-full px-3 py-1.5 text-left text-xs hover:bg-white/15 flex items-center justify-between gap-2",
+                          currentLevelIndex === -1 ? "text-[hsl(var(--gold-light))] font-medium" : "text-white",
+                        )}
+                      >
+                        <span>Auto</span>
+                        {currentLevelIndex === -1 && <Check className="h-3 w-3" />}
+                      </button>
+                      {/* Available renditions, sorted high → low */}
+                      {[...levels]
+                        .sort((a, b) => b.height - a.height)
+                        .map((lvl) => (
+                          <button
+                            key={lvl.index}
+                            onClick={() => selectLevel(lvl.index)}
+                            className={cn(
+                              "w-full px-3 py-1.5 text-left text-xs hover:bg-white/15 flex items-center justify-between gap-2",
+                              currentLevelIndex === lvl.index ? "text-[hsl(var(--gold-light))] font-medium" : "text-white",
+                            )}
+                          >
+                            <span>
+                              {lvl.name}
+                              {lvl.bitrate > 0 && (
+                                <span className="text-white/40 ml-1.5">
+                                  {(lvl.bitrate / 1000).toFixed(0)}Mbps
+                                </span>
+                              )}
+                            </span>
+                            {currentLevelIndex === lvl.index && <Check className="h-3 w-3" />}
+                          </button>
+                        ))}
+                    </>
+                  ) : (
+                    /* Direct MP4 source — only "Source" available */
+                    <div className="px-3 py-1.5 text-xs text-white/70 flex items-center justify-between gap-2">
+                      <span>Source</span>
+                      <span className="text-[10px] text-white/40">
+                        {isHlsSource ? "loading…" : "MP4"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
           <button onClick={toggleFullscreen} className="grid place-items-center min-h-[44px] min-w-[44px] h-11 w-11 rounded-full hover:bg-white/15 text-white" aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}>
             {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </button>

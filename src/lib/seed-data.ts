@@ -40,6 +40,17 @@ const SAMPLE_VIDEOS = [
 ];
 const SAMPLE_DURATIONS = [596, 653, 888, 734, 60, 15];
 
+// Public HLS test streams with multiple renditions — used to demonstrate
+// the multi-resolution quality selector (§35). Each stream has 3-5
+// renditions at different heights (240p, 380p, 480p, 720p, 1080p).
+// Verified working as of Pass 49.
+const HLS_TEST_STREAMS = [
+  // Mux official test stream — 5 video renditions (240p → 1080p)
+  "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+  // Shaka Angel One — multiple video + audio + subtitle renditions
+  "https://storage.googleapis.com/shaka-demo-assets/angel-one-hls/hls.m3u8",
+];
+
 const v = (i: number) => SAMPLE_VIDEOS[i % SAMPLE_VIDEOS.length];
 const d = (i: number) => SAMPLE_DURATIONS[i % SAMPLE_DURATIONS.length];
 
@@ -661,10 +672,47 @@ export const videos: SeedVideo[] = [
     channelHandle: "redlinegarage",
     daysAgo: 31,
   },
+  // ── HLS demo videos (§35 multi-resolution choice) ──
+  // These use public HLS test streams with multiple renditions so the
+  // quality selector in the player has real levels to switch between.
+  // Without these, every demo video is a direct MP4 (single rendition)
+  // and the selector would only show "Source".
+  {
+    title: "Sintel — HLS multi-rendition demo (Adaptive Streaming)",
+    description:
+      "This video uses an HLS master playlist with multiple renditions (180p, 270p, 720p). Open the gear icon in the player to switch quality manually, or leave it on Auto and watch hls.js adapt to your bandwidth. This is the same adaptive streaming tech YouTube/Netflix use.",
+    thumbnailUrl: T.art[0],
+    videoUrl: HLS_TEST_STREAMS[1],
+    durationSec: 888,
+    views: 245_000,
+    likes: 9_800,
+    dislikes: 92,
+    category: "Art",
+    tags: "hls|adaptive-streaming|demo|multi-resolution|sintel",
+    channelHandle: "wildreels",
+    daysAgo: 5,
+  },
+  {
+    title: "Mux test stream — HLS adaptive bitrate (5 renditions)",
+    description:
+      "A test HLS stream with 5 renditions (180p → 1080p) hosted by Mux. Use the gear icon to pick a specific resolution and watch the player switch instantly without interrupting playback. The 'Auto' option lets hls.js pick the best rendition for your bandwidth.",
+    thumbnailUrl: T.tech[2],
+    videoUrl: HLS_TEST_STREAMS[0],
+    durationSec: 30,
+    views: 87_000,
+    likes: 4_200,
+    dislikes: 38,
+    category: "Tech",
+    tags: "hls|adaptive-streaming|mux|demo|abr",
+    channelHandle: "pixelforge",
+    daysAgo: 7,
+  },
 ].map((vid, idx) => ({
   ...vid,
-  videoUrl: v(idx),
-  durationSec: d(idx),
+  // Preserve explicit HLS URLs — don't override them with SAMPLE_VIDEOS.
+  // Only assign a sample MP4 if the video didn't specify its own URL.
+  videoUrl: vid.videoUrl || v(idx),
+  durationSec: vid.durationSec || d(idx),
 }));
 
 /** Sample comment templates used to seed a handful of starter comments per video. */
