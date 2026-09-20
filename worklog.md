@@ -7465,3 +7465,112 @@ The platform is at maximum health across all dimensions:
 - Community posts / Stories / Per-creator memberships
 
 The platform is ready to deploy.
+
+---
+Task ID: UPLOAD-COMMENT-MOD-PASS-51
+Agent: main (acting as COO + CTO + PM)
+Task: User asked to "proceed implementing, upgrading, and fixing". Implemented the biggest remaining gap from the Pass 50 audit: video upload was a demo shell. Also built creator comment moderation.
+
+## WHAT WAS BUILT
+
+### 1. POST /api/videos endpoint (REAL video upload — was demo shell)
+`src/app/api/videos/route.ts` — added POST handler that:
+- Accepts multipart/form-data with: file, title, description, category, tags, visibility, channelId, browserId
+- Validates file (MIME type, extension, size ≤ 500MB)
+- Writes the file to MEDIA_STORAGE_PATH/uploads/<unique>.<ext>
+- Creates a Video row in the DB with the local media URL
+- Auto-creates a "My Uploads" channel for the user (if no channelId provided) — uses the browserId as the anonymous owner
+- Verifies channel ownership (via ownerId OR the links field "owner:<bid>" pattern) if channelId is provided
+- Rate limited: 10 uploads per hour per IP
+- Requires signed browserId (HMAC auth)
+- Returns { ok: true, video: { id, title, category, visibility, videoUrl, channelId } }
+
+### 2. GET /api/media/uploads/[filename] route (media serving with Range support)
+`src/app/api/media/uploads/[filename]/route.ts` — serves uploaded video files:
+- Path-traversal guard (rejects `..`, `/`, validates filename pattern)
+- HTTP Range request support (206 Partial Content for video seeking)
+- Correct Content-Type per extension (mp4, webm, mov, mkv)
+- Cache-Control: public, max-age=86400
+- Accept-Ranges: bytes header (lets the <video> element seek)
+
+### 3. Rewrote CreateButton (was demo shell → real upload dialog)
+`src/components/youtube/header-overlays.tsx` — replaced the previous "demo upload — nothing is actually stored" shell with:
+- Real file picker (drag & drop + click to browse)
+- File validation (type, size displayed)
+- Title, description, category, visibility (public/unlisted/private) inputs
+- Upload progress bar (XHR.upload.onprogress — fetch() doesn't support upload progress)
+- XHR-based upload (not fetch — needed for progress events)
+- Error surfacing (network errors, server errors, validation errors)
+- On success: toast "Upload complete!" + navigate to the new video's watch view
+- Disabled inputs during upload (can't change mid-upload)
+- Can't close dialog mid-upload (onOpenChange returns early if uploading)
+
+### 4. POST /api/videos/[id]/comments/[commentId]/moderate endpoint
+`src/app/api/videos/[id]/comments/[commentId]/moderate/route.ts` — creator-only comment moderation:
+- Actions: pin, unpin, delete
+- SECURITY: requires signed browserId + verifies the user owns the video's channel (via ownerId OR links field "owner:<bid>" pattern)
+- pin: upserts CommentMeta with pinnedBy + pinnedAt
+- unpin: clears pinnedBy + pinnedAt
+- delete: deletes the comment row + its CommentMeta (cascade-deletes replies via the parentId relation)
+- Rate limited: 30 actions per 5 minutes per IP
+- Non-owner gets 403 "only the channel owner can moderate comments"
+
+### 5. Updated API catalog
+Added 3 new endpoints to the self-documenting catalog:
+- POST /api/videos (upload)
+- POST /api/videos/[id]/comments/[commentId]/moderate (creator moderation)
+- GET /api/media/uploads/[filename] (media serving — implicit, not in catalog but reachable)
+
+## VERIFICATION — ALL 4 QUALITY GATES PASS
+| Gate | Result |
+|---|---|
+| `npx tsc --noEmit` | 0 errors ✅ |
+| `bun run lint` | 0 errors, 0 warnings ✅ |
+| Dev server | 200 on / ✅ |
+| Browser | home renders, zero errors ✅ |
+
+## END-TO-END VERIFICATION (curl)
+
+### Upload lifecycle
+1. POST /api/videos with multipart form → 200, `{"ok":true,"video":{"id":"...","title":"...","videoUrl":"/api/media/uploads/vid_...mp4","channelId":"..."}}` ✅
+2. File written to storage/uploads/ (verified on disk) ✅
+3. Video row created in DB with correct videoUrl + channelId ✅
+4. Auto-created "My Uploads" channel with owner bid in links field ✅
+5. GET /api/media/uploads/vid_...mp4 → 200, content-type: video/mp4, correct byte count ✅
+6. Video appears at top of /api/videos?sort=recent (newest) ✅
+7. Watch view (?v=watch&id=...) renders: title, "My Uploads" channel, 1 view, description, video element with correct src ✅
+
+### Comment moderation lifecycle
+1. Pin (with owner bid) → `{"ok":true,"action":"pin","pinnedBy":"bid_..."}` ✅
+2. CommentMeta row created with pinnedBy + pinnedAt (verified in DB) ✅
+3. Unpin → `{"ok":true,"action":"unpin"}` ✅
+4. Delete → `{"ok":true,"action":"delete"}` + comment removed from DB ✅
+5. Non-owner gets 403 "only the channel owner can moderate comments" ✅
+
+## 8-ENDPOINT SMOKE TEST (all 200)
+| # | Endpoint | Status |
+|---|---|---|
+| 1 | / | 200 ✅ |
+| 2 | /api/ready | 200 ✅ |
+| 3 | /api/catalog | 200 ✅ (shows new POST /api/videos + moderate endpoints) |
+| 4 | /api/videos?sort=recent | 200 ✅ (uploaded video appears) |
+| 5 | /api/videos/[id] (uploaded) | 200 ✅ |
+| 6 | /api/videos/[id]/renditions | 200 ✅ |
+| 7 | /api/videos/[id]/comments | 200 ✅ |
+| 8 | /api/media/uploads/vid_...mp4 | 200 ✅ (media serving works) |
+
+## SCREENSHOT
+- `screenshots/19-upload-dialog.png` — home page with the Create button (opens real upload dialog)
+
+## HONEST ASSESSMENT
+The biggest remaining gap from the Pass 50 audit — "video upload is a demo shell" — is now FIXED. Creators can now:
+1. Click the Create button (video icon in header)
+2. Drag & drop or browse for a video file (MP4, WebM, MOV, MKV — up to 500MB)
+3. Fill in title, description, category, visibility
+4. See real upload progress (XHR progress events)
+5. On success: the video is stored locally + a Video row is created + the user is navigated to the watch view
+6. The video appears on the home feed + on the user's auto-created "My Uploads" channel
+
+Creator comment moderation backend is BUILT + VERIFIED (pin/unpin/delete all work, ownership enforced). The UI buttons (Pin/Delete on comments for channel owners) are NOT yet wired — this requires ownership detection in the watch-view (needs the video response to include an `isCreator` flag based on the current user's bid). Documented for a future pass.
+
+**Zero TypeScript errors, zero lint errors, zero browser errors. The platform now supports real video uploads end-to-end.**

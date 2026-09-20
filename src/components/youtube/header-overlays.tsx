@@ -222,23 +222,117 @@ export function NotificationsButton() {
 
 /* ────────────────────────────────────────────────────────────────────────
  * Create / Upload modal — the video icon in the header opens a dialog with
- * a (cosmetic) upload form. A real upload would POST to /api/videos.
+ * a REAL upload form. Pass 51: replaced the previous demo shell (which said
+ * "nothing is actually stored") with a real POST to /api/videos that:
+ *   1. Validates the file (type, size)
+ *   2. Uploads via multipart/form-data
+ *   3. Creates a Video row in the DB
+ *   4. On success, navigates to the watch view for the new video
  * ──────────────────────────────────────────────────────────────────────── */
 
 export function CreateButton() {
+  const { navigate } = useAppStore();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [category, setCategory] = useState("Tech");
+  const [visibility, setVisibility] = useState<"public" | "unlisted" | "private">("public");
   const [dragging, setDragging] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
 
   const reset = () => {
     setTitle("");
     setDesc("");
     setCategory("Tech");
-    setFileName(null);
+    setVisibility("public");
+    setFile(null);
+    setUploading(false);
+    setError(null);
+    setProgress(0);
     setDragging(false);
+  };
+
+  // Read the browserId from localStorage (issued by /api/user-state on first
+  // visit). We need it to authenticate the upload.
+  const getBid = () => {
+    try {
+      return localStorage.getItem("yt-clone-browser-id") || "";
+    } catch {
+      return "";
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!file || !title.trim()) return;
+    const bid = getBid();
+    if (!bid) {
+      setError("We couldn't verify your identity. Refresh the page + try again.");
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+    setProgress(5); // initial progress before the fetch starts
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("title", title.trim());
+      formData.append("description", desc);
+      formData.append("category", category);
+      formData.append("visibility", visibility);
+      formData.append("browserId", bid);
+
+      // Use XMLHttpRequest so we can track upload progress (fetch() doesn't
+      // support upload progress events without a streams polyfill).
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/videos");
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 90); // 0-90% = upload
+          setProgress(pct);
+        }
+      };
+      const responseText: string = await new Promise((resolve, reject) => {
+        xhr.onload = () => resolve(xhr.responseText);
+        xhr.onerror = () => reject(new Error("network error"));
+        xhr.send(formData);
+      });
+
+      setProgress(100); // 100% = done
+
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error("invalid response from server");
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300 && data?.ok) {
+        toast.success("Upload complete!", {
+          description: `“${data.video.title}” is now published in ${data.video.category}.`,
+        });
+        setOpen(false);
+        reset();
+        // Navigate to the new video's watch view.
+        navigate({ kind: "watch", videoId: data.video.id });
+      } else {
+        const msg = data?.error || `Upload failed (HTTP ${xhr.status})`;
+        setError(msg);
+        toast.error("Upload failed", { description: msg });
+      }
+    } catch (e: any) {
+      const msg = e?.message || "Upload failed";
+      setError(msg);
+      toast.error("Upload failed", { description: msg });
+    } finally {
+      setUploading(false);
+      // Keep progress at 100 for a moment so the user sees it complete.
+      setTimeout(() => setProgress(0), 1500);
+    }
   };
 
   return (
@@ -256,6 +350,7 @@ export function CreateButton() {
       <Dialog
         open={open}
         onOpenChange={(o) => {
+          if (uploading) return; // don't allow closing mid-upload
           setOpen(o);
           if (!o) reset();
         }}
@@ -263,9 +358,15 @@ export function CreateButton() {
         <DialogContent className="max-w-lg">
           <DialogTitle>Upload a video</DialogTitle>
           <DialogDescription>
-            Share a video with the Mashahd community. This is a demo upload —
-            nothing is actually stored.
+            Share a video with the Mashahd community. Your video is stored
+            securely + appears on your channel + the home feed.
           </DialogDescription>
+
+          {error && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
+              {error}
+            </div>
+          )}
 
           {/* Drop zone */}
           <label
@@ -278,34 +379,56 @@ export function CreateButton() {
               e.preventDefault();
               setDragging(false);
               const f = e.dataTransfer.files?.[0];
-              if (f) setFileName(f.name);
+              if (f) setFile(f);
             }}
             className={cn(
               "flex flex-col items-center justify-center gap-2 py-8 px-4 rounded-xl border-2 border-dashed cursor-pointer transition-colors",
               dragging
                 ? "border-gold bg-gold/10"
                 : "border-border hover:border-gold/50 hover:bg-gold/5",
+              uploading && "pointer-events-none opacity-60",
             )}
           >
             <Upload className="h-8 w-8 text-gold" />
-            {fileName ? (
-              <p className="text-sm font-medium">{fileName}</p>
+            {file ? (
+              <>
+                <p className="text-sm font-medium">{file.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {(file.size / 1048576).toFixed(1)} MB · {file.type || "unknown type"}
+                </p>
+              </>
             ) : (
               <>
                 <p className="text-sm font-medium">Drag &amp; drop a video file</p>
-                <p className="text-xs text-muted-foreground">or click to browse — MP4, WebM up to 2GB</p>
+                <p className="text-xs text-muted-foreground">or click to browse — MP4, WebM, MOV up to 500MB</p>
               </>
             )}
             <input
               type="file"
               accept="video/*"
               className="hidden"
+              disabled={uploading}
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) setFileName(f.name);
+                if (f) setFile(f);
               }}
             />
           </label>
+
+          {/* Upload progress bar */}
+          {uploading && (
+            <div className="space-y-1">
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-gradient-gold transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                {progress < 100 ? `Uploading… ${progress}%` : "Processing…"}
+              </p>
+            </div>
+          )}
 
           {/* Title */}
           <div>
@@ -319,7 +442,8 @@ export function CreateButton() {
               placeholder="Give your video a compelling title"
               aria-label="Video title"
               maxLength={100}
-              className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60"
+              disabled={uploading}
+              className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60 disabled:opacity-60"
             />
           </div>
 
@@ -336,7 +460,8 @@ export function CreateButton() {
               aria-label="Video description"
               rows={3}
               maxLength={1000}
-              className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60 resize-none"
+              disabled={uploading}
+              className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60 resize-none disabled:opacity-60"
             />
           </div>
 
@@ -350,7 +475,8 @@ export function CreateButton() {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               aria-label="Video category"
-              className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60"
+              disabled={uploading}
+              className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/60 disabled:opacity-60"
             >
               {["Tech", "Music", "Gaming", "Cooking", "Travel", "Fitness", "Art", "Science", "Nature", "Cars"].map(
                 (c) => (
@@ -362,28 +488,52 @@ export function CreateButton() {
             </select>
           </div>
 
+          {/* Visibility */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Visibility
+            </label>
+            <div className="grid grid-cols-3 gap-2 mt-1.5">
+              {([
+                { id: "public", label: "Public" },
+                { id: "unlisted", label: "Unlisted" },
+                { id: "private", label: "Private" },
+              ] as const).map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => setVisibility(v.id)}
+                  disabled={uploading}
+                  aria-pressed={visibility === v.id}
+                  className={cn(
+                    "px-3 py-2 rounded-lg text-xs font-medium transition-colors border min-h-[40px] disabled:opacity-60",
+                    visibility === v.id
+                      ? "border-gold bg-[hsl(var(--gold)/0.1)] text-foreground"
+                      : "border-border text-muted-foreground hover:bg-accent/50",
+                  )}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="flex justify-end gap-2 pt-2">
             <Button
               variant="ghost"
               size="sm"
               className="rounded-full"
               onClick={() => setOpen(false)}
+              disabled={uploading}
             >
               Cancel
             </Button>
             <Button
               size="sm"
               className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
-              disabled={!title.trim() || !fileName}
-              onClick={() => {
-                toast.success("Upload queued (demo)", {
-                  description: `“${title}” would be published to ${category}.`,
-                });
-                setOpen(false);
-                reset();
-              }}
+              disabled={!title.trim() || !file || uploading}
+              onClick={handleUpload}
             >
-              Publish
+              {uploading ? "Uploading…" : "Publish"}
             </Button>
           </div>
         </DialogContent>

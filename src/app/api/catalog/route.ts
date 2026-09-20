@@ -42,6 +42,7 @@ const API_CATALOG = [
     specSection: "§33-44",
     endpoints: [
       { method: "GET", path: "/api/videos", description: "List videos with 8 sort options + pagination (§12)" },
+      { method: "POST", path: "/api/videos", description: "Upload a new video (multipart/form-data, Pass 51)" },
       { method: "GET", path: "/api/videos/[id]", description: "Get video + like/dislike state" },
       { method: "POST", path: "/api/videos/[id]/views", description: "Increment view count (rate limited)" },
       { method: "POST", path: "/api/videos/[id]/like", description: "Like/dislike with mutual exclusion (§22)" },
@@ -50,6 +51,7 @@ const API_CATALOG = [
       { method: "POST", path: "/api/videos/[id]/live-to-vod", description: "Convert live to VOD (§46)" },
       { method: "GET", path: "/api/videos/[id]/renditions", description: "List playback resolutions (§35 multi-resolution choice)" },
       { method: "POST", path: "/api/videos/[id]/comments/[commentId]/like", description: "Like/dislike a comment (Pass 50)" },
+      { method: "POST", path: "/api/videos/[id]/comments/[commentId]/moderate", description: "Creator-only Pin/Unpin/Delete a comment (Pass 51)" },
     ],
   },
   {
