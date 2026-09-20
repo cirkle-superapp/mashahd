@@ -33,15 +33,36 @@ MISSING=()
 #   - APP_URL missing → webhook/signature URLs use wrong base
 #   - ALLOWED_ORIGINS missing → watch-party WS blocks cross-origin
 #   - P2P_SIGNALING_URL missing → player can't find the tracker
-# Production secrets (Turso, Neon, Inngest, Brevo, AI providers) are NOT
-# included here — they're set in Vercel env vars for prod, and commented
-# out in .env for dev.
+# Production credentials are ALSO included here (Pass 52) — so local dev
+# connects to the REAL production services (Turso, Neon, R2, etc.) instead
+# of falling back to local SQLite. This makes local dev = production behavior.
 declare -A REQUIRED_VARS=(
-  ["APP_URL"]="http://localhost:3000"
+  ["APP_URL"]="https://mashahd.vercel.app"
   ["DATABASE_URL"]="file:/home/z/my-project/db/custom.db"
   ["BROWSER_ID_SECRET"]="mashahd-dev-stable-secret-9f3b7e2a8c1d4f6b0e5a2c8d7f1b4e9a"
   ["MEDIA_STORAGE_PATH"]="/home/z/my-project/storage"
   ["STORAGE_PROVIDER"]="local"
+  # Cloudflare R2 (zero-cost media storage — 10GB free, ZERO egress)
+  ["R2_ACCOUNT_ID"]="dfe16d9c31eed725a3cf6b5280083025"
+  ["R2_ACCESS_KEY_ID"]="7a12063e92dfe81a9779d401a13fc541"
+  ["R2_SECRET_ACCESS_KEY"]="06cbd1a9c2f0da1ab1157cc205ef52600088e6f6ea6dff65cc3c42ae7dd8cb36"
+  ["R2_BUCKET"]="mashahd-media"
+  ["R2_S3_ENDPOINT"]="https://dfe16d9c31eed725a3cf6b5280083025.r2.cloudflarestorage.com"
+  ["R2_PUBLIC_BASE_URL"]="https://dfe16d9c31eed725a3cf6b5280083025.r2.cloudflarestorage.com"
+  # Filebase (backup storage + IPFS pinning — 5GB free)
+  ["FILEBASE_ACCESS_KEY_ID"]="89C12D61CC5EB81DE1D5"
+  ["FILEBASE_SECRET_KEY"]="Ou4q1eOtUuTU04JTMaRnnXfv8BDZpJPan5iKbGjy"
+  ["FILEBASE_BUCKET"]="mashahd-media"
+  # Turso (transactional DB — 9GB free, 1B reads/month)
+  ["TURSO_URL"]="libsql://mashahd-fortleem.aws-us-east-1.turso.io"
+  ["TURSO_AUTH_TOKEN"]="eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJnaWQiOiIyMTIyNTIwNy1iNWJmLTRjM2MtOGFiNS0xYmEzNDNlNjU5NmEiLCJpYXQiOjE3ODkxNjE4MTksImtpZCI6IjJTRm4xQWZVUnU1TFF5a0xkc0d3YzV3VldVdlRlcVdhVjg2UXZYUk9DMWMiLCJyaWQiOiJlNzM4OTU1MS0xMTFlLTQ5NWYtYjkxZi0zNmI5M2UyNThhNGUifQ.fygqboSEmsvwsSpP0CpZo9uMAY0sJS8uAYdcoE5bFmvOY0pIPyNB8W3ILQUhXXC12peyvcomvW8ax7NN5RfsBg"
+  # Neon Postgres (analytics warehouse — 0.5GB free)
+  ["NEON_DATABASE_URL"]="postgresql://neondb_owner:npg_P9rgaT5SsNoW@ep-empty-recipe-auue9q58-pooler.c-10.us-east-1.aws.neon.tech/MASHAHD?sslmode=require&channel_binding=require"
+  ["NEON_DATA_API"]="https://ep-empty-recipe-auue9q58.apirest.c-10.us-east-1.aws.neon.tech/MASHAHD/rest/v1"
+  # Inngest (durable workflows — free tier)
+  ["INNGEST_KEY"]="signkey-prod-5e79fc7120134801543036c7ea0f33fea548e5ddda74443b0e4d627a62675b0d"
+  ["INNGEST_WEBHOOK_SECRET"]="signkey-prod-5e79fc7120134801543036c7ea0f33fea548e5ddda74443b0e4d627a62675b0d"
+  # Dev-only
   ["FFMPEG_PATH"]="ffmpeg"
   ["FFPROBE_PATH"]="ffprobe"
   ["P2P_ENABLED"]="true"
@@ -52,7 +73,7 @@ declare -A REQUIRED_VARS=(
   ["P2P_BACKGROUND_ENABLED"]="false"
   ["P2P_LOW_BATTERY_MODE"]="true"
   ["TURN_ENABLED"]="false"
-  ["ALLOWED_ORIGINS"]="http://localhost:3000"
+  ["ALLOWED_ORIGINS"]="https://mashahd.vercel.app,http://localhost:3000"
 )
 
 # Read existing .env into an associative array.

@@ -225,31 +225,51 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Ensure the storage directory exists.
-  const storagePath = process.env.MEDIA_STORAGE_PATH || "/home/z/my-project/storage";
-  const uploadsDir = path.join(storagePath, "uploads");
-  try {
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
-    }
-  } catch (e: any) {
-    console.error("[videos] mkdir failed:", e?.message);
-    return NextResponse.json({ error: "storage unavailable" }, { status: 503 });
-  }
-
-  // Generate a unique filename — use a cuid-like prefix + the original ext.
+  // ── Storage: use the configured provider (R2 in production, local in dev) ──
+  // The getStorage() factory reads STORAGE_PROVIDER env var + returns either:
+  //   - R2StorageProvider (Cloudflare R2 — zero egress cost, 10GB free)
+  //   - FilebaseStorageProvider (5GB free, IPFS pinning)
+  //   - LocalFilesystemStorage (default dev fallback)
+  //
+  // For the videoUrl, we use:
+  //   - R2/Filebase: the public URL from the storage provider (returns httpBase)
+  //   - Local: /api/media/uploads/<filename> (served by our route with Range support)
   const fileExt = ext || (file.type === "video/webm" ? ".webm" : ".mp4");
   const uniqueId = `vid_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   const filename = `${uniqueId}${fileExt}`;
-  const filePath = path.join(uploadsDir, filename);
+  const storageKey = `uploads/${filename}`;
 
-  // Write the file to disk. For large files this is the bottleneck —
-  // in production this would stream to S3/Filebase.
+  let videoUrl: string;
   try {
+    // Get the storage provider (R2 in prod, local in dev).
+    const { getStorage } = await import("@/lib/storage");
+    const storage = getStorage();
     const arrayBuffer = await file.arrayBuffer();
-    await writeFile(filePath, new Uint8Array(arrayBuffer));
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Put the object. The storage provider handles R2/S3/local transparently.
+    // For R2, the key is "uploads/<filename>" + the object is stored in the bucket.
+    // For local, the key is the file path relative to MEDIA_STORAGE_PATH.
+    if (storage.httpBase) {
+      // R2/Filebase — store in the bucket + construct the public URL.
+      // write() uploads to R2, then we build the URL from httpBase + key.
+      await storage.write(storageKey, buffer);
+      videoUrl = `${storage.httpBase}/${storageKey}`;
+      console.log("[videos] uploaded to cloud storage:", videoUrl.slice(0, 80));
+    } else {
+      // Local filesystem — write to disk + use the local API route.
+      const storagePath = process.env.MEDIA_STORAGE_PATH || "/home/z/my-project/storage";
+      const uploadsDir = path.join(storagePath, "uploads");
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true });
+      }
+      const filePath = path.join(uploadsDir, filename);
+      await writeFile(filePath, new Uint8Array(arrayBuffer));
+      videoUrl = `/api/media/uploads/${filename}`;
+      console.log("[videos] uploaded to local filesystem:", videoUrl);
+    }
   } catch (e: any) {
-    console.error("[videos] writeFile failed:", e?.message);
+    console.error("[videos] storage failed:", e?.message?.slice(0, 200));
     return NextResponse.json({ error: "failed to store file" }, { status: 500 });
   }
 
@@ -316,8 +336,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "no channel available for upload" }, { status: 500 });
   }
 
-  // The videoUrl is a local route that serves the file with range support.
-  const videoUrl = `/api/media/uploads/${filename}`;
+  // videoUrl was set above (cloud URL for R2/Filebase, local route for local FS).
   // Thumbnail: use a DiceBear placeholder (in production, the transcoding
   // worker would extract a frame + write it to storage).
   const thumbnailUrl = `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(title)}&radius=50`;

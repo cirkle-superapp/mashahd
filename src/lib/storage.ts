@@ -1,14 +1,21 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { createReadStream, createWriteStream, type ReadStream } from "node:fs";
+import { createRequire } from "node:module";
+
+// In ESM context (Next.js Turbopack), `require` is not defined. Use
+// `createRequire` to get a CJS require function for dynamic imports
+// of server-only modules (R2 + Filebase storage providers).
+const require = createRequire(import.meta.url);
 
 /**
  * StorageProvider — a storage abstraction for the media pipeline.
- * Implementations: LocalFilesystemStorage (default), FilebaseStorageProvider.
+ * Implementations: LocalFilesystemStorage (default), R2StorageProvider,
+ * FilebaseStorageProvider.
  *
  * The application works with local filesystem storage without any cloud account.
- * Filebase (S3-compatible + IPFS pinning, 5GB free, no payment card) is
- * activated when STORAGE_PROVIDER=filebase.
+ * Cloudflare R2 (10GB free, ZERO egress) is activated when STORAGE_PROVIDER=r2.
+ * Filebase (5GB free, IPFS pinning) is activated when STORAGE_PROVIDER=filebase.
  */
 
 export interface StorageProvider {
@@ -102,9 +109,43 @@ export function getStorage(): StorageProvider {
   if (!_instance) {
     const provider = process.env.STORAGE_PROVIDER || "local";
 
-    if (provider === "filebase") {
-      // Filebase (S3-compatible with IPFS pinning, 5GB free, no payment card).
-      // Requires a bucket to be created via the Filebase dashboard first.
+    // ── Storage fallback chain ──
+    // 1. R2 (if STORAGE_PROVIDER=r2 + credentials set) — zero egress cost
+    // 2. Filebase (if STORAGE_PROVIDER=filebase + credentials set) — IPFS pinning
+    // 3. Local filesystem (always works — the safe fallback)
+    //
+    // Each cloud provider is tried; if it fails to initialize, we fall back to
+    // local. This means the platform ALWAYS works for uploads, even before
+    // the user enables R2 or creates a Filebase bucket.
+    if (provider === "r2") {
+      const accountId = process.env.R2_ACCOUNT_ID;
+      const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+      const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+      const bucket = process.env.R2_BUCKET || "mashahd-media";
+      const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL;
+
+      if (accountId && accessKeyId && secretAccessKey) {
+        try {
+          const mod = require("../../server-lib/r2-storage");
+          const { R2StorageProvider } = mod;
+          _instance = new R2StorageProvider({
+            accountId,
+            accessKeyId,
+            secretAccessKey,
+            bucket,
+            publicBaseUrl,
+          });
+          console.log(`[storage] Using Cloudflare R2: bucket=${bucket}`);
+          return _instance!;
+        } catch (e) {
+          console.warn("[storage] R2 init failed (enable R2 at https://dash.cloudflare.com → R2 → Enable), falling back to local:", e instanceof Error ? e.message.slice(0, 100) : String(e));
+        }
+      } else {
+        console.warn("[storage] R2 credentials not set, using local");
+      }
+      // Fall through to local if R2 failed.
+      _instance = new LocalFilesystemStorage();
+    } else if (provider === "filebase") {
       const accessKeyId = process.env.FILEBASE_ACCESS_KEY_ID;
       const secretAccessKey = process.env.FILEBASE_SECRET_ACCESS_KEY;
       const bucket = process.env.FILEBASE_BUCKET || "mashahd-media";
@@ -112,7 +153,7 @@ export function getStorage(): StorageProvider {
 
       if (accessKeyId && secretAccessKey) {
         try {
-          const mod = (0, eval)("require")("../server-lib/filebase-storage");
+          const mod = require("../../server-lib/filebase-storage");
           const { FilebaseStorageProvider } = mod;
           _instance = new FilebaseStorageProvider({
             accessKeyId,
@@ -121,17 +162,14 @@ export function getStorage(): StorageProvider {
             publicBaseUrl,
           });
           console.log(`[storage] Using Filebase: bucket=${bucket}`);
+          return _instance!;
         } catch (e) {
-          console.warn("[storage] Filebase init failed, falling back to local:", e);
-          _instance = new LocalFilesystemStorage();
+          console.warn("[storage] Filebase init failed (create a bucket at https://console.filebase.com), falling back to local:", e instanceof Error ? e.message.slice(0, 100) : String(e));
         }
       } else {
-        console.warn("[storage] Filebase credentials not set, falling back to local");
-        _instance = new LocalFilesystemStorage();
+        console.warn("[storage] Filebase credentials not set, using local");
       }
-    } else if (provider === "s3") {
-      // S3-compatible storage (AWS S3, Backblaze B2, MinIO, etc.)
-      // Falls back to local for now — implement when needed.
+      // Fall through to local if Filebase failed.
       _instance = new LocalFilesystemStorage();
     } else {
       // Local filesystem (default, zero-cost, self-hosted).
