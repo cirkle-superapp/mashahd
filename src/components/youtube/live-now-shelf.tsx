@@ -197,7 +197,7 @@ function LiveStreamCard({ stream }: { stream: LiveStream }) {
               copyCode(e as any);
             }
           }}
-          className="mt-2 w-full flex items-center justify-center gap-1.5 text-[10px] font-medium px-2 py-1.5 rounded-md border border-border bg-muted/40 hover:bg-muted transition-colors min-h-[32px] cursor-pointer"
+          className="mt-2 w-full flex items-center justify-center gap-1.5 text-[10px] font-medium px-2 py-2 rounded-md border border-border bg-muted/40 hover:bg-muted transition-colors min-h-[40px] cursor-pointer"
         >
           {copied ? (
             <>

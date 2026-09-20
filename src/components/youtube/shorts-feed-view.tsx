@@ -43,7 +43,7 @@ export function ShortsFeedView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
 
-  const { data: shorts, isLoading } = useQuery({
+  const { data: shorts, isLoading, isError } = useQuery({
     queryKey: ["videos", "shorts"],
     queryFn: fetchShorts,
   });
@@ -115,6 +115,23 @@ export function ShortsFeedView() {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-80px)] bg-black">
         <div className="animate-pulse text-muted-foreground">Loading shorts…</div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-80px)] gap-4 bg-black">
+        <p className="text-lg font-medium text-white/80">Couldn&apos;t load shorts</p>
+        <p className="text-sm text-muted-foreground">
+          Check your connection and try again.
+        </p>
+        <button
+          onClick={() => navigate({ kind: "home" })}
+          className="text-sm text-[hsl(var(--gold))] hover:underline"
+        >
+          Back to home
+        </button>
       </div>
     );
   }

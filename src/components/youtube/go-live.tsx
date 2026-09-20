@@ -407,7 +407,7 @@ export function GoLive({
                     onClick={() => setCategory(c)}
                     aria-pressed={category === c}
                     className={cn(
-                      "px-2.5 py-1 rounded-full text-xs font-medium transition-colors min-h-[36px]",
+                      "px-2.5 py-1 rounded-full text-xs font-medium transition-colors min-h-[40px]",
                       category === c
                         ? "bg-gradient-gold text-charcoal"
                         : "brand-chip",

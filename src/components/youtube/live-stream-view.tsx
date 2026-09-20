@@ -272,7 +272,7 @@ export function LiveStreamView({ streamId }: { streamId: string }) {
       {/* Back link */}
       <button
         onClick={() => navigate({ kind: "home" })}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3 min-h-[36px]"
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3 min-h-[44px] py-1"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
         Back to home

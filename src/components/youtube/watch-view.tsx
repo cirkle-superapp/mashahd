@@ -2291,6 +2291,55 @@ function CommentsSection({
   // to this video moment.
   const [pinTimestamp, setPinTimestamp] = useState<number | null>(null);
 
+  // ── Comment Like/Dislike mutation (Pass 50 — UI audit found these
+  // buttons had NO onClick + no backend endpoint). Now they call this
+  // mutation which POSTs to /api/videos/[id]/comments/[commentId]/like.
+  // On success, optimistically updates the comments query cache so the
+  // user sees the like count change instantly (no full refetch).
+  const qc = useQueryClient();
+  const commentLikeMutation = useMutation({
+    mutationFn: async ({ commentId, action }: { commentId: string; action: "like" | "dislike" }) => {
+      const res = await fetch(`/api/videos/${videoId}/comments/${commentId}/like`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ browserId: bid, action }),
+      });
+      if (!res.ok) throw new Error("failed");
+      return res.json();
+    },
+    onMutate: async ({ commentId, action }) => {
+      // Cancel in-flight refetches so they don't overwrite our optimistic update.
+      await qc.cancelQueries({ queryKey: ["comments", videoId] });
+      // Read the current comments from the cache.
+      const prev = qc.getQueryData<Comment[]>(["comments", videoId]);
+      if (!prev) return { prev };
+      // Optimistically update the like count for the target comment (or
+      // a reply inside one). Returns a new array with the like delta.
+      const delta = action === "like" ? 1 : -1;
+      const update = (list: Comment[]): Comment[] =>
+        list.map((c) => {
+          if (c.id === commentId) {
+            return { ...c, likes: Math.max(0, c.likes + delta) };
+          }
+          if (c.replies) {
+            return { ...c, replies: update(c.replies) };
+          }
+          return c;
+        });
+      qc.setQueryData(["comments", videoId], update(prev));
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      // Roll back on failure.
+      if (ctx?.prev) qc.setQueryData(["comments", videoId], ctx.prev);
+      toast.error("Could not update like");
+    },
+    onSettled: () => {
+      // Refetch to get the authoritative count from the DB.
+      qc.invalidateQueries({ queryKey: ["comments", videoId] });
+    },
+  });
+
   // When an AI starter is loaded into the box, populate the input.
   useEffect(() => {
     if (starterText) {
@@ -2592,13 +2641,23 @@ function CommentsSection({
                 </p>
               )}
               <div className="flex items-center gap-1 mt-1.5 text-muted-foreground">
-                <button className="p-1.5 hover:text-foreground rounded-full hover:bg-accent" aria-label="Like comment">
+                <button
+                  onClick={() => commentLikeMutation.mutate({ commentId: c.id, action: "like" })}
+                  disabled={commentLikeMutation.isPending}
+                  className="grid place-items-center h-8 w-8 rounded-full hover:bg-accent hover:text-foreground disabled:opacity-50 transition-colors"
+                  aria-label="Like comment"
+                >
                   <ThumbsUp className="h-3.5 w-3.5" />
                 </button>
                 {c.likes > 0 && (
                   <span className="text-xs tabular-nums">{formatCount(c.likes)}</span>
                 )}
-                <button className="p-1.5 hover:text-foreground rounded-full hover:bg-accent ml-1" aria-label="Dislike comment">
+                <button
+                  onClick={() => commentLikeMutation.mutate({ commentId: c.id, action: "dislike" })}
+                  disabled={commentLikeMutation.isPending}
+                  className="grid place-items-center h-8 w-8 rounded-full hover:bg-accent hover:text-foreground disabled:opacity-50 transition-colors ml-1"
+                  aria-label="Dislike comment"
+                >
                   <ThumbsDown className="h-3.5 w-3.5" />
                 </button>
                 <button
