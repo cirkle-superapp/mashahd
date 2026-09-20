@@ -33,26 +33,18 @@ MISSING=()
 #   - APP_URL missing → webhook/signature URLs use wrong base
 #   - ALLOWED_ORIGINS missing → watch-party WS blocks cross-origin
 #   - P2P_SIGNALING_URL missing → player can't find the tracker
-# Production credentials are ALSO included here (Pass 52) — so local dev
-# connects to the REAL production services (Turso, Neon, R2, etc.) instead
-# of falling back to local SQLite. This makes local dev = production behavior.
+# Production credentials are for the 5-service stack (Pass 53):
+#   GitHub (source control) + Vercel (deployment) + Inngest (workflows)
+#   + Neon (analytics) + Turso (transactional DB).
+# Filebase, Cloudflare R2, and Brevo were REMOVED per user request.
+# Media storage uses local filesystem (dev). Vercel production is read-only
+# so uploads work in dev; viewing works everywhere.
 declare -A REQUIRED_VARS=(
   ["APP_URL"]="https://mashahd.vercel.app"
   ["DATABASE_URL"]="file:/home/z/my-project/db/custom.db"
   ["BROWSER_ID_SECRET"]="mashahd-dev-stable-secret-9f3b7e2a8c1d4f6b0e5a2c8d7f1b4e9a"
   ["MEDIA_STORAGE_PATH"]="/home/z/my-project/storage"
   ["STORAGE_PROVIDER"]="local"
-  # Cloudflare R2 (zero-cost media storage — 10GB free, ZERO egress)
-  ["R2_ACCOUNT_ID"]="dfe16d9c31eed725a3cf6b5280083025"
-  ["R2_ACCESS_KEY_ID"]="7a12063e92dfe81a9779d401a13fc541"
-  ["R2_SECRET_ACCESS_KEY"]="06cbd1a9c2f0da1ab1157cc205ef52600088e6f6ea6dff65cc3c42ae7dd8cb36"
-  ["R2_BUCKET"]="mashahd-media"
-  ["R2_S3_ENDPOINT"]="https://dfe16d9c31eed725a3cf6b5280083025.r2.cloudflarestorage.com"
-  ["R2_PUBLIC_BASE_URL"]="https://dfe16d9c31eed725a3cf6b5280083025.r2.cloudflarestorage.com"
-  # Filebase (backup storage + IPFS pinning — 5GB free)
-  ["FILEBASE_ACCESS_KEY_ID"]="89C12D61CC5EB81DE1D5"
-  ["FILEBASE_SECRET_KEY"]="Ou4q1eOtUuTU04JTMaRnnXfv8BDZpJPan5iKbGjy"
-  ["FILEBASE_BUCKET"]="mashahd-media"
   # Turso (transactional DB — 9GB free, 1B reads/month)
   ["TURSO_URL"]="libsql://mashahd-fortleem.aws-us-east-1.turso.io"
   ["TURSO_AUTH_TOKEN"]="eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJnaWQiOiIyMTIyNTIwNy1iNWJmLTRjM2MtOGFiNS0xYmEzNDNlNjU5NmEiLCJpYXQiOjE3ODkxNjE4MTksImtpZCI6IjJTRm4xQWZVUnU1TFF5a0xkc0d3YzV3VldVdlRlcVdhVjg2UXZYUk9DMWMiLCJyaWQiOiJlNzM4OTU1MS0xMTFlLTQ5NWYtYjkxZi0zNmI5M2UyNThhNGUifQ.fygqboSEmsvwsSpP0CpZo9uMAY0sJS8uAYdcoE5bFmvOY0pIPyNB8W3ILQUhXXC12peyvcomvW8ax7NN5RfsBg"

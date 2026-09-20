@@ -1,21 +1,15 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { createReadStream, createWriteStream, type ReadStream } from "node:fs";
-import { createRequire } from "node:module";
-
-// In ESM context (Next.js Turbopack), `require` is not defined. Use
-// `createRequire` to get a CJS require function for dynamic imports
-// of server-only modules (R2 + Filebase storage providers).
-const require = createRequire(import.meta.url);
 
 /**
  * StorageProvider — a storage abstraction for the media pipeline.
- * Implementations: LocalFilesystemStorage (default), R2StorageProvider,
- * FilebaseStorageProvider.
+ * Implementation: LocalFilesystemStorage (default, zero-cost).
  *
- * The application works with local filesystem storage without any cloud account.
- * Cloudflare R2 (10GB free, ZERO egress) is activated when STORAGE_PROVIDER=r2.
- * Filebase (5GB free, IPFS pinning) is activated when STORAGE_PROVIDER=filebase.
+ * Cloud providers (R2, Filebase) were REMOVED in Pass 53 per user request
+ * to restructure with only GitHub/Vercel/Inngest/Neon/Turso. If cloud
+ * storage is needed in the future, re-add the R2StorageProvider /
+ * FilebaseStorageProvider from server-lib/.
  */
 
 export interface StorageProvider {
@@ -109,67 +103,13 @@ export function getStorage(): StorageProvider {
   if (!_instance) {
     const provider = process.env.STORAGE_PROVIDER || "local";
 
-    // ── Storage fallback chain ──
-    // 1. R2 (if STORAGE_PROVIDER=r2 + credentials set) — zero egress cost
-    // 2. Filebase (if STORAGE_PROVIDER=filebase + credentials set) — IPFS pinning
-    // 3. Local filesystem (always works — the safe fallback)
-    //
-    // Each cloud provider is tried; if it fails to initialize, we fall back to
-    // local. This means the platform ALWAYS works for uploads, even before
-    // the user enables R2 or creates a Filebase bucket.
-    if (provider === "r2") {
-      const accountId = process.env.R2_ACCOUNT_ID;
-      const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-      const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-      const bucket = process.env.R2_BUCKET || "mashahd-media";
-      const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL;
-
-      if (accountId && accessKeyId && secretAccessKey) {
-        try {
-          const mod = require("../../server-lib/r2-storage");
-          const { R2StorageProvider } = mod;
-          _instance = new R2StorageProvider({
-            accountId,
-            accessKeyId,
-            secretAccessKey,
-            bucket,
-            publicBaseUrl,
-          });
-          console.log(`[storage] Using Cloudflare R2: bucket=${bucket}`);
-          return _instance!;
-        } catch (e) {
-          console.warn("[storage] R2 init failed (enable R2 at https://dash.cloudflare.com → R2 → Enable), falling back to local:", e instanceof Error ? e.message.slice(0, 100) : String(e));
-        }
-      } else {
-        console.warn("[storage] R2 credentials not set, using local");
-      }
-      // Fall through to local if R2 failed.
-      _instance = new LocalFilesystemStorage();
-    } else if (provider === "filebase") {
-      const accessKeyId = process.env.FILEBASE_ACCESS_KEY_ID;
-      const secretAccessKey = process.env.FILEBASE_SECRET_ACCESS_KEY;
-      const bucket = process.env.FILEBASE_BUCKET || "mashahd-media";
-      const publicBaseUrl = process.env.FILEBASE_PUBLIC_BASE_URL;
-
-      if (accessKeyId && secretAccessKey) {
-        try {
-          const mod = require("../../server-lib/filebase-storage");
-          const { FilebaseStorageProvider } = mod;
-          _instance = new FilebaseStorageProvider({
-            accessKeyId,
-            secretAccessKey,
-            bucket,
-            publicBaseUrl,
-          });
-          console.log(`[storage] Using Filebase: bucket=${bucket}`);
-          return _instance!;
-        } catch (e) {
-          console.warn("[storage] Filebase init failed (create a bucket at https://console.filebase.com), falling back to local:", e instanceof Error ? e.message.slice(0, 100) : String(e));
-        }
-      } else {
-        console.warn("[storage] Filebase credentials not set, using local");
-      }
-      // Fall through to local if Filebase failed.
+    if (provider === "r2" || provider === "filebase") {
+      // Cloud storage providers (R2, Filebase) were REMOVED in Pass 53 per
+      // user request to restructure with only GitHub/Vercel/Inngest/Neon/Turso.
+      // Fall back to local filesystem — uploads work in dev, viewing works
+      // everywhere. If cloud storage is needed in the future, re-add the
+      // R2StorageProvider / FilebaseStorageProvider from server-lib/.
+      console.warn(`[storage] STORAGE_PROVIDER=${provider} is no longer supported (restructured to 5-service stack), using local filesystem`);
       _instance = new LocalFilesystemStorage();
     } else {
       // Local filesystem (default, zero-cost, self-hosted).

@@ -60,15 +60,6 @@ export async function GET() {
   return NextResponse.json({
     timestamp: new Date().toISOString(),
 
-    // ── Cloudflare ──
-    cloudflare: {
-      provider: "Cloudflare",
-      fundingModel: "FREE-TIER",
-      limits: FREE_TIER_LIMITS.cloudflare,
-      status: "HEALTHY",
-      note: "Track actual usage in Cloudflare dashboard",
-    },
-
     // ── Turso ──
     turso: {
       provider: "Turso",
@@ -94,36 +85,6 @@ export async function GET() {
       limits: FREE_TIER_LIMITS.inngest,
       configured: isInngestConfigured(),
       status: isInngestConfigured() ? "HEALTHY" : "NOT_CONFIGURED",
-    },
-
-    // ── Brevo (Email) ──
-    brevo: {
-      provider: "Brevo",
-      fundingModel: "FREE-TIER",
-      limits: FREE_TIER_LIMITS.brevo,
-      sentToday: notificationQuota.email.sentToday,
-      remainingToday: notificationQuota.email.remainingToday,
-      usagePercent: brevoUsagePct,
-      status: brevoStatus,
-      configured: isEmailConfigured(),
-    },
-
-    // ── SMS (Customer-Funded) ──
-    sms: {
-      provider: "Customer-funded",
-      fundingModel: "CUSTOMER-FUNDED",
-      configured: isSmsConfigured(),
-      status: isSmsConfigured() ? "HEALTHY" : "NOT_CONFIGURED",
-      note: "SMS is customer-funded — platform never pays SMS charges",
-    },
-
-    // ── Filebase (Media Storage) ──
-    filebase: {
-      provider: "Filebase",
-      fundingModel: "FREE-TIER",
-      limits: FREE_TIER_LIMITS.filebase,
-      status: "HEALTHY",
-      note: "5GB free, no payment card required. IPFS pinning included.",
     },
 
     // ── Neon (Analytics + Recovery) ──
@@ -161,10 +122,8 @@ export async function GET() {
     // ── Cost Summary ──
     costSummary: {
       platformMonthlyCost: "$0",
-      customerFundedCosts: "SMS charges billed to customers (not platform)",
-      model: "ZERO-COST-BY-DEFAULT WITH FAIL-CLOSED QUOTA PROTECTION",
-      r2Used: false,
-      resendUsed: false,
+      model: "ZERO-COST-BY-DEFAULT — 5-service stack: GitHub + Vercel + Inngest + Neon + Turso",
+      servicesInUse: ["GitHub", "Vercel", "Inngest", "Neon", "Turso"],
     },
   });
 }
