@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
 // Import the metrics incrementer (in-memory aggregation per §79).
 // We can't import from the metrics route directly (circular dep), so we
@@ -13,8 +14,15 @@ import { incrementMetric } from "@/lib/metrics-store";
  *
  * Per v6 §79: aggregate before persistence. The in-memory metrics store
  * is updated here; the DB write happens for durable session records only.
+ *
+ * Pass 57: added rate limiting (60/min/IP) to prevent telemetry-spam.
  */
 export async function POST(req: NextRequest) {
+  const ip = getClientIP(req);
+  const rl = await rateLimit(`telemetry:${ip}`, 60, 60_000);
+  if (rl.limited) {
+    return NextResponse.json({ error: "rate limited" }, { status: 429, headers: { "Retry-After": "60" } });
+  }
   const body = await req.json().catch(() => ({}));
   const sessionId: string = body.sessionId || "";
   const videoId: string = body.videoId || "";

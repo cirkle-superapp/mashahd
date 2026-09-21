@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
 /**
  * GET /api/auth/session?token=<sessionToken>
@@ -9,13 +10,25 @@ import { db } from "@/lib/db";
  * POST /api/auth/session
  * Body: { token } — same as GET but via POST (for clients that can't set
  * query params on GET). Returns the user if the session is still valid.
+ *
+ * Pass 57: added rate limiting (30/min/IP) to prevent session-spam.
  */
 export async function GET(req: NextRequest) {
+  const ip = getClientIP(req);
+  const rl = await rateLimit(`session:${ip}`, 30, 60_000);
+  if (rl.limited) {
+    return NextResponse.json({ error: "rate limited" }, { status: 429, headers: { "Retry-After": "60" } });
+  }
   const token = new URL(req.url).searchParams.get("token") || "";
   return verifySession(token);
 }
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIP(req);
+  const rl = await rateLimit(`session:${ip}`, 30, 60_000);
+  if (rl.limited) {
+    return NextResponse.json({ error: "rate limited" }, { status: 429, headers: { "Retry-After": "60" } });
+  }
   const { token } = await req.json().catch(() => ({ token: "" }));
   return verifySession(token);
 }
