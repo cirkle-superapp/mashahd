@@ -116,7 +116,7 @@ if [ ${#MISSING[@]} -gt 0 ]; then
     for key in "${MISSING[@]}"; do
       # Skip presence-only keys (AI providers) — their values are secrets
       # that must NOT be committed to git. Just print a warning.
-      local is_presence_only=0
+      is_presence_only=0
       for pkey in "${PRESENCE_ONLY_KEYS[@]}"; do
         if [ "$key" = "$pkey" ]; then is_presence_only=1; break; fi
       done
