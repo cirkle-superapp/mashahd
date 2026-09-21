@@ -66,6 +66,12 @@ declare -A REQUIRED_VARS=(
   ["P2P_LOW_BATTERY_MODE"]="true"
   ["TURN_ENABLED"]="false"
   ["ALLOWED_ORIGINS"]="https://mashahd.vercel.app,http://localhost:3000"
+  # AI Providers — check presence only (actual values are in .env, gitignored,
+  # NOT committed to git). The ensure-env.sh script only verifies these keys
+  # exist in .env; it does NOT restore their secret values. If missing, a
+  # warning is printed so the user knows to add them to .env manually.
+  # The keys are: GROQ_API_KEY, OPENROUTER_API_KEY, NVIDIA_API_KEY,
+  # GEMINI_API_KEY, HF_API_KEY (values set in .env + on Vercel).
 )
 
 # Read existing .env into an associative array.
@@ -87,12 +93,37 @@ for key in "${!REQUIRED_VARS[@]}"; do
   fi
 done
 
+# Also check presence-only keys (AI providers — values are secrets that
+# must NOT be committed to git. We only verify they exist in .env.)
+PRESENCE_ONLY_KEYS=(
+  "GROQ_API_KEY"
+  "OPENROUTER_API_KEY"
+  "NVIDIA_API_KEY"
+  "GEMINI_API_KEY"
+  "HF_API_KEY"
+)
+for key in "${PRESENCE_ONLY_KEYS[@]}"; do
+  if [ -z "${EXISTING[$key]:-}" ]; then
+    MISSING+=("$key")
+  fi
+done
+
 if [ ${#MISSING[@]} -gt 0 ]; then
   if [ "$CHECK_ONLY" -eq 0 ]; then
     # Restore: append the missing vars to .env.
     echo "" >> "$ENV_FILE"
     echo "# ── Restored by scripts/ensure-env.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ) ──" >> "$ENV_FILE"
     for key in "${MISSING[@]}"; do
+      # Skip presence-only keys (AI providers) — their values are secrets
+      # that must NOT be committed to git. Just print a warning.
+      local is_presence_only=0
+      for pkey in "${PRESENCE_ONLY_KEYS[@]}"; do
+        if [ "$key" = "$pkey" ]; then is_presence_only=1; break; fi
+      done
+      if [ "$is_presence_only" -eq 1 ]; then
+        echo "  ⚠ $key is missing (add the real value to .env manually)"
+        continue
+      fi
       echo "$key=${REQUIRED_VARS[$key]}" >> "$ENV_FILE"
       RESTORED=$((RESTORED + 1))
     done
