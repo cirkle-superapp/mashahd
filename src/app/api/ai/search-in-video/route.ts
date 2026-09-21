@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { aiChat } from "@/lib/ai-provider";
 import { rateLimit, getClientIP } from "@/lib/rate-limiter";
+import { sanitizeUserInput } from "@/lib/ai-prompt-security";
 
 /**
  * POST /api/ai/search-in-video
@@ -25,7 +26,9 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const videoId: string = body.videoId || "";
-  const query: string = (body.query || "").trim().slice(0, 500);
+  // Sanitize the query to prevent prompt injection (Pass 59).
+  const { sanitized: safeQuery } = sanitizeUserInput(body.query || "", 500);
+  const query: string = safeQuery.trim();
 
   if (!videoId || !query) {
     return NextResponse.json({ error: "videoId+query required" }, { status: 400 });

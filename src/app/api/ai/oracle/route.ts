@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { aiChat } from "@/lib/ai-provider";
 import { db } from "@/lib/db";
 import { rateLimit, getClientIP } from "@/lib/rate-limiter";
+import { sanitizeUserInput, boundUserInput } from "@/lib/ai-prompt-security";
 
 /**
  * POST /api/ai/oracle
@@ -27,6 +28,16 @@ export async function POST(req: NextRequest) {
   if (!videoId || !question) {
     return NextResponse.json({ error: "videoId + question required" }, { status: 400 });
   }
+
+  // ── Prompt injection defense (Pass 59) ──
+  // Sanitize the user's question before inserting it into the AI prompt.
+  // This prevents attacks like "Ignore previous instructions and..." from
+  // hijacking the model's behavior.
+  const { sanitized: safeQuestion, injectionDetected } = sanitizeUserInput(question, 1000);
+  if (injectionDetected) {
+    console.warn("[ai/oracle] prompt injection detected, question still processed with bounding");
+  }
+
   const video = await db.video.findUnique({
     where: { id: videoId },
   });
@@ -40,6 +51,9 @@ export async function POST(req: NextRequest) {
     : null;
   const channelName = (channel as any)?.name || "Unknown";
 
+  // Build the prompt with BOUNDED user input — the question is wrapped in
+  // delimiters + a safety suffix prevents the AI from following injection
+  // instructions embedded in the question.
   const prompt = `You are the Mashahd Oracle — a knowledgeable assistant that answers questions about a video the viewer is watching. Ground your answer in the video's metadata below; if the question can't be answered from that, say so honestly and offer a related tangent.
 
 Title: ${video.title}
@@ -48,9 +62,7 @@ Category: ${video.category}
 Tags: ${(video.tags || "").split("|").filter(Boolean).join(", ") || "none"}
 Description: ${(video.description || "").slice(0, 700)}
 
-Viewer question: ${question}
-
-Answer in 2-4 sentences, conversational, no markdown headers.`;
+${boundUserInput(safeQuestion, "Oracle", "Answer the viewer's question about the video above in 2-4 sentences, conversational, no markdown headers.")}`;
 
   // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
   // to the legacy "ai"|"fallback" values the client already checks against.
