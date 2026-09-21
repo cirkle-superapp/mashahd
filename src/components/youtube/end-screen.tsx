@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Play, X, ChevronRight, RotateCcw } from "lucide-react";
 import type { Video } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { getImageUrl } from "@/lib/format";
 
 /**
  * EndScreen — a proper video-end overlay that shows on top of the player
@@ -103,7 +104,7 @@ export function EndScreen({
               >
                 <div className="relative aspect-video bg-muted">
                   <img
-                    src={v.thumbnailUrl}
+                    src={getImageUrl(v.thumbnailUrl, v.title)}
                     alt=""
                     className="absolute inset-0 w-full h-full object-cover"
                   />

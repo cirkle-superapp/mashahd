@@ -86,3 +86,20 @@ export function seededRandom(seed: string, max: number): number {
   }
   return Math.abs(h) % max;
 }
+
+/**
+ * Returns a non-empty image URL for a video thumbnail or avatar. If the
+ * provided URL is empty/undefined, returns a DiceBear placeholder generated
+ * from the seed text (usually the video title or channel name).
+ *
+ * This prevents the browser console error:
+ *   "An empty string ('') was passed to the src attribute. This may cause
+ *    the browser to download the whole page again over the network."
+ *
+ * The placeholder is deterministic (same seed → same image) so it's stable
+ * across re-renders.
+ */
+export function getImageUrl(url: string | undefined | null, seed: string): string {
+  if (url && url.trim().length > 0) return url;
+  return `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(seed || "mashahd")}&radius=50`;
+}

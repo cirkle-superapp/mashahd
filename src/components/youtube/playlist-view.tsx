@@ -24,7 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { useAppStore } from "@/store/app-store";
 import { VideoCard } from "./video-card";
-import { formatViews, timeAgo } from "@/lib/format";
+import { formatViews, timeAgo, getImageUrl } from "@/lib/format";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -172,7 +172,7 @@ export function PlaylistView({ playlistId }: { playlistId: string }) {
         <div className="relative w-full sm:w-64 aspect-video rounded-xl overflow-hidden bg-muted shrink-0">
           {playlist.coverUrl || videos[0]?.video.thumbnailUrl ? (
             <img
-              src={playlist.coverUrl || videos[0]?.video.thumbnailUrl}
+              src={getImageUrl(playlist.coverUrl || videos[0]?.video.thumbnailUrl, playlist.title)}
               alt={playlist.title}
               className="absolute inset-0 w-full h-full object-cover"
             />

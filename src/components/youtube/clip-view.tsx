@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/store/app-store";
 import { MashahdPlayerLazy } from "./mashahd-player-lazy";
-import { formatViews, timeAgo } from "@/lib/format";
+import { formatViews, timeAgo, getImageUrl } from "@/lib/format";
 import { useBrowserId } from "@/hooks/use-browser-id";
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -203,7 +203,7 @@ export function ClipView({ clipId }: { clipId: string }) {
         >
           <div className="relative w-32 sm:w-40 aspect-video shrink-0 rounded-lg overflow-hidden bg-muted">
             <img
-              src={video.thumbnailUrl}
+              src={getImageUrl(video.thumbnailUrl, video.title)}
               alt={video.title}
               className="absolute inset-0 w-full h-full object-cover"
             />

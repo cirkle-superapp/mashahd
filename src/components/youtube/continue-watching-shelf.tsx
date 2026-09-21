@@ -5,7 +5,7 @@ import { Play, Clock } from "lucide-react";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { useAppStore } from "@/store/app-store";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDuration, timeAgo } from "@/lib/format";
+import { formatDuration, timeAgo, getImageUrl } from "@/lib/format";
 import type { Video } from "@/lib/types";
 
 /**
@@ -74,7 +74,7 @@ export function ContinueWatchingShelf() {
                   {/* Thumbnail with progress bar + play overlay */}
                   <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted">
                     <img
-                      src={v.thumbnailUrl}
+                      src={getImageUrl(v.thumbnailUrl, v.title)}
                       alt={v.title}
                       loading="lazy"
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"

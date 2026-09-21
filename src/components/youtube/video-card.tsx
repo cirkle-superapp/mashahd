@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/store/app-store";
-import { formatViews, formatDuration, timeAgo } from "@/lib/format";
+import { formatViews, formatDuration, timeAgo, getImageUrl } from "@/lib/format";
 import type { Video } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { VerifiedBadge } from "./verified-badge";
@@ -189,7 +189,7 @@ export function VideoCard({ video, reasons }: { video: Video; reasons?: string[]
       {/* Thumbnail */}
       <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-muted">
         <img
-          src={video.thumbnailUrl}
+          src={getImageUrl(video.thumbnailUrl, video.title)}
           alt={video.title}
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
@@ -355,7 +355,7 @@ export function VideoCardHorizontal({ video }: { video: Video }) {
     >
       <div className="relative w-40 sm:w-[168px] shrink-0 aspect-video overflow-hidden rounded-lg bg-muted">
         <img
-          src={video.thumbnailUrl}
+          src={getImageUrl(video.thumbnailUrl, video.title)}
           alt={video.title}
           loading="lazy"
           className="h-full w-full object-cover"
