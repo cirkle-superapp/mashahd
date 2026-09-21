@@ -120,28 +120,45 @@ export async function POST(
       return NextResponse.json({ ok: true, action: "delete", commentId });
     }
 
-    // pin / unpin: upsert the CommentMeta row.
+    // pin / unpin: create or update the CommentMeta row.
+    // (The Turso wrapper doesn't support `upsert` — we use find + create/update.)
     if (action === "pin") {
-      await db.commentMeta.upsert({
-        where: { commentId },
-        create: {
-          commentId,
-          isQuestion: false,
-          isCreatorReply: false,
-          pinnedBy: verification.id,
-          pinnedAt: new Date(),
-        },
-        update: {
-          pinnedBy: verification.id,
-          pinnedAt: new Date(),
-        },
-      }).catch((e: any) => {
-        console.error("[moderate] pin upsert failed:", e?.message?.slice(0, 200));
-      });
+      try {
+        // Check if a CommentMeta row already exists for this comment.
+        const existing = await db.commentMeta.findUnique({ where: { commentId } }).catch(() => null);
+        if (existing) {
+          // Update the existing row.
+          await db.commentMeta.update({
+            where: { commentId },
+            data: {
+              pinnedBy: verification.id,
+              pinnedAt: new Date(),
+            },
+          }).catch((e: any) => {
+            console.warn("[moderate] pin update failed:", e?.message?.slice(0, 200));
+          });
+        } else {
+          // Create a new CommentMeta row.
+          await db.commentMeta.create({
+            data: {
+              commentId,
+              isQuestion: false,
+              isCreatorReply: false,
+              pinnedBy: verification.id,
+              pinnedAt: new Date(),
+            },
+          }).catch((e: any) => {
+            console.warn("[moderate] pin create failed:", e?.message?.slice(0, 200));
+          });
+        }
+      } catch (e: any) {
+        console.error("[moderate] pin error:", e?.message?.slice(0, 200));
+      }
       return NextResponse.json({ ok: true, action: "pin", commentId, pinnedBy: verification.id });
     }
 
     if (action === "unpin") {
+      // Clear pinnedBy + pinnedAt (if the CommentMeta row exists).
       await db.commentMeta.updateMany({
         where: { commentId },
         data: {

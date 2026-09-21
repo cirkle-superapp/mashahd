@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2, MessageSquarePlus, Compass, Wand2, Heart, Bookmark, Check, ListPlus, Users, FileText, Scissors, Info, Search, RefreshCw, Shield, Scale, Network, MapPin, BookOpen, Gavel, AlertTriangle, CircleDashed } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Download, MoreHorizontal, Bell, Sparkles, ListVideo, Languages, Loader2, Maximize2, MessageSquarePlus, Compass, Wand2, Heart, Bookmark, Check, ListPlus, Users, FileText, Scissors, Info, Search, RefreshCw, Shield, Scale, Network, MapPin, BookOpen, Gavel, AlertTriangle, CircleDashed, Pin, PinOff, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -45,7 +45,7 @@ async function fetchVideo(id: string, bid: string) {
   const res = await fetch(`/api/videos/${id}?${sp.toString()}`);
   if (!res.ok) throw new Error("failed");
   const data = await res.json();
-  return data as { video: VideoWithFlags; liked: boolean; disliked: boolean; subscribed: boolean };
+  return data as { video: VideoWithFlags; liked: boolean; disliked: boolean; subscribed: boolean; isCreator: boolean };
 }
 
 async function fetchRelated(video: VideoWithFlags) {
@@ -1763,6 +1763,7 @@ export function WatchView({ videoId }: { videoId: string }) {
             starterText={starterText}
             onStarterUsed={() => setStarterText("")}
             videoRef={videoRef}
+            isCreator={!!data?.isCreator}
           />
 
           {/* "Continue watching" — horizontal carousel (replaces the
@@ -2249,6 +2250,7 @@ function CommentsSection({
   starterText,
   onStarterUsed,
   videoRef,
+  isCreator,
 }: {
   videoId: string;
   comments?: Comment[];
@@ -2257,6 +2259,7 @@ function CommentsSection({
   starterText?: string;
   onStarterUsed?: () => void;
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  isCreator: boolean;
 }) {
   // §20-21 — quality signals score for the small badge in the comments
   // header area. Fetched once per video; non-blocking (no spinner shown
@@ -2337,6 +2340,33 @@ function CommentsSection({
     onSettled: () => {
       // Refetch to get the authoritative count from the DB.
       qc.invalidateQueries({ queryKey: ["comments", videoId] });
+    },
+  });
+
+  // ── Comment moderation mutation (Pass 56 — creator-only Pin/Unpin/Delete) ──
+  // The backend endpoint POST /api/videos/[id]/comments/[cid]/moderate
+  // verifies channel ownership server-side. The UI only shows the buttons
+  // when isCreator is true (computed from the video API response).
+  const commentModerateMutation = useMutation({
+    mutationFn: async ({ commentId, action }: { commentId: string; action: "pin" | "unpin" | "delete" }) => {
+      const res = await fetch(`/api/videos/${videoId}/comments/${commentId}/moderate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ browserId: bid, action }),
+      });
+      if (!res.ok) throw new Error("failed");
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["comments", videoId] });
+      toast.success(
+        variables.action === "pin" ? "Comment pinned" :
+        variables.action === "unpin" ? "Comment unpinned" :
+        "Comment deleted"
+      );
+    },
+    onError: () => {
+      toast.error("Moderation failed");
     },
   });
 
@@ -2669,6 +2699,48 @@ function CommentsSection({
                 >
                   Reply
                 </button>
+
+                {/* ── Creator-only moderation buttons (Pass 56) ──
+                    Visible only when the current user owns the video's channel
+                    (isCreator flag from /api/videos/[id]). The backend
+                    /moderate endpoint verifies ownership server-side too,
+                    so even if the UI is spoofed, the API rejects non-owners. */}
+                {isCreator && (
+                  <div className="ml-auto flex items-center gap-1">
+                    {/* Pinned badge — shown when the comment is already pinned */}
+                    {c.pinned && (
+                      <span className="flex items-center gap-1 text-[10px] font-medium text-[hsl(var(--gold))] px-1.5 py-0.5 rounded-full bg-[hsl(var(--gold)/0.1)]">
+                        <Pin className="h-2.5 w-2.5" />
+                        Pinned
+                      </span>
+                    )}
+                    <button
+                      onClick={() => commentModerateMutation.mutate({
+                        commentId: c.id,
+                        action: c.pinned ? "unpin" : "pin",
+                      })}
+                      disabled={commentModerateMutation.isPending}
+                      className="grid place-items-center h-8 w-8 rounded-full hover:bg-accent hover:text-foreground disabled:opacity-50 transition-colors"
+                      aria-label={c.pinned ? "Unpin comment" : "Pin comment"}
+                      title={c.pinned ? "Unpin comment" : "Pin comment to top"}
+                    >
+                      {c.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm("Delete this comment? This cannot be undone.")) {
+                          commentModerateMutation.mutate({ commentId: c.id, action: "delete" });
+                        }
+                      }}
+                      disabled={commentModerateMutation.isPending}
+                      className="grid place-items-center h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive disabled:opacity-50 transition-colors"
+                      aria-label="Delete comment"
+                      title="Delete comment"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Reply box (inline) */}

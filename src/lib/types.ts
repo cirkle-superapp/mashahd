@@ -54,6 +54,8 @@ export type Comment = {
   parentId?: string | null;
   // Replies to this comment (only populated on top-level comments).
   replies?: Comment[];
+  // Whether the comment has been pinned by the channel owner (Pass 56).
+  pinned?: boolean;
 };
 
 export type VideoWithFlags = Video & {
