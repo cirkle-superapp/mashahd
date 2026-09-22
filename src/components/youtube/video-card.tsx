@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Heart,
   Bookmark,
@@ -11,6 +11,7 @@ import {
   Ban,
   Tag,
   Info,
+  Play,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/store/app-store";
@@ -82,9 +83,69 @@ export function VideoCard({ video, reasons }: { video: Video; reasons?: string[]
   const [fav, setFav] = useState(false);
   const [later, setLater] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const [watchProgress, setWatchProgress] = useState(0); // 0-100
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const duration = formatDuration(video.durationSec);
   const when = timeAgo(video.createdAt);
   const viewsLabel = formatViews(video.views);
+
+  // ── Cinematic hover-preview (Pass 63) ──
+  // When the user hovers for >600ms, we load the actual video file muted
+  // + start playing a silent preview. This gives a cinematic "living
+  // thumbnail" effect that outperforms YouTube's static thumbnails.
+  // On mouse leave, we pause + reset.
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    };
+  }, []);
+
+  const startPreview = () => {
+    // Clear any existing timer.
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    // Delay the preview by 600ms to avoid accidental triggers on scroll.
+    hoverTimerRef.current = setTimeout(() => {
+      setIsHovering(true);
+      // Start the preview video after state update.
+      requestAnimationFrame(() => {
+        const v = previewVideoRef.current;
+        if (v) {
+          v.currentTime = 0;
+          v.play().catch(() => {
+            // Autoplay might be blocked — that's fine, the static image stays.
+          });
+        }
+      });
+    }, 600);
+  };
+
+  const stopPreview = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    setIsHovering(false);
+    const v = previewVideoRef.current;
+    if (v) {
+      v.pause();
+      v.currentTime = 0;
+    }
+  };
+
+  // Fetch watch progress from continue-watching API (for the progress bar).
+  useEffect(() => {
+    if (!bid) return;
+    fetch(`/api/continue-watching?bid=${encodeURIComponent(bid)}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.items) {
+          const item = data.items.find((i: any) => i.videoId === video.id);
+          if (item && video.durationSec > 0) {
+            setWatchProgress(Math.min(100, (item.position / video.durationSec) * 100));
+          }
+        }
+      })
+      .catch(() => {});
+  }, [bid, video.id, video.durationSec]);
 
   // Hide the card entirely once the user has given negative feedback (§10).
   if (hidden) return null;
@@ -185,18 +246,57 @@ export function VideoCard({ video, reasons }: { video: Video; reasons?: string[]
     <article
       className="flex flex-col cursor-pointer group"
       onClick={() => navigate({ kind: "watch", videoId: video.id })}
+      onMouseEnter={startPreview}
+      onMouseLeave={stopPreview}
     >
-      {/* Thumbnail */}
+      {/* Thumbnail — cinematic hover-preview (Pass 63) */}
       <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-muted">
+        {/* Static thumbnail (always visible, fades out on hover-preview) */}
         <img
           src={getImageUrl(video.thumbnailUrl, video.title)}
           alt={video.title}
           loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          className={cn(
+            "h-full w-full object-cover transition-all duration-500 group-hover:scale-[1.03]",
+            isHovering && "opacity-0"
+          )}
         />
+        {/* Hover-preview video (loads on demand, muted, plays for ~3s) */}
+        <video
+          ref={previewVideoRef}
+          src={video.videoUrl}
+          muted
+          loop
+          playsInline
+          preload="none"
+          className={cn(
+            "absolute inset-0 h-full w-full object-cover transition-opacity duration-500",
+            isHovering ? "opacity-100" : "opacity-0 pointer-events-none"
+          )}
+        />
+        {/* Cinematic gradient overlay — bottom shadow for legibility */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+        {/* Duration badge */}
         <span className="absolute bottom-1.5 right-1.5 bg-black/85 text-white text-[11px] font-medium px-1.5 py-0.5 rounded leading-none tabular-nums">
           {duration}
         </span>
+        {/* Watch progress bar — shows how much the user has already watched */}
+        {watchProgress > 0 && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30">
+            <div
+              className="h-full bg-gradient-gold transition-all duration-300"
+              style={{ width: `${watchProgress}%` }}
+            />
+          </div>
+        )}
+        {/* Hover-preview indicator — subtle play pulse */}
+        {isHovering && (
+          <div className="absolute inset-0 grid place-items-center pointer-events-none">
+            <div className="grid place-items-center h-12 w-12 rounded-full bg-black/40 backdrop-blur-sm border border-white/20">
+              <Play className="h-5 w-5 text-white fill-current ml-0.5" />
+            </div>
+          </div>
+        )}
         {/* Favorite + Watch Later quick actions — appear on hover */}
         <div className="absolute top-1.5 right-1.5 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <button

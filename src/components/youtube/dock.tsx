@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Home, Flame, ListVideo, Clock, ThumbsUp, User, LayoutGrid, X, Compass, Sparkles, Settings, HelpCircle, MessageSquare, Heart, Bookmark, ListMusic, Zap } from "lucide-react";
 import {
   Sheet,
@@ -10,6 +10,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { useAppStore, View } from "@/store/app-store";
+import { useBrowserId } from "@/hooks/use-browser-id";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -61,6 +62,36 @@ const EXPLORE_CATS = [
 export function Dock() {
   const { view, navigate } = useAppStore();
   const [moreOpen, setMoreOpen] = useState(false);
+  const bid = useBrowserId();
+
+  // ── Contextual badges (Pass 63) ──
+  // Fetch live stream count + unread notification count to show as
+  // small badges on the Dock tabs. This gives the user at-a-glance
+  // awareness of what's happening on the platform.
+  const [liveCount, setLiveCount] = useState(0);
+  const [notifCount, setNotifCount] = useState(0);
+
+  useEffect(() => {
+    // Poll live streams every 30s.
+    const fetchLive = () => {
+      fetch("/api/live-streams?status=live")
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => setLiveCount(d?.count || 0))
+        .catch(() => {});
+    };
+    fetchLive();
+    const interval = setInterval(fetchLive, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!bid) return;
+    // Fetch unread notification count.
+    fetch(`/api/notifications?bid=${encodeURIComponent(bid)}&limit=1`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => setNotifCount(d?.unread || 0))
+      .catch(() => {});
+  }, [bid]);
 
   const isActive = (tabView: View): boolean => {
     // Match by kind, but for settings/profile also check we're not on a
@@ -78,16 +109,18 @@ export function Dock() {
         className="fixed bottom-0 inset-x-0 z-40 pb-[env(safe-area-inset-bottom)] px-3 pb-3 pointer-events-none"
         aria-label="Primary navigation"
       >
-        <div className="mx-auto max-w-md glass rounded-full px-2 py-1.5 flex items-center justify-between shadow-float border border-gold/15 pointer-events-auto">
+        <div className="mx-auto max-w-md glass-strong rounded-full px-2 py-1.5 flex items-center justify-between shadow-float border border-gold/20 pointer-events-auto backdrop-blur-xl">
           {PRIMARY_TABS.map((tab) => {
             const Icon = tab.icon;
             const active = isActive(tab.view);
+            // Contextual badges: Home gets live-stream count, Profile gets notification count.
+            const badge = tab.id === "home" ? liveCount : tab.id === "profile" ? notifCount : 0;
             return (
               <button
                 key={tab.id}
                 onClick={() => navigate(tab.view)}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-full transition-all min-w-[52px] min-h-[44px]",
+                  "relative flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-full transition-all min-w-[52px] min-h-[44px]",
                   active
                     ? "bg-gradient-gold text-charcoal shadow-soft"
                     : "text-muted-foreground hover:text-foreground hover:bg-gold/10"
@@ -97,6 +130,16 @@ export function Dock() {
               >
                 <Icon className="h-5 w-5" />
                 <span className="text-[10px] font-medium leading-none">{tab.label}</span>
+                {/* Contextual badge — small red dot with count */}
+                {badge > 0 && (
+                  <span className="absolute top-0.5 right-1.5 grid place-items-center min-h-[16px] min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-bold leading-none">
+                    {badge > 99 ? "99+" : badge}
+                  </span>
+                )}
+                {/* Active indicator — gold glow at top */}
+                {active && (
+                  <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full bg-gold-light opacity-60 blur-sm" />
+                )}
               </button>
             );
           })}
