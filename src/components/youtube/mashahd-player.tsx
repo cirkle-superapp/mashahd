@@ -17,6 +17,7 @@ import {
 import Hls from "hls.js";
 import { HlsJsP2PEngine } from "p2p-media-loader-hlsjs";
 import { cn } from "@/lib/utils";
+import { ReactionBurst } from "./reaction-burst";
 import {
   readNetworkInfo,
   evaluatePolicy,
@@ -630,6 +631,9 @@ export function MashahdPlayer({
       />
 
       {children}
+
+      {/* Floating emoji reactions overlay (Pass 73) */}
+      <ReactionBurst />
 
       {/* Center play button */}
       {!playing && (
