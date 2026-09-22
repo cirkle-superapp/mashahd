@@ -565,8 +565,6 @@ export function WatchView({ videoId }: { videoId: string }) {
         const err = await res.json().catch(() => ({}));
         throw new Error((err as { error?: string })?.error || "Conversion failed");
       }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
       return (await res.json()) as LiveToVodResponse;
     },
     onSuccess: (data) => {
@@ -641,8 +639,6 @@ export function WatchView({ videoId }: { videoId: string }) {
         body: JSON.stringify({ browserId: bid, action: "like" }),
       }).catch(() => {});
     }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
   };
 
   // Record a view once when the watch page opens
@@ -664,14 +660,10 @@ export function WatchView({ videoId }: { videoId: string }) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setAgeConfirmed(true);
       }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
     } catch {
       // sessionStorage can throw in privacy-mode browsers — treat as not
       // confirmed, so the user will see the gate (safe default).
     }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
   }, [videoId]);
 
   // The video is age-restricted AND the user hasn't confirmed in this
@@ -729,11 +721,7 @@ export function WatchView({ videoId }: { videoId: string }) {
             }),
           }).catch(() => {});
         }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
       }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
     };
   }, [bid, videoId]);
 
@@ -756,8 +744,6 @@ export function WatchView({ videoId }: { videoId: string }) {
           currentTime: v.currentTime,
         });
       }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
     };
   }, [video]);
 
@@ -772,14 +758,10 @@ export function WatchView({ videoId }: { videoId: string }) {
           videoRef.current.currentTime = mini.currentTime;
           videoRef.current.play().catch(() => {});
         }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
         // Clear the mini-player since the full page has taken over.
         useMiniPlayer.getState().close();
       });
     }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
   }, [videoId, video]);
 
   // Update URL hash when watching so deep-link to a timestamp works (no-op demo)
@@ -827,8 +809,6 @@ export function WatchView({ videoId }: { videoId: string }) {
         } else if (action === "undislike") {
           if (wasDisliked) dislikeDelta -= 1;
         }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
         return {
           ...old,
           video: {
@@ -963,8 +943,6 @@ export function WatchView({ videoId }: { videoId: string }) {
                           // sessionStorage may be unavailable (private mode);
                           // we still unblock in-session via state.
                         }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
                         setAgeConfirmed(true);
                       }}
                     >
@@ -1047,8 +1025,6 @@ export function WatchView({ videoId }: { videoId: string }) {
                   adDisclosures.disclosures[0]?.disclosureNote
                   || `Sponsored by ${adDisclosures.disclosures[0]?.sponsor}`
                 }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
               >
                 Sponsored: {adDisclosures.disclosures[0]?.sponsor}
               </Badge>
@@ -1091,8 +1067,6 @@ export function WatchView({ videoId }: { videoId: string }) {
                 onClick={() =>
                   subMutation.mutate(subscribed ? "unsubscribe" : "subscribe")
                 }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
                 disabled={subMutation.isPending}
               >
                 {subscribed ? (
@@ -1112,8 +1086,6 @@ export function WatchView({ videoId }: { videoId: string }) {
                   onClick={() =>
                     likeMutation.mutate(liked ? "unlike" : "like")
                   }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
                   disabled={likeMutation.isPending}
                   className={cn(
                     "flex items-center gap-2 px-4 h-full hover:bg-accent transition-colors text-sm font-medium",
@@ -1131,8 +1103,6 @@ export function WatchView({ videoId }: { videoId: string }) {
                       data?.disliked ? "undislike" : "dislike"
                     )
                   }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
                   disabled={likeMutation.isPending}
                   className={cn(
                     "flex items-center gap-1 px-4 h-full hover:bg-accent transition-colors text-sm",
@@ -1355,8 +1325,6 @@ export function WatchView({ videoId }: { videoId: string }) {
                             onSubmit={({ reason, evidence }) =>
                               disputeMutation.mutate({ claimId: c.id, reason, evidence })
                             }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
                           />
                         )}
                       </li>
@@ -1561,8 +1529,6 @@ export function WatchView({ videoId }: { videoId: string }) {
                         e.preventDefault();
                         searchMutation.mutate({ q: searchQuery.trim() });
                       }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
                     }}
                     placeholder="Where does this video discuss…? (e.g. customs clearance)"
                     aria-label="Search inside this video"
@@ -1602,8 +1568,6 @@ export function WatchView({ videoId }: { videoId: string }) {
                                     v.currentTime = r.start;
                                     v.play().catch(() => {});
                                   }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
                                 }}
                                 className="flex items-start gap-2 rounded-md border border-border/60 bg-background/40 p-2 hover:bg-accent transition-colors"
                                 title={`Seek to ${m}:${String(s).padStart(2, "0")} — ${r.deepLink}`}
@@ -1668,8 +1632,6 @@ export function WatchView({ videoId }: { videoId: string }) {
                                 } catch {
                                   toast.error("Vote failed");
                                 }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
                               }}
                               disabled={p.status !== "active"}
                               className="block w-full text-left px-2 py-1 rounded-md border border-border hover:bg-accent disabled:opacity-60 disabled:cursor-not-allowed"
@@ -1874,8 +1836,6 @@ export function WatchView({ videoId }: { videoId: string }) {
             new CustomEvent("mashahd:ai-watch", { detail: { tab: "oracle" } })
           )
         }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
         className="fixed bottom-24 right-4 z-30 grid place-items-center h-14 w-14 rounded-full bg-gradient-gold text-charcoal shadow-float hover:scale-110 transition-transform"
         aria-label="Ask Mashahd AI"
         title="Ask Mashahd AI anything about this video"
@@ -1934,8 +1894,6 @@ function LiveQAList({
     } finally {
       setSubmitting(false);
     }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
   };
 
   const upvote = async (qaId: string) => {
@@ -1949,8 +1907,6 @@ function LiveQAList({
     } catch {
       toast.error("Upvote failed");
     }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
   };
 
   return (
@@ -1993,8 +1949,6 @@ function LiveQAList({
               e.preventDefault();
               submit();
             }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
           }}
           placeholder="Ask a question..."
           aria-label="Ask a question"
@@ -2074,12 +2028,8 @@ function FactChecksSection({
         } else {
           toast.error(errMsg);
         }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
         return;
       }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
       toast.success("Fact-check submitted", {
         description: "Your note is now pending community review.",
       });
@@ -2090,8 +2040,6 @@ function FactChecksSection({
     } finally {
       setSubmitting(false);
     }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
   };
 
   const vote = async (noteId: string, action: "upvote" | "downvote") => {
@@ -2110,20 +2058,14 @@ function FactChecksSection({
         } else {
           toast.error("Vote failed");
         }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
         return;
       }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
       refetch();
     } catch {
       toast.error("Vote failed");
     } finally {
       setVotingFor(null);
     }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
   };
 
   const count = notes?.length ?? 0;
@@ -2389,13 +2331,9 @@ function CommentsSection({
           if (c.id === commentId) {
             return { ...c, likes: Math.max(0, c.likes + delta) };
           }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
           if (c.replies) {
             return { ...c, replies: update(c.replies) };
           }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
           return c;
         });
       qc.setQueryData(["comments", videoId], update(prev));
@@ -2450,8 +2388,6 @@ function CommentsSection({
       );
       el?.focus();
     }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
   }, [starterText, onStarterUsed]);
 
   // §22 — client-side sort using the enriched fields from the API
@@ -2477,8 +2413,6 @@ function CommentsSection({
         if (!a.isQuestion && b.isQuestion) return 1;
         return b.likes - a.likes;
       }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
       case "most_discussed":
         return (b.replyCount || 0) - (a.replyCount || 0);
       case "top":
@@ -2488,8 +2422,6 @@ function CommentsSection({
         if (!a.pinned && b.pinned) return 1;
         return b.likes - a.likes;
     }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
   });
 
   const submit = async () => {
@@ -2515,8 +2447,6 @@ function CommentsSection({
     } finally {
       setPosting(false);
     }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
   };
 
   const submitReply = async (parentId: string) => {
@@ -2542,8 +2472,6 @@ function CommentsSection({
     } finally {
       setPosting(false);
     }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
   };
 
   const fmtTs = (s: number) => {
@@ -2621,11 +2549,7 @@ function CommentsSection({
                 } finally {
                   setTranslating(false);
                 }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
               }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
             }}
             className="text-xs bg-transparent border border-border rounded-full px-2 py-1 focus:outline-none focus:border-foreground cursor-pointer"
             aria-label="Translate comments"
@@ -2653,8 +2577,6 @@ function CommentsSection({
                 e.preventDefault();
                 submit();
               }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
             }}
             placeholder="Add a comment..."
             aria-label="Add a comment"
@@ -2816,8 +2738,6 @@ function CommentsSection({
                         if (confirm("Delete this comment? This cannot be undone.")) {
                           commentModerateMutation.mutate({ commentId: c.id, action: "delete" });
                         }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
                       }}
                       disabled={commentModerateMutation.isPending}
                       className="grid place-items-center h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive disabled:opacity-50 transition-colors"
@@ -2842,8 +2762,6 @@ function CommentsSection({
                         e.preventDefault();
                         submitReply(c.id);
                       }
-    // Also fire a floating emoji on the video player itself (Pass 73).
-    fireReaction(emoji);
                     }}
                     placeholder={`Reply to ${c.author}...`}
                     aria-label={`Reply to ${c.author}`}
