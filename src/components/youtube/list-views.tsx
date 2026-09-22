@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Heart, Bookmark, Wand2, Loader2, ChevronDown } from "lucide-react";
+import { Heart, Bookmark, Wand2, Loader2, ChevronDown, Sparkle } from "lucide-react";
 import { VideoCardHorizontal, VideoCard } from "./video-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -117,6 +117,23 @@ export function SearchView({ query }: { query: string }) {
     enabled: !(advanced && advancedSearch.data),
   });
 
+  // ── AI Smart Search (Pass 71) ──
+  const { data: aiInterpretation } = useQuery({
+    queryKey: ["ai-search-interpret", query],
+    queryFn: async () => {
+      const res = await fetch("/api/ai/search-interpret", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.interpretation;
+    },
+    enabled: !!query && query.trim().length >= 2,
+    staleTime: 60_000,
+  });
+
   const showAdvancedResults = advanced && advancedSearch.data;
   const pf = advancedSearch.data?.parsedFilters;
 
@@ -132,6 +149,36 @@ export function SearchView({ query }: { query: string }) {
           <span className="ml-2">— {advancedSearch.data.count} matched advanced query</span>
         )}
       </h1>
+
+      {/* ── AI Smart Search suggestion (Pass 71) ── */}
+      {aiInterpretation && aiInterpretation.keywords &&
+       aiInterpretation.keywords.toLowerCase() !== query.toLowerCase() && (
+        <div className="flex items-center gap-2 mb-4 p-2.5 rounded-lg border border-gold/20 bg-[hsl(var(--gold)/0.05)]">
+          <Sparkle className="h-4 w-4 text-[hsl(var(--gold))] shrink-0" />
+          <span className="text-xs text-muted-foreground">AI interprets this as:</span>
+          <span className="text-xs font-medium text-foreground">{aiInterpretation.interpretation}</span>
+          {aiInterpretation.keywords && (
+            <button onClick={() => {
+              window.history.pushState({}, "", `?v=search&q=${encodeURIComponent(aiInterpretation.keywords)}`);
+              window.dispatchEvent(new PopStateEvent("popstate"));
+            }} className="ml-auto shrink-0 text-xs font-medium px-2.5 py-1 rounded-full bg-gradient-gold text-charcoal hover:opacity-90 transition-opacity min-h-[32px]">
+              Search "{aiInterpretation.keywords.slice(0, 30)}{aiInterpretation.keywords.length > 30 ? "…" : ""}"
+            </button>
+          )}
+        </div>
+      )}
+      {aiInterpretation?.categories?.length > 0 && (
+        <div className="flex items-center gap-1.5 mb-4">
+          <span className="text-xs text-muted-foreground">Browse:</span>
+          {aiInterpretation.categories.map((cat: string) => (
+            <button key={cat} onClick={() => {
+              window.history.pushState({}, "", `?v=category&cat=${encodeURIComponent(cat)}`);
+              window.dispatchEvent(new PopStateEvent("popstate"));
+            }} className="text-xs px-2.5 py-1 rounded-full brand-chip hover:bg-gold/10 transition-colors min-h-[32px]">{cat}</button>
+          ))}
+        </div>
+      )}
+
       {/* Sort dropdown — spec §12 deterministic search sorts. Replaces the
           old 2-button filter with the full 7-option set backed by /api/videos. */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
