@@ -723,7 +723,7 @@ export function MashahdPlayer({
           </div>
         </div>
 
-        <div className="glass-strong rounded-full px-2 py-1.5 flex items-center gap-1 shadow-glass border border-white/10">
+        <div className="glass rounded-full px-2 py-1.5 flex items-center gap-1 shadow-glass border border-white/10">
           <button onClick={togglePlay} className="grid place-items-center h-8 w-8 rounded-full hover:bg-white/15 text-white" aria-label={playing ? "Pause" : "Play"}>
             {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current ml-0.5" />}
           </button>

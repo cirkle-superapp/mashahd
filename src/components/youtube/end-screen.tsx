@@ -41,7 +41,7 @@ export function EndScreen({
       setCountdown((c) => {
         if (c <= 1) {
           clearInterval(interval);
-          onPlayNext(videos[0].id);
+          setTimeout(() => onPlayNext(videos[0].id), 0);
           return 0;
         }
         return c - 1;
