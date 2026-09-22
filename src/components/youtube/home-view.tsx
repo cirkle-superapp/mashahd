@@ -6,6 +6,7 @@ import { Search as SearchIcon, Loader2, FlaskConical, Sparkle } from "lucide-rea
 import { VideoCard } from "./video-card";
 import { CategoryChips } from "./category-chips";
 import { MoodFilter, moodToCategory, type MoodId } from "./mood-filter";
+import { StreakBadge } from "./streak-badge";
 import { ShortsShelf } from "./shorts-shelf";
 import { TrendingDigest } from "./trending-digest";
 import { ContinueWatchingShelf } from "./continue-watching-shelf";

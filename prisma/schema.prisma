@@ -938,3 +938,20 @@ model LiveStream {
   @@index([channelId])
   @@index([streamerId])
 }
+
+// ── Watch Streaks (Pass 66 gamification) ──
+model WatchStreak {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  currentStreak Int      @default(0)
+  longestStreak Int      @default(0)
+  lastWatchDate String   @default("")
+  totalDays     Int      @default(0)
+  dailyGoal     Int      @default(3)
+  videosToday   Int      @default(0)
+  lastResetDate String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+}

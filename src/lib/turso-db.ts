@@ -505,6 +505,8 @@ export function createTursoDB() {
     channelRole: createModel(client, "ChannelRole"),
     sponsoredHashtag: createModel(client, "SponsoredHashtag"),
     factCheckNote: createModel(client, "FactCheckNote"),
+    liveStream: createModel(client, "LiveStream"),
+    watchStreak: createModel(client, "WatchStreak"),
     $queryRaw: async (sql: string) => {
       const result = await client.execute(sql);
       return result.rows;
@@ -604,6 +606,7 @@ async function ensureAllTables(client: Client): Promise<void> {
         "PlaybackSession": ["CREATE INDEX IF NOT EXISTS idx_ps_video ON PlaybackSession (videoId)", "CREATE INDEX IF NOT EXISTS idx_ps_peer ON PlaybackSession (peerId)"],
         "PlaybackTelemetry": ["CREATE INDEX IF NOT EXISTS idx_pt_sess ON PlaybackTelemetry (sessionId)", "CREATE INDEX IF NOT EXISTS idx_pt_video ON PlaybackTelemetry (videoId)"],
         "LiveStream": ["CREATE INDEX IF NOT EXISTS idx_ls_status ON LiveStream (status)", "CREATE INDEX IF NOT EXISTS idx_ls_channel ON LiveStream (channelId)", "CREATE INDEX IF NOT EXISTS idx_ls_streamer ON LiveStream (streamerId)"],
+        "WatchStreak": ["CREATE INDEX IF NOT EXISTS idx_ws_user ON WatchStreak (userId)"],
       };
       if (indexes[name]) {
         for (const idxSql of indexes[name]) {
