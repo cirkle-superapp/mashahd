@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import { useAppStore } from "@/store/app-store";
 import { MashahdMark } from "@/components/brand/mashahd-logo";
+import { cn } from "@/lib/utils";
 
 /**
  * Footer with site info and quick navigation. Sticks to the bottom of the
@@ -10,6 +12,41 @@ import { MashahdMark } from "@/components/brand/mashahd-logo";
  */
 export function Footer() {
   const { navigate } = useAppStore();
+  const [visible, setVisible] = useState(true);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+    let isScrolling = false;
+
+    const onScroll = () => {
+      const currentY = window.scrollY;
+      if (Math.abs(currentY - lastScrollY) < 2) return;
+      lastScrollY = currentY;
+      if (!visible) setVisible(true);
+      isScrolling = true;
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = setTimeout(() => {
+        setVisible(false);
+        isScrolling = false;
+      }, 2000);
+    };
+
+    let ticking = false;
+    const onScrollThrottled = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => { onScroll(); ticking = false; });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", onScrollThrottled, { passive: true });
+    hideTimerRef.current = setTimeout(() => { if (!isScrolling) setVisible(false); }, 2000);
+    return () => {
+      window.removeEventListener("scroll", onScrollThrottled);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, [visible]);
   const links: { label: string; view: Parameters<typeof navigate>[0] }[] = [
     { label: "Home", view: { kind: "home" } },
     { label: "Trending", view: { kind: "trending" } },
@@ -19,7 +56,7 @@ export function Footer() {
   ];
 
   return (
-    <footer className="mt-auto glass border-t border-gold/15">
+    <footer className={cn("mt-auto glass border-t border-gold/15 transition-all duration-500", visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none")}>
       <div className="px-4 sm:px-6 py-6 max-w-[1400px] mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-2">

@@ -18,6 +18,7 @@ import type { VideoWithFlags, Comment, Video } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { VideoCard } from "./video-card";
 import { SaveToPlaylist } from "./save-to-playlist";
+import { FocusMode } from "./focus-mode";
 import { WatchParty } from "./watch-party";
 import { TranscriptPanel } from "./transcript-panel";
 import { ClipDialog } from "./clip-dialog";
@@ -397,6 +398,7 @@ export function WatchView({ videoId }: { videoId: string }) {
   const disputantName = user?.displayName || "Anonymous";
   const [showFullDesc, setShowFullDesc] = useState(false);
   const [theater, setTheater] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
   const [upNext, setUpNext] = useState(false);
   const [bulletsOn, setBulletsOn] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -1110,6 +1112,7 @@ export function WatchView({ videoId }: { videoId: string }) {
                 </button>
               </div>
               <ShareButton videoId={video.id} title={video.title} currentTime={liveCurrentTime} />
+              <FocusMode enabled={focusMode} onToggle={() => setFocusMode(!focusMode)} />
               {/* §46 — Live-to-VOD button. Only shown when the video title
                   heuristically looks like a live stream (same regex as the
                   polls/Q&A panel below). On click: POST to
