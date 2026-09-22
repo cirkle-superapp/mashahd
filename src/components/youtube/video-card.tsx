@@ -19,6 +19,7 @@ import { formatViews, formatDuration, timeAgo, getImageUrl } from "@/lib/format"
 import type { Video } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { VerifiedBadge } from "./verified-badge";
+import { VideoMoodRing } from "./video-mood-ring";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { toast } from "sonner";
 import {

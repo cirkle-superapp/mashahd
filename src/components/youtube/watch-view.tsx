@@ -23,6 +23,7 @@ import { WatchParty } from "./watch-party";
 import { TranscriptPanel } from "./transcript-panel";
 import { ClipDialog } from "./clip-dialog";
 import { EndScreen } from "./end-screen";
+import { SmartUpNext } from "./smart-up-next";
 import { AiRecap } from "./ai-recap";
 import { SmartChapters } from "./smart-chapters";
 import { CirclePulse } from "./circle-pulse";
