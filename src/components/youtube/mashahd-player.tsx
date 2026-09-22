@@ -744,7 +744,7 @@ export function MashahdPlayer({
               <Gauge className="h-3.5 w-3.5" />{speed}x
             </button>
             {showSpeedMenu && (
-              <div className="absolute bottom-10 right-0 glass-strong rounded-xl border border-white/10 shadow-float overflow-hidden py-1 min-w-20">
+              <div className="absolute bottom-10 right-0 glass rounded-xl border border-white/10 shadow-float overflow-hidden py-1 min-w-20">
                 {SPEEDS.map((s) => (
                   <button key={s} onClick={() => changeSpeed(s)} className={cn("w-full px-4 py-1.5 text-left text-xs hover:bg-white/15 flex items-center justify-between gap-2", speed === s ? "text-[hsl(var(--gold-light))] font-medium" : "text-white")}>
                     {s}x {speed === s && <Check className="h-3 w-3" />}
@@ -773,7 +773,7 @@ export function MashahdPlayer({
               <Settings2 className="h-4 w-4" />
             </button>
             {showSettingsMenu && (
-              <div className="absolute bottom-12 right-0 glass-strong rounded-xl border border-white/10 shadow-float overflow-hidden py-2 min-w-44">
+              <div className="absolute bottom-12 right-0 glass rounded-xl border border-white/10 shadow-float overflow-hidden py-2 min-w-44">
                 {/* Speed section */}
                 <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-white/50 font-semibold">
                   Speed

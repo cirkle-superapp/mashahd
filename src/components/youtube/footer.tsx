@@ -19,7 +19,7 @@ export function Footer() {
   ];
 
   return (
-    <footer className="mt-auto border-t border-border bg-muted/30">
+    <footer className="mt-auto glass border-t border-gold/15">
       <div className="px-4 sm:px-6 py-6 max-w-[1400px] mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-2">
