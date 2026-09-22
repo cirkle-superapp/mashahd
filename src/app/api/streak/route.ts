@@ -175,8 +175,8 @@ export async function POST(req: NextRequest) {
         // Continued streak!
         currentStreak += 1;
         isNewStreak = true;
-      } else if (gap > 1) {
-        // Streak broken — reset.
+      } else if (gap > 1 || !lastWatch) {
+        // Streak broken OR first watch ever (empty lastWatch) — reset.
         currentStreak = 1;
         isNewStreak = true;
       }
