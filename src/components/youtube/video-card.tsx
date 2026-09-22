@@ -261,7 +261,10 @@ export function VideoCard({ video, reasons }: { video: Video; reasons?: string[]
             isHovering && "opacity-0"
           )}
         />
-        {/* Hover-preview video (loads on demand, muted, plays for ~3s) */}
+        {/* Hover-preview video (loads on demand, muted, plays for ~3s).
+            Only rendered when videoUrl is non-empty — prevents the
+            "empty string passed to src" console error. */}
+        {video.videoUrl && video.videoUrl.trim().length > 0 && (
         <video
           ref={previewVideoRef}
           src={video.videoUrl}
@@ -274,6 +277,7 @@ export function VideoCard({ video, reasons }: { video: Video; reasons?: string[]
             isHovering ? "opacity-100" : "opacity-0 pointer-events-none"
           )}
         />
+        )}
         {/* Cinematic gradient overlay — bottom shadow for legibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
         {/* Duration badge */}
