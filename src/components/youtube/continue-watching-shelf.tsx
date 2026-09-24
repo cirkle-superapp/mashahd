@@ -51,7 +51,7 @@ export function ContinueWatchingShelf() {
     <section className="px-4 sm:px-6 py-3" aria-label="Continue watching">
       <div className="flex items-center gap-2 mb-3">
         <Clock className="h-4 w-4 text-[hsl(var(--gold))]" aria-hidden />
-        <h2 className="text-sm font-semibold">Continue watching</h2>
+        <h2 className="text-sm font-semibold shelf-heading">Continue watching</h2>
       </div>
       <div className="flex gap-3 overflow-x-auto custom-scroll-x pb-2">
         {isLoading

@@ -245,12 +245,12 @@ export function VideoCard({ video, reasons }: { video: Video; reasons?: string[]
 
   return (
     <article
-      className="flex flex-col cursor-pointer group"
+      className="flex flex-col cursor-pointer group transition-transform duration-300 hover:-translate-y-1"
       onClick={() => navigate({ kind: "watch", videoId: video.id })}
       onMouseEnter={startPreview}
       onMouseLeave={stopPreview}
     >
-      {/* Thumbnail — cinematic hover-preview (Pass 63) */}
+      {/* Thumbnail — cinematic hover-preview (Pass 63) + premium card glow (Pass 75) */}
       <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-muted shadow-soft transition-all duration-500 group-hover:shadow-glow group-hover:rounded-2xl">
         {/* Static thumbnail (always visible, fades out on hover-preview) */}
         <img

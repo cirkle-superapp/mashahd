@@ -368,3 +368,18 @@
     70% { transform: translateY(-200px) scale(0.9); opacity: 0.8; }
     100% { transform: translateY(-320px) scale(0.6); opacity: 0; }
   }
+
+  /* ── Pass 75: Premium shelf headings with gold accent line ── */
+  .shelf-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .shelf-heading::before {
+    content: "";
+    display: inline-block;
+    width: 3px;
+    height: 1.25rem;
+    border-radius: 9999px;
+    background: var(--gradient-gold);
+  }

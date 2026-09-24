@@ -85,7 +85,7 @@ export function SmartUpNext({
     <section className="mt-8 px-4 sm:px-0">
       <div className="flex items-center gap-2 mb-3">
         <Sparkle className="h-5 w-5 text-[hsl(var(--gold))]" />
-        <h2 className="text-base font-semibold font-display">Smart Up Next</h2>
+        <h2 className="text-base font-semibold font-display shelf-heading">Smart Up Next</h2>
         <span className="text-xs text-muted-foreground">— with AI reasoning</span>
       </div>
       <div className="flex gap-4 overflow-x-auto pb-2 custom-scroll-x">

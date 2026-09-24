@@ -73,7 +73,7 @@ export function LiveNowShelf() {
         <span className="flex items-center justify-center h-7 w-7 rounded-full bg-red-600 text-white">
           <Radio className="h-3.5 w-3.5 fill-current" />
         </span>
-        <h2 className="text-base font-semibold font-display">Live now</h2>
+        <h2 className="text-base font-semibold font-display shelf-heading">Live now</h2>
         <span className="text-xs text-muted-foreground">
           — broadcasting right now
         </span>

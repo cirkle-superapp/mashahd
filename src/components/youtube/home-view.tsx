@@ -258,7 +258,7 @@ export function HomeView() {
   const displayLoading = showFeed ? feedLoading : isLoading;
 
   return (
-    <div>
+    <div className="animate-fade-up">
       <CategoryChips active={mood ? "All" : category} onSelect={(c) => { setCategory(c); setMood(null); }} />
       {/* §15 — Trending sponsored hashtags. A single horizontal row of
           gold-tinted chips shown only on the default home view, hidden
@@ -399,15 +399,21 @@ export function HomeView() {
             Could not load videos. Please try again.
           </p>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-x-4 gap-y-6">
+        {/* ── Premium feed grid with staggered entrance animation (Pass 75) ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-x-4 gap-y-8">
           {displayLoading
             ? Array.from({ length: 18 }).map((_, i) => <VideoCardSkeleton key={i} />)
             : displayVideos?.map((v, i) => (
-                <VideoCard
+                <div
                   key={v.id}
-                  video={v}
-                  reasons={displayReasons?.[i]}
-                />
+                  className="animate-fade-up"
+                  style={{ animationDelay: `${Math.min(i * 40, 400)}ms` }}
+                >
+                  <VideoCard
+                    video={v}
+                    reasons={displayReasons?.[i]}
+                  />
+                </div>
               ))}
         </div>
         {!displayLoading && displayVideos && displayVideos.length === 0 && (

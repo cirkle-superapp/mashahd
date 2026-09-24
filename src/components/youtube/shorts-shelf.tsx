@@ -32,7 +32,7 @@ export function ShortsShelf() {
     <section className="px-4 sm:px-6 pt-4 pb-2">
       <div className="flex items-center gap-2 mb-3">
         <Flame className="h-5 w-5 text-gold" />
-        <h2 className="text-base font-semibold font-display">Shorts</h2>
+        <h2 className="text-base font-semibold font-display shelf-heading">Shorts</h2>
         <span className="text-xs text-muted-foreground">— bite-sized picks</span>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-2 custom-scroll-x">
