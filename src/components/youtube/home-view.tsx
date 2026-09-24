@@ -316,7 +316,7 @@ export function HomeView() {
           the FYP badge area. "Discovery" fetches intentionally different
           content; "Diverse" maximizes creator/topic/format spread. */}
       {isDefaultHome && (
-        <div className="px-4 sm:px-6 pt-3 pb-1 flex items-center gap-2 flex-wrap">
+        <div className="px-4 sm:px-6 pt-3 pb-1 flex items-center gap-2 flex-wrap animate-fade-up">
           <button
             onClick={() => setFeedMode("fyp")}
             className={cn(

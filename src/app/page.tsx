@@ -126,7 +126,7 @@ export default function Page() {
     <div className="relative min-h-screen flex flex-col bg-background">
       {/* Aurora wash — the signature Mashahd atmospheric backdrop. Faint so
           content stays legible; only visible at the top edges. */}
-      <div className="pointer-events-none fixed inset-0 aurora-bg opacity-50" aria-hidden />
+      <div className="pointer-events-none fixed inset-0 aurora-bg opacity-60 animate-fade-in" aria-hidden />
       <div className="relative flex flex-col min-h-screen">
         <Header />
         {/* Main content — Mashahd is a standalone video module. The bottom

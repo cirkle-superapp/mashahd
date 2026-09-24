@@ -109,7 +109,7 @@ export function Dock() {
         className="fixed bottom-0 inset-x-0 z-40 pb-[env(safe-area-inset-bottom)] px-3 pb-3 pointer-events-none"
         aria-label="Primary navigation"
       >
-        <div className="mx-auto max-w-md glass-strong rounded-full px-2 py-1.5 flex items-center justify-between shadow-float border border-gold/20 pointer-events-auto backdrop-blur-xl">
+        <div className="mx-auto max-w-md glass rounded-full px-2 py-1.5 flex items-center justify-between shadow-glass border border-gold/20 pointer-events-auto backdrop-blur-xl">
           {PRIMARY_TABS.map((tab) => {
             const Icon = tab.icon;
             const active = isActive(tab.view);
@@ -120,10 +120,10 @@ export function Dock() {
                 key={tab.id}
                 onClick={() => navigate(tab.view)}
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-full transition-all min-w-[52px] min-h-[44px]",
+                  "relative flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-full transition-all duration-300 min-w-[52px] min-h-[44px]",
                   active
-                    ? "bg-gradient-gold text-charcoal shadow-soft"
-                    : "text-muted-foreground hover:text-foreground hover:bg-gold/10"
+                    ? "bg-gradient-gold text-charcoal shadow-soft scale-105"
+                    : "text-muted-foreground hover:text-foreground hover:bg-gold/10 hover:scale-105"
                 )}
                 aria-label={tab.label}
                 aria-current={active ? "page" : undefined}
@@ -146,7 +146,7 @@ export function Dock() {
           {/* More button */}
           <button
             onClick={() => setMoreOpen(true)}
-            className="flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-gold/10 transition-all min-w-[52px] min-h-[44px]"
+            className="flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-gold/10 transition-all duration-300 min-w-[52px] min-h-[44px]"
             aria-label="More destinations"
           >
             <LayoutGrid className="h-5 w-5" />
