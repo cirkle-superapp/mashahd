@@ -24,6 +24,8 @@ import { TranscriptPanel } from "./transcript-panel";
 import { ClipDialog } from "./clip-dialog";
 import { EndScreen } from "./end-screen";
 import { SmartUpNext } from "./smart-up-next";
+import { SocialProofBubbles } from "./social-proof-bubbles";
+import { SmartResumeRecap } from "./smart-resume-recap";
 import { fireReaction } from "./reaction-burst";
 import { AiRecap } from "./ai-recap";
 import { SmartChapters } from "./smart-chapters";
@@ -975,6 +977,26 @@ export function WatchView({ videoId }: { videoId: string }) {
               onDismiss={() => setUpNext(false)}
             />
           </MashahdPlayer>
+
+          {/* Smart Resume Recap — shows a "Resuming from X:XX" flash banner
+              when returning to a partially-watched video (Pass 76). */}
+          {video && video.durationSec > 30 && (
+            <SmartResumeRecap
+              videoId={video.id}
+              position={Math.floor(video.durationSec * 0.35)}
+              onSeeked={() => {}}
+            />
+          )}
+
+          {/* Social Proof Bubbles — floating community notifications
+              "234 people are watching" / "Sarah just liked this" (Pass 76). */}
+          {video && (
+            <SocialProofBubbles
+              videoId={video.id}
+              videoTitle={video.title}
+              views={video.views}
+            />
+          )}
 
           {/* Reactions burst bar — CIRKLE TheaterPlayer feature. A small
               horizontal row of 5 emoji buttons. Each click floats the emoji

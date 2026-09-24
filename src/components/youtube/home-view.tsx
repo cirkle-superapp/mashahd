@@ -7,6 +7,7 @@ import { VideoCard } from "./video-card";
 import { CategoryChips } from "./category-chips";
 import { MoodFilter, moodToCategory, type MoodId } from "./mood-filter";
 import { StreakBadge } from "./streak-badge";
+import { TimeOfDayMood } from "./time-of-day-mood";
 import { ShortsShelf } from "./shorts-shelf";
 import { TrendingDigest } from "./trending-digest";
 import { ContinueWatchingShelf } from "./continue-watching-shelf";
@@ -295,9 +296,15 @@ export function HomeView() {
             ))}
           </div>
         )}
-      <div className="pt-2 pb-1">
+      <div className="pt-2 pb-1 flex items-center justify-between gap-2">
         <MoodFilter active={mood} onSelect={setMood} />
+        <StreakBadge />
       </div>
+      {/* Time-of-Day Mood Sync — suggests a mood based on the user's local
+          time (Pass 76). "Good evening, it feels like a Chill kind of moment". */}
+      {isDefaultHome && (
+        <TimeOfDayMood onAccept={(m) => setMood(m as MoodId)} />
+      )}
       {/* AI Trending Digest — only on the default home feed, where it
           reinforces Mashahd's AI-native identity with a curated editorial
           wrap-up of today's trending videos. */}
