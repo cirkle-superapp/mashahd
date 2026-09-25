@@ -8323,3 +8323,62 @@ Stage Summary:
 - All 14 AI API routes verified to work end-to-end with the new consensus mode. AI Recap, AI Oracle, AI Translate, Trending Digest all return valid responses.
 - z-ai-web-dev-sdk is NOT in package.json, NOT imported anywhere in src/, NOT in any runtime script. The only remaining textual references to "z-ai" in the project are: (a) this worklog entry (historical record), (b) explanatory comments in src/lib/ai-provider.ts and scripts/fetch-thumbnails.ts explaining the historical removal, (c) the skills/* folder (third-party skill reference docs — not runtime code), (d) various .md audit reports (historical record).
 - Consensus architecture: 5 providers fired in parallel (Groq + OpenRouter + NVIDIA + Gemini + HuggingFace), 12s per-provider timeout, longest non-empty response wins, sources[] exposed for observability. Deterministic fallback preserved when all 5 fail.
+
+---
+Task ID: 82
+Agent: main
+Task: Push all updates to all 5 production services (GitHub + Vercel + Inngest + Neon + Turso). User said "check chat history for details if needed".
+
+Work Log:
+- Audited git state: branch main, ahead of origin/main by 4 commits (3 bot's + 1 mine). 49 additional unstaged files from prior passes (Pass 77-80) that were never committed.
+- Read chat history for service details:
+  * GitHub remote: github.com/cirkle-superapp/mashahd.git (under the cirkle-superapp org, NOT the cirkle-ac8fabe4 repo from earlier — that's CIRKLE's source repo).
+  * Vercel project: mashahd (auto-deploys from GitHub main branch via integration).
+  * Inngest: configured via /api/inngest route, INNGEST_KEY + INNGEST_WEBHOOK_SECRET in env.
+  * Neon: PostgreSQL analytics DB at ep-empty-recipe-auue9q58 (0.5GB free tier).
+  * Turso: libsql main DB at mashahd-fortleem.aws-us-east-1.turso.io (9GB free tier).
+- CRITICAL ISSUE FOUND: scripts/ensure-env.sh had been run at 17:58:15Z (auto-triggered by predev hook) and STRIPPED .env of all 5 AI provider keys. The script's PRESENCE_ONLY_KEYS list only WARNED about missing AI keys, never restored them. This would break the new 5-provider consensus mode on the next dev server restart AND on Vercel.
+- Fix 1 — .env: re-appended the 5 AI keys (Groq = new key from operator; OpenRouter / NVIDIA / Gemini / HF unchanged).
+- Fix 2 — scripts/ensure-env.sh: moved the 5 AI keys from PRESENCE_ONLY_KEYS (warn-only) into REQUIRED_VARS (auto-restore). Removed the now-empty PRESENCE_ONLY_KEYS section. The script now restores AI keys if .env ever gets stripped again. AI key VALUES use ${VAR:-} expansion (read from operator's OS env vars at restore time) — never hardcoded in the script itself.
+- Fix 3 — scripts/set-vercel-env.sh: added the 5 AI keys to the VARS array using ${VAR:-} expansion. Added a validation block that skips any AI key not exported (so Vercel never receives empty values) and prints clear instructions for the operator.
+- FIRST PUSH ATTEMPT — REJECTED by GitHub Push Protection:
+  * Commit fc7448f contained hardcoded AI keys in scripts/ensure-env.sh, scripts/set-vercel-env.sh, AND .env (which was tracked in git from prior passes).
+  * GitHub Push Protection flagged Groq API Key + OpenRouter API Key in 6 locations across 4 commits (3 bot's + mine).
+- Recovery — soft reset + scrub + recommit:
+  * git reset --soft 17bbb7c (undid 4 secret-containing commits, kept all changes staged).
+  * git rm --cached .env (untracked .env from git index — file stays on disk for local dev, but never enters future commits).
+  * Edited worklog.md line 8294 to redact the hardcoded Groq key (replaced with "redacted — value stored only in .env which is gitignored").
+  * Re-staged the cleaned scripts/* and worklog.md.
+  * Verified the staged diff contains NO actual secret values (only ${VAR:-} placeholders + comment examples like "gsk_...").
+- SECOND PUSH — SUCCEEDED:
+  * Committed as 01d9d66 ("feat: 5-provider AI consensus + CIRKLE brand alignment + .env untracking (Pass 81)").
+  * Pushed to origin/main: 17bbb7c..01d9d66 main -> main. No push-protection violations.
+- Vercel auto-deploy: waited 90 seconds for Vercel to build + deploy the new commit. Verified:
+  * https://mashahd.vercel.app/ → HTTP 200 (0.28s).
+  * /api/ready → {"status":"ready"}.
+  * /api/videos?limit=2 → 2 videos returned (Turso DB working).
+  * /api/cost-dashboard → all 5 services HEALTHY:
+    - Turso: HEALTHY, circuit CLOSED, 35 videos / 13 channels / 89 comments / 3 users.
+    - Vercel: HEALTHY, free tier.
+    - Inngest: HEALTHY, configured=true (auto-synced from /api/inngest endpoint on Vercel deploy).
+    - Neon Postgres: HEALTHY (analytics + DR role).
+    - AI (5 providers): HEALTHY, activeCount=5/5 (groq + openrouter + nvidia + gemini + hf all true).
+  * /api/analytics → HTTP 200 (Neon reachable).
+  * Cost: $0/month (zero-cost-by-default 5-service stack).
+- Production AI consensus smoke test:
+  * POST /api/ai/summarize { videoId: cmtxhplp0dolq3ghq } → 200 in 3.75s.
+  * Response: valid JSON recap with tldr + 3 takeaways + bestMoment + vibe="Intense". Source: "ai" (consensus winner among the 5 parallel providers).
+  * Confirms the 5-provider consensus mode is live in production.
+- Inngest sync: NO manual sync needed — Inngest auto-discovers functions via the /api/inngest endpoint on every Vercel deploy. The /api/inngest endpoint returned HTTP 200 (PUT/POST sync works; GET returns 405 as expected).
+- Turso schema sync: NO sync needed — prisma/schema.prisma was NOT modified in this session (last change was Pass 77 for Live TV at 13:13 today). The deployed schema on Turso is already in sync.
+- Neon schema sync: NO sync needed — same reason (no prisma schema changes).
+
+Stage Summary:
+- GitHub: 4 commits squashed into 1 clean commit (01d9d66) + pushed to origin/main. .env untracked from git (no more secrets in future commits). Push Protection satisfied.
+- Vercel: auto-deployed from the GitHub push. All endpoints verified (home, ready, videos, cost-dashboard, analytics, AI summarize).
+- Inngest: auto-synced via /api/inngest endpoint on Vercel deploy. HEALTHY + configured.
+- Neon: schema unchanged, connection HEALTHY, /api/analytics returns 200.
+- Turso: schema unchanged, connection HEALTHY, circuit CLOSED, 35 videos / 13 channels / 89 comments / 3 users / 3 sessions.
+- AI consensus: all 5 providers active in production (groq + openrouter + nvidia + gemini + hf = 5/5). Production AI summarize returns valid JSON in 3.75s.
+- Cost: $0/month (zero-cost-by-default 5-service stack: GitHub + Vercel + Inngest + Neon + Turso).
+- Open item: the new Groq key is in .env (gitignored) and on the dev box, but is NOT yet set as a Vercel env var (no VERCEL_TOKEN available in this session). The existing Vercel deployment is still using the OLD Groq key for production AI calls. To push the new Groq key to Vercel, the operator must run: `export GROQ_API_KEY=gsk_...; VERCEL_TOKEN=<token> bash scripts/set-vercel-env.sh`. The other 4 AI keys are unchanged and already on Vercel from prior runs.
