@@ -1795,28 +1795,14 @@ export function WatchView({ videoId }: { videoId: string }) {
             isCreator={!!data?.isCreator}
           />
 
-          {/* "Continue watching" — horizontal carousel (replaces the
-              YouTube-style vertical sidebar). Mashahd's own layout: the
-              related videos appear below the comments as a swipeable row. */}
+          {/* Smart Up Next — AI-powered recommendations with reasoning labels
+              (Pass 72). Replaces the old opaque "Continue watching" shelf. */}
           {!theater && (
-            <section className="mt-8 px-4 sm:px-0">
-              <h2 className="text-base font-semibold mb-3 font-display">Continue watching</h2>
-              <div className="flex gap-4 overflow-x-auto pb-2 custom-scroll-x">
-                {!related
-                  ? Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className="shrink-0 w-64">
-                        <Skeleton className="aspect-video w-full rounded-xl" />
-                        <Skeleton className="h-4 w-3/4 mt-2" />
-                        <Skeleton className="h-3 w-1/2 mt-1" />
-                      </div>
-                    ))
-                  : related.map((v) => (
-                      <div key={v.id} className="shrink-0 w-56 sm:w-64">
-                        <VideoCard video={v} />
-                      </div>
-                    ))}
-              </div>
-            </section>
+            <SmartUpNext
+              current={video}
+              related={related}
+              isLoading={!related}
+            />
           )}
           {/* §41 — Video relationships. Shown as a small "Related" list
               below the "Continue watching" carousel when any exist. Each
