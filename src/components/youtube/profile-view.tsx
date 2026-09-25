@@ -52,7 +52,7 @@ export function ProfileView() {
         <div className="relative rounded-2xl overflow-hidden border border-gold/20 bg-gradient-to-br from-[hsl(var(--gold)/0.08)] to-transparent p-8 text-center">
           <div className="absolute inset-0 aurora-bg opacity-30" aria-hidden />
           <div className="relative">
-            <MashahdMark size={48} className="mx-auto mb-4" />
+            <MashahdMark size={48} strokeWidth={3} className="mx-auto mb-4" />
             <h1 className="text-2xl font-bold font-display mb-2">Welcome to Mashahd</h1>
             <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
               Sign in or create an account to sync your favorites, history,
@@ -135,7 +135,7 @@ export function ProfileView() {
               Your history, likes, subscriptions, and favorites are synced to your account.
             </p>
           </div>
-          <MashahdMark size={36} className="opacity-40 hidden sm:block" />
+          <MashahdMark size={36} strokeWidth={3} className="opacity-40 hidden sm:block" />
         </div>
       </div>
 

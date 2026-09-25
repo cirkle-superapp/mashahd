@@ -15,17 +15,25 @@ import { cn } from "@/lib/utils";
  * `src/components/brand/circle-mark.tsx`.
  *
  * Props:
- *   size      — pixel size of the square mark
- *   animated  — if false, renders a static mark (favicons, SSR-safe spots)
- *   className  — extra classes on the wrapping element
+ *   size        — pixel size of the square mark
+ *   animated    — if false, renders a static mark (favicons, SSR-safe spots)
+ *   strokeWidth — SVG stroke width in viewBox units (default 1.5, mirrors
+ *                 CIRKLE's CircleMark). Pass 3-4 for small display contexts
+ *                 (modal logos, favicons) so the gradient stays visible at
+ *                 sub-pixel rendering. CIRKLE's default size of 40px with
+ *                 stroke 1.5 → 0.6px effective stroke, which is borderline
+ *                 invisible; pass strokeWidth={3} for any size <= 56px.
+ *   className    — extra classes on the wrapping element
  */
 export function MashahdMark({
   size = 32,
   animated = true,
+  strokeWidth = 1.5,
   className,
 }: {
   size?: number;
   animated?: boolean;
+  strokeWidth?: number;
   className?: string;
 }) {
   const Wrap = animated ? motion.svg : "svg";
@@ -55,37 +63,59 @@ export function MashahdMark({
         {/* Gradient stops mirror CIRKLE's CircleMark exactly: gold → rose → teal.
             We use the saturated base tokens (--gold, --teal) rather than the
             -light variants, so the brand mark reads at small sizes (28-32px)
-            and stays visually identical to the CIRKLE super-app mark. */}
-        <linearGradient id="mashahd-grad" x1="0" y1="0" x2="1" y2="1">
+            and stays visually identical to the CIRKLE super-app mark.
+
+            VERTICAL gradient with gradientUnits="userSpaceOnUse" (Pass 83 fix):
+            The 3 circles are clustered around the vertical middle of the
+            viewBox (top circle y=10-54, bottom circles y=38-82). A diagonal
+            gradient (0,0 → 100,100) maps all 3 circles to the gradient's
+            middle (rose), making the mark look uniformly dusty rose.
+            A VERTICAL gradient (0,0 → 0,100) puts the top circle in the
+            gold→rose band and the bottom circles in the rose→teal band,
+            so each circle shows a distinct color shift and the overall
+            mark reads as a true gold→rose→teal gradient. */}
+        <linearGradient
+          id="mashahd-grad"
+          x1="0"
+          y1="0"
+          x2="0"
+          y2="100"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop offset="0%" stopColor="hsl(var(--gold))" />
           <stop offset="50%" stopColor="hsl(var(--rose))" />
           <stop offset="100%" stopColor="hsl(var(--teal))" />
         </linearGradient>
       </defs>
-      {/* Three interlocking circles forming a triangle (Venn-like). */}
+      {/* Three interlocking circles forming a triangle (Venn-like).
+          strokeWidth is configurable so modal/hero contexts (small render
+          size) can pass a thicker stroke to keep the gradient visible.
+          opacity=1 (full) — Pass 83 fix: was 0.9 which dropped saturation
+          enough that the gradient read as washed-out grey/cream on the
+          modal's glass-strong background. */}
       <circle
         cx="50"
         cy="32"
         r="22"
         stroke="url(#mashahd-grad)"
-        strokeWidth="1.5"
-        opacity="0.9"
+        strokeWidth={strokeWidth}
+        opacity="1"
       />
       <circle
         cx="32"
         cy="60"
         r="22"
         stroke="url(#mashahd-grad)"
-        strokeWidth="1.5"
-        opacity="0.9"
+        strokeWidth={strokeWidth}
+        opacity="1"
       />
       <circle
         cx="68"
         cy="60"
         r="22"
         stroke="url(#mashahd-grad)"
-        strokeWidth="1.5"
-        opacity="0.9"
+        strokeWidth={strokeWidth}
+        opacity="1"
       />
       {/* Center node — the meeting point of the three circles. */}
       <circle cx="50" cy="50" r="6" fill="url(#mashahd-grad)" />

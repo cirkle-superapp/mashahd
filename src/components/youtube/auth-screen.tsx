@@ -154,7 +154,7 @@ export function AuthScreen({
       <DialogContent className="max-w-md">
         {/* Logo + title */}
         <div className="flex flex-col items-center gap-3 pt-2 pb-4">
-          <MashahdMark size={48} />
+          <MashahdMark size={64} strokeWidth={5} />
           <DialogTitle className="text-xl font-display text-center">
             {mode === "login" ? "Welcome back" : "Join Mashahd"}
           </DialogTitle>

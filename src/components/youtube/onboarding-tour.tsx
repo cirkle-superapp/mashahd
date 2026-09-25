@@ -87,9 +87,10 @@ export function OnboardingTour() {
               <X className="h-4 w-4" />
             </button>
 
-            {/* Logo */}
+            {/* Logo — strokeWidth=5 so the gradient stays visible at the
+                modal's small render size (56px on a 100×100 viewBox). */}
             <div className="flex justify-center mb-6">
-              <MashahdMark size={48} />
+              <MashahdMark size={64} strokeWidth={5} />
             </div>
 
             {/* Step icon */}

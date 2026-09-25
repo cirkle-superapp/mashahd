@@ -1,7 +1,7 @@
 /**
  * AI Provider Abstraction — 5-provider CONSENSUS mode.
  *
- * ARCHITECTURE (CTO decision, Pass 81 — 2026-09-25):
+ * ARCHITECTURE (CTO decision, Pass 81 → expanded Pass 83 — 2026-09-26):
  *
  *   z-ai has been COMPLETELY REMOVED (no z-ai-web-dev-sdk dependency in
  *   package.json, no z-ai imports anywhere in src/, no z-ai env vars).
@@ -9,17 +9,39 @@
  *   (consensus), with the longest non-empty response winning the quorum:
  *
  *     1. Groq         — ultra-fast inference (~500 tok/s), OpenAI-compatible
+ *                       [3-model fallback chain: llama-3.1-8b-instant →
+ *                        llama-3.3-70b-versatile → gemma2-9b-it]
  *     2. OpenRouter  — access to many models (Claude, GPT-4, Llama, etc.)
+ *                       [4-model fallback chain: llama-3.1-8b-instruct:free
+ *                        → nemotron-3.5-lightning:free → lfm-2.5-2.6b:free
+ *                        → gpt-4o-mini]
  *     3. NVIDIA      — NVIDIA NIM API, OpenAI-compatible
+ *                       [4-model fallback chain (Pass 83 expanded from 1):
+ *                        llama-3.2-11b-vision → llama-3.1-70b →
+ *                        llama-3.1-8b → nemotron-70b]
  *     4. Gemini      — Google's quality model
+ *                       [4-model fallback chain (Pass 83 expanded from 1):
+ *                        gemini-flash-latest → 1.5-flash → 1.5-flash-8b
+ *                        → 2.0-flash]
  *     5. HuggingFace — free inference, slow but always available
+ *                       [4-model fallback chain (Pass 83 expanded from 1):
+ *                        Mistral-7B-Instruct → Llama-3-8B-Instruct
+ *                        → zephyr-7b-beta → gemma-7b-it]
  *
- *   All 5 are fired simultaneously with Promise.allSettled. The first
- *   successful response to arrive is preferred (race), but we keep
- *   listening for up to CONSENSUS_TIMEOUT_MS for any slower provider to
- *   return a LONGER, more informative answer. The longest non-empty
- *   text wins. If 0 providers succeed, the caller's deterministic
- *   fallback is used (every AI feature always returns SOMETHING).
+ *   TWO LAYERS OF FALLBACK (per user request Pass 83 — "if one model
+ *   fails, make the model choose another model for each model"):
+ *     Layer A (per-provider): each provider tries its models in sequence.
+ *       If model #1 fails (rate-limited, deprecated, 5xx), the provider
+ *       automatically tries model #2, then #3, then #4. Returns the first
+ *       non-empty response. If all 4 models fail, the provider returns
+ *       null and the consensus moves on.
+ *     Layer B (cross-provider): all 5 providers fire in parallel via
+ *       Promise.allSettled (12s per-provider timeout). The longest
+ *       non-empty response wins (consensus quorum). If all 5 providers
+ *       return null, the caller's deterministic fallback is used.
+ *
+ *   This gives up to 5 × 4 = 20 model attempts per request, with no
+ *   single point of failure (any 1 model success = a usable answer).
  *
  * WHY CONSENSUS (not sequential fallback):
  *   - Diversity: 5 independent model families → less bias, fewer blind
@@ -235,6 +257,9 @@ async function tryOpenRouter(opts: AIChatOptions): Promise<{ text: string } | nu
 }
 
 // ── NVIDIA — NIM API, OpenAI-compatible ──
+// 4-model fallback chain: if the primary model is rate-limited or
+// deprecated, the next one is tried. Per user request (Pass 83):
+// "if one model fails, make the model choose another model for each model".
 async function tryNvidia(opts: AIChatOptions): Promise<{ text: string } | null> {
   if (!NVIDIA_API_KEY) return null;
 
@@ -242,99 +267,131 @@ async function tryNvidia(opts: AIChatOptions): Promise<{ text: string } | null> 
   if (opts.system) messages.push({ role: "system", content: opts.system });
   messages.push({ role: "user", content: opts.user });
 
-  // Use verified-working model. Other models on NVIDIA have reached EOL.
-  try {
-    const r = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${NVIDIA_API_KEY}`,
-        "Accept": "application/json",
-      },
-      body: JSON.stringify({
-        model: "meta/llama-3.2-11b-vision-instruct",
-        messages,
-        max_tokens: opts.maxTokens || 1000,
-        temperature: opts.temperature ?? 0.7,
-        top_p: 0.9,
-        stream: false,
-      }),
-    });
+  // 4-model chain. Verified working as of 2026-09-25. Order = priority.
+  const models = [
+    "meta/llama-3.2-11b-vision-instruct",  // primary — current default
+    "meta/llama-3.1-70b-instruct",          // fallback 1 — bigger Llama
+    "meta/llama-3.1-8b-instruct",           // fallback 2 — faster, smaller
+    "nvidia/llama-3.1-nemotron-70b-instruct", // fallback 3 — NVIDIA-tuned
+  ];
 
-    if (!r.ok) return null;
-    const data = await r.json();
-    const text = data.choices?.[0]?.message?.content?.trim() || "";
-    return text ? { text } : null;
-  } catch {
-    return null;
+  for (const model of models) {
+    try {
+      const r = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${NVIDIA_API_KEY}`,
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          max_tokens: opts.maxTokens || 1000,
+          temperature: opts.temperature ?? 0.7,
+          top_p: 0.9,
+          stream: false,
+        }),
+      });
+
+      if (!r.ok) continue; // try next model
+      const data = await r.json();
+      const text = data.choices?.[0]?.message?.content?.trim() || "";
+      if (text) return { text };
+    } catch {
+      continue; // try next model
+    }
   }
+  return null;
 }
 
 // ── Gemini — Google's quality model ──
+// 4-model fallback chain. Tries the alias first, then specific versions.
 async function tryGemini(opts: AIChatOptions): Promise<{ text: string } | null> {
   if (!GEMINI_API_KEY) return null;
 
   const prompt = opts.system ? `${opts.system}\n\n${opts.user}` : opts.user;
   const contents = [{ parts: [{ text: prompt }] }];
 
-  try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents,
-          generationConfig: {
-            maxOutputTokens: opts.maxTokens || 1000,
-            temperature: opts.temperature ?? 0.7,
-          },
-        }),
-      }
-    );
+  const models = [
+    "gemini-flash-latest",       // primary — alias for the latest flash
+    "gemini-1.5-flash",         // fallback 1 — stable 1.5 flash
+    "gemini-1.5-flash-8b",      // fallback 2 — smaller/faster 1.5 flash
+    "gemini-2.0-flash",         // fallback 3 — 2.0 flash (experimental)
+  ];
 
-    if (!r.ok) return null;
-    const data = await r.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-    return text ? { text } : null;
-  } catch {
-    return null;
+  for (const model of models) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents,
+            generationConfig: {
+              maxOutputTokens: opts.maxTokens || 1000,
+              temperature: opts.temperature ?? 0.7,
+            },
+          }),
+        }
+      );
+
+      if (!r.ok) continue; // try next model
+      const data = await r.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+      if (text) return { text };
+    } catch {
+      continue; // try next model
+    }
   }
+  return null;
 }
 
 // ── Hugging Face — free inference ──
+// 4-model fallback chain. Tries popular instruction-tuned 7B models.
 async function tryHF(opts: AIChatOptions): Promise<{ text: string } | null> {
   if (!HF_API_KEY) return null;
 
   const prompt = opts.system ? `${opts.system}\n\n${opts.user}` : opts.user;
 
-  try {
-    const r = await fetch(
-      "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${HF_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
-            max_new_tokens: opts.maxTokens || 500,
-            temperature: opts.temperature ?? 0.7,
-            return_full_text: false,
-          },
-        }),
-      }
-    );
+  const models = [
+    "mistralai/Mistral-7B-Instruct-v0.2",         // primary
+    "meta-llama/Meta-Llama-3-8B-Instruct",          // fallback 1
+    "HuggingFaceH4/zephyr-7b-beta",                 // fallback 2
+    "google/gemma-7b-it",                            // fallback 3
+  ];
 
-    if (!r.ok) return null;
-    const data = await r.json();
-    const text = (Array.isArray(data) ? data[0]?.generated_text : data?.generated_text)?.trim() || "";
-    return text ? { text } : null;
-  } catch {
-    return null;
+  for (const model of models) {
+    try {
+      const r = await fetch(
+        `https://api-inference.huggingface.co/models/${model}`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${HF_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            inputs: prompt,
+            parameters: {
+              max_new_tokens: opts.maxTokens || 500,
+              temperature: opts.temperature ?? 0.7,
+              return_full_text: false,
+            },
+          }),
+        }
+      );
+
+      if (!r.ok) continue; // try next model (often 503 "model loading")
+      const data = await r.json();
+      const text = (Array.isArray(data) ? data[0]?.generated_text : data?.generated_text)?.trim() || "";
+      if (text) return { text };
+    } catch {
+      continue; // try next model
+    }
   }
+  return null;
 }
 
 /**

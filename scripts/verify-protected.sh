@@ -94,27 +94,58 @@ ESSENTIAL_FILES=(
   "src/store/app-store.ts" "src/store/command-palette-store.ts" "src/store/mini-player-store.ts"
   # Entry + error boundaries
   "src/app/page.tsx" "src/app/layout.tsx" "src/app/error.tsx" "src/app/global-error.tsx"
-  "src/app/providers.tsx"
+  "src/components/providers.tsx"
   "prisma/schema.prisma"
   # Mini-services
   "mini-services/p2p-tracker/index.ts" "mini-services/watch-party/index.ts"
 )
 
 MISSING=()
+STALE=()
 RESTORED=0
 
 for f in "${ESSENTIAL_FILES[@]}"; do
   if [ ! -e "$f" ]; then
-    # Only attempt restore if the file exists in HEAD.
+    # File is missing on disk. Decide whether it's a real deletion (was in HEAD)
+    # or a stale manifest entry (never existed in git). Both are surfaced loudly.
     if git cat-file -e "HEAD:$f" 2>/dev/null; then
+      # File existed in HEAD → it was DELETED from the working tree.
+      # Restore it (unless --check), then surface as MISSING.
       MISSING+=("$f")
       if [ "$CHECK_ONLY" -eq 0 ]; then
         mkdir -p "$(dirname "$f")"
         git checkout HEAD -- "$f" 2>/dev/null && RESTORED=$((RESTORED + 1)) || true
       fi
+    else
+      # File never existed in HEAD → the manifest itself is STALE. The path
+      # in verify-protected.sh / pre-commit hook is wrong and silently passing
+      # is worse than failing because it gives false confidence that the
+      # protected-files audit is doing its job. Surface loudly.
+      STALE+=("$f")
     fi
   fi
 done
+
+# Stale manifest entries are a bug — exit 2 (distinct from MISSING's exit 1)
+# so the operator can tell the two cases apart.
+if [ ${#STALE[@]} -gt 0 ]; then
+  echo ""
+  echo "═══════════════════════════════════════════════════════════════"
+  echo "  PROTECTED FILE MANIFEST — ${#STALE[@]} STALE path(s) found"
+  echo "═══════════════════════════════════════════════════════════════"
+  echo "  These paths are listed in ESSENTIAL_FILES but never existed in"
+  echo "  git HEAD. They must be removed from the manifest (or corrected"
+  echo "  to the actual path) so the audit doesn't silently pass."
+  echo ""
+  for f in "${STALE[@]}"; do
+    echo "  ⚠ stale:  $f"
+  done
+  echo ""
+  echo "  Edit scripts/verify-protected.sh AND .git/hooks/pre-commit"
+  echo "  (the manifest is duplicated; both must match)."
+  echo ""
+  exit 2
+fi
 
 if [ ${#MISSING[@]} -gt 0 ]; then
   echo ""
