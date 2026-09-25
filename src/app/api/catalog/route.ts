@@ -194,6 +194,7 @@ const API_CATALOG = [
     specSection: "§67,§77",
     endpoints: [
       { method: "GET", path: "/api/ready", description: "Readiness check" },
+      { method: "GET", path: "/api/env-health", description: "Per-service env var presence audit (Pass 84) — debug when a service fails because of missing .env interconnection" },
       { method: "GET", path: "/api/cost-dashboard", description: "Unified cost dashboard" },
       { method: "GET", path: "/api/metrics", description: "System metrics" },
       { method: "GET", path: "/api/analytics", description: "Neon analytics (501 if not configured)" },
