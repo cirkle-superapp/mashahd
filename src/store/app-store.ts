@@ -22,7 +22,8 @@ export type View =
   | { kind: "clip"; clipId: string }
   | { kind: "recommendationProfile" }
   | { kind: "shorts" }
-  | { kind: "live"; streamId: string };
+  | { kind: "live"; streamId: string }
+  | { kind: "live-tv"; channelId: string };
 
 type AppState = {
   view: View;
@@ -82,6 +83,8 @@ export function viewToQuery(v: View): string {
       return `?v=shorts`;
     case "live":
       return `?v=live&id=${encodeURIComponent(v.streamId)}`;
+    case "live-tv":
+      return `?v=live-tv&id=${encodeURIComponent(v.channelId)}`;
   }
 }
 
@@ -128,6 +131,8 @@ export function queryToView(search: string): View {
       return { kind: "shorts" };
     case "live":
       return { kind: "live", streamId: sp.get("id") || "" };
+    case "live-tv":
+      return { kind: "live-tv", channelId: sp.get("id") || "" };
     default:
       return { kind: "home" };
   }

@@ -955,3 +955,35 @@ model WatchStreak {
 
   @@index([userId])
 }
+
+// ── Live TV Channels (Pass 77) ──
+// Persistent always-on TV channels that stream their live broadcast on
+// Mashahd. Unlike LiveStream (individual user streams), these are
+// permanent channel entries with HLS stream URLs — like traditional
+// TV but on Mashahd's premium platform.
+model LiveTVChannel {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logoUrl     String   @default("")
+  description String   @default("")
+  category    String   @default("General") // News, Sports, Music, Entertainment, etc.
+  country     String   @default("")
+  language    String   @default("")
+  streamUrl   String   // HLS .m3u8 URL (the actual live stream)
+  streamType  String   @default("hls") // hls | dash | mp4
+  isLive      Boolean  @default(true)
+  isVerified  Boolean  @default(false)
+  // Current program (EPG - Electronic Program Guide)
+  nowPlaying  String   @default("")
+  nextProgram String  @default("")
+  viewers     Int      @default(0)
+  // Owner (the creator/channel operator who added this TV channel)
+  ownerId     String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isLive])
+  @@index([category])
+  @@index([country])
+}

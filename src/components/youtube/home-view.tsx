@@ -12,6 +12,7 @@ import { ShortsShelf } from "./shorts-shelf";
 import { TrendingDigest } from "./trending-digest";
 import { ContinueWatchingShelf } from "./continue-watching-shelf";
 import { LiveNowShelf } from "./live-now-shelf";
+import { LiveTVShelf } from "./live-tv-shelf";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -313,6 +314,9 @@ export function HomeView() {
           (Pass 47). Reads from the LiveStream table via /api/live-streams.
           Hidden automatically when no streams are live. */}
       {isDefaultHome && <LiveNowShelf />}
+      {/* Live TV shelf — shows live TV channels streaming on Mashahd (Pass 77).
+          Hidden automatically when no TV channels exist. */}
+      {isDefaultHome && <LiveTVShelf />}
       {/* Continue Watching shelf — shows unfinished videos with resume positions.
           Per spec §32. Only on the default home view. */}
       {isDefaultHome && continueWatchingEnabled && <ContinueWatchingShelf />}

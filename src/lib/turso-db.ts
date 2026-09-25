@@ -507,6 +507,7 @@ export function createTursoDB() {
     factCheckNote: createModel(client, "FactCheckNote"),
     liveStream: createModel(client, "LiveStream"),
     watchStreak: createModel(client, "WatchStreak"),
+    liveTVChannel: createModel(client, "LiveTVChannel"),
     $queryRaw: async (sql: string) => {
       const result = await client.execute(sql);
       return result.rows;
@@ -566,6 +567,8 @@ async function ensureAllTables(client: Client): Promise<void> {
     // ── LiveStream (Pass 47): real DB-backed live broadcasting. Replaces the
     // previous client-only go-live component which had no DB record at all.
     { name: "LiveStream", sql: "CREATE TABLE IF NOT EXISTS LiveStream (id TEXT PRIMARY KEY, channelId TEXT DEFAULT '', streamerId TEXT DEFAULT '', streamerName TEXT DEFAULT 'Anonymous', title TEXT, description TEXT DEFAULT '', category TEXT DEFAULT 'Tech', privacy TEXT DEFAULT 'public', status TEXT DEFAULT 'preparing', viewerCount INTEGER DEFAULT 0, peakViewerCount INTEGER DEFAULT 0, streamKey TEXT UNIQUE, watchPartyCode TEXT DEFAULT '', thumbnailUrl TEXT DEFAULT '', startedAt TEXT DEFAULT '', endedAt TEXT DEFAULT '', createdAt TEXT, updatedAt TEXT)" },
+    // ── LiveTVChannel (Pass 77) ──
+    { name: "LiveTVChannel", sql: "CREATE TABLE IF NOT EXISTS LiveTVChannel (id TEXT PRIMARY KEY, name TEXT, slug TEXT UNIQUE, logoUrl TEXT DEFAULT '', description TEXT DEFAULT '', category TEXT DEFAULT 'General', country TEXT DEFAULT '', language TEXT DEFAULT '', streamUrl TEXT, streamType TEXT DEFAULT 'hls', isLive INTEGER DEFAULT 1, isVerified INTEGER DEFAULT 0, nowPlaying TEXT DEFAULT '', nextProgram TEXT DEFAULT '', viewers INTEGER DEFAULT 0, ownerId TEXT DEFAULT '', createdAt TEXT, updatedAt TEXT)" },
   ];
 
   for (const { name, sql } of tables) {
@@ -607,6 +610,7 @@ async function ensureAllTables(client: Client): Promise<void> {
         "PlaybackTelemetry": ["CREATE INDEX IF NOT EXISTS idx_pt_sess ON PlaybackTelemetry (sessionId)", "CREATE INDEX IF NOT EXISTS idx_pt_video ON PlaybackTelemetry (videoId)"],
         "LiveStream": ["CREATE INDEX IF NOT EXISTS idx_ls_status ON LiveStream (status)", "CREATE INDEX IF NOT EXISTS idx_ls_channel ON LiveStream (channelId)", "CREATE INDEX IF NOT EXISTS idx_ls_streamer ON LiveStream (streamerId)"],
         "WatchStreak": ["CREATE INDEX IF NOT EXISTS idx_ws_user ON WatchStreak (userId)"],
+        "LiveTVChannel": ["CREATE INDEX IF NOT EXISTS idx_ltvc_live ON LiveTVChannel (isLive)", "CREATE INDEX IF NOT EXISTS idx_ltvc_cat ON LiveTVChannel (category)", "CREATE INDEX IF NOT EXISTS idx_ltvc_country ON LiveTVChannel (country)"],
       };
       if (indexes[name]) {
         for (const idxSql of indexes[name]) {
