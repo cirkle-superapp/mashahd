@@ -281,6 +281,10 @@ export function VideoCard({ video, reasons }: { video: Video; reasons?: string[]
         )}
         {/* Cinematic gradient overlay — bottom shadow for legibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+        {/* Mood Ring — AI-style mood tag (Pass 72) */}
+        <div className="absolute top-1.5 left-1.5">
+          <VideoMoodRing video={video} />
+        </div>
         {/* Duration badge */}
         <span className="absolute bottom-1.5 right-1.5 bg-black/85 text-white text-[11px] font-medium px-1.5 py-0.5 rounded leading-none tabular-nums">
           {duration}
