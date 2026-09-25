@@ -120,10 +120,10 @@ export function Dock() {
                 key={tab.id}
                 onClick={() => navigate(tab.view)}
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-full transition-all duration-300 min-w-[52px] min-h-[44px]",
+                  "dock-tab relative flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-full min-w-[52px] min-h-[44px]",
                   active
                     ? "bg-gradient-gold text-charcoal shadow-soft scale-105"
-                    : "text-muted-foreground hover:text-foreground hover:bg-gold/10 hover:scale-105"
+                    : "text-muted-foreground hover:text-foreground hover:bg-gold/10"
                 )}
                 aria-label={tab.label}
                 aria-current={active ? "page" : undefined}

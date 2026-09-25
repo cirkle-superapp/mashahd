@@ -245,7 +245,7 @@ export function VideoCard({ video, reasons }: { video: Video; reasons?: string[]
 
   return (
     <article
-      className="flex flex-col cursor-pointer group transition-transform duration-300 hover:-translate-y-1"
+      className="flex flex-col cursor-pointer group card-premium transition-transform duration-300 hover:-translate-y-1"
       onClick={() => navigate({ kind: "watch", videoId: video.id })}
       onMouseEnter={startPreview}
       onMouseLeave={stopPreview}

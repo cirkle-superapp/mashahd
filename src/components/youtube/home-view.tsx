@@ -10,6 +10,7 @@ import { StreakBadge } from "./streak-badge";
 import { TimeOfDayMood } from "./time-of-day-mood";
 import { ShortsShelf } from "./shorts-shelf";
 import { TrendingDigest } from "./trending-digest";
+import { CinematicHeroBanner } from "./cinematic-hero-banner";
 import { ContinueWatchingShelf } from "./continue-watching-shelf";
 import { LiveNowShelf } from "./live-now-shelf";
 import { LiveTVShelf } from "./live-tv-shelf";
@@ -261,6 +262,9 @@ export function HomeView() {
 
   return (
     <div className="animate-fade-up">
+      {/* Cinematic Hero Banner — featured video at the top of the home page.
+          Only on the default home view (not when a category/mood is selected). */}
+      {isDefaultHome && <CinematicHeroBanner />}
       <CategoryChips active={mood ? "All" : category} onSelect={(c) => { setCategory(c); setMood(null); }} />
       {/* §15 — Trending sponsored hashtags. A single horizontal row of
           gold-tinted chips shown only on the default home view, hidden
@@ -310,18 +314,17 @@ export function HomeView() {
           reinforces Mashahd's AI-native identity with a curated editorial
           wrap-up of today's trending videos. */}
       {isDefaultHome && <TrendingDigest />}
-      {/* Live Now shelf — surfaces currently-broadcasting live streams
-          (Pass 47). Reads from the LiveStream table via /api/live-streams.
-          Hidden automatically when no streams are live. */}
+      {/* Premium section divider between AI digest and live shelves */}
+      {isDefaultHome && <div className="section-divider" />}
+      {/* Live Now shelf */}
       {isDefaultHome && <LiveNowShelf />}
-      {/* Live TV shelf — shows live TV channels streaming on Mashahd (Pass 77).
-          Hidden automatically when no TV channels exist. */}
+      {/* Live TV shelf */}
       {isDefaultHome && <LiveTVShelf />}
-      {/* Continue Watching shelf — shows unfinished videos with resume positions.
-          Per spec §32. Only on the default home view. */}
+      {/* Continue Watching shelf */}
       {isDefaultHome && continueWatchingEnabled && <ContinueWatchingShelf />}
-      {/* Shorts shelf — only on the default home feed (not when a mood or
-          specific category is selected). Respects disableShorts preference (§16). */}
+      {/* Premium section divider between shelves and feed */}
+      {isDefaultHome && !disableShorts && <div className="section-divider" />}
+      {/* Shorts shelf */}
       {isDefaultHome && !disableShorts && <ShortsShelf />}
       {/* Feed mode toggles — §63-64. Three small toggle buttons next to
           the FYP badge area. "Discovery" fetches intentionally different
