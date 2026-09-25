@@ -110,7 +110,7 @@ Respond in EXACTLY this JSON shape (no markdown fences, no preamble):
 
 The first segment MUST start at 0. The last segment MUST end at or before ${duration}. Segments MUST be in chronological order with no gaps.`;
 
-  // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
+  // aiChat() returns source from the 5-provider consensus: "groq"|"openrouter"|"nvidia"|"gemini"|"hf"|"fallback". Normalize
   // to the legacy "ai"|"fallback" values the client already checks against.
   const { text, source: aiSource } = await aiChat({
     system: "You generate realistic video transcripts as JSON.",

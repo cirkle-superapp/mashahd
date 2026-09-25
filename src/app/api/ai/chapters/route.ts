@@ -62,7 +62,7 @@ Rules:
 - Chapters must be in ascending order by seconds.
 - Titles <= 40 chars. Summaries <= 100 chars.`;
 
-  // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
+  // aiChat() returns source from the 5-provider consensus: "groq"|"openrouter"|"nvidia"|"gemini"|"hf"|"fallback". Normalize
   // to the legacy "ai"|"fallback" values the client already checks against.
   const { text, source: aiSource } = await aiChat({
     system: "You emit valid JSON only — no markdown fences, no prose.",

@@ -66,12 +66,20 @@ declare -A REQUIRED_VARS=(
   ["P2P_LOW_BATTERY_MODE"]="true"
   ["TURN_ENABLED"]="false"
   ["ALLOWED_ORIGINS"]="https://mashahd.vercel.app,http://localhost:3000"
-  # AI Providers — check presence only (actual values are in .env, gitignored,
-  # NOT committed to git). The ensure-env.sh script only verifies these keys
-  # exist in .env; it does NOT restore their secret values. If missing, a
-  # warning is printed so the user knows to add them to .env manually.
-  # The keys are: GROQ_API_KEY, OPENROUTER_API_KEY, NVIDIA_API_KEY,
-  # GEMINI_API_KEY, HF_API_KEY (values set in .env + on Vercel).
+  # AI Providers — 5-provider consensus mode (Pass 81, 2026-09-25).
+  # All 5 are invoked in parallel by src/lib/ai-provider.ts; the longest
+  # non-empty response wins. These are REQUIRED_VARS so they auto-restore
+  # if .env gets stripped (regression that bit us once already).
+  # SECRET HANDLING: the actual values are NEVER hardcoded in this script
+  # (GitHub Push Protection blocks commits containing API keys). Instead,
+  # the values are read from the operator's OS env vars at restore time.
+  # If the OS env vars are unset, the script prints a clear warning telling
+  # the operator to export them before running `bun run dev`.
+  ["GROQ_API_KEY"]="${GROQ_API_KEY:-}"
+  ["OPENROUTER_API_KEY"]="${OPENROUTER_API_KEY:-}"
+  ["NVIDIA_API_KEY"]="${NVIDIA_API_KEY:-}"
+  ["GEMINI_API_KEY"]="${GEMINI_API_KEY:-}"
+  ["HF_API_KEY"]="${HF_API_KEY:-}"
 )
 
 # Read existing .env into an associative array.
@@ -89,30 +97,15 @@ if [ -f "$ENV_FILE" ]; then
 fi
 
 # Also check OS environment variables (Vercel sets these directly).
-for key in "${!REQUIRED_VARS[@]}" "${PRESENCE_ONLY_KEYS[@]:-}"; do
+for key in "${!REQUIRED_VARS[@]}"; do
   env_val=$(printenv "$key" 2>/dev/null || true)
   if [ -n "$env_val" ] && [ -z "${EXISTING[$key]:-}" ]; then
     EXISTING["$key"]="$env_val"
   fi
 done
 
-# Check each required var.
+# Check each required var (includes the 5 AI providers as of Pass 81).
 for key in "${!REQUIRED_VARS[@]}"; do
-  if [ -z "${EXISTING[$key]:-}" ]; then
-    MISSING+=("$key")
-  fi
-done
-
-# Also check presence-only keys (AI providers — values are secrets that
-# must NOT be committed to git. We only verify they exist in .env.)
-PRESENCE_ONLY_KEYS=(
-  "GROQ_API_KEY"
-  "OPENROUTER_API_KEY"
-  "NVIDIA_API_KEY"
-  "GEMINI_API_KEY"
-  "HF_API_KEY"
-)
-for key in "${PRESENCE_ONLY_KEYS[@]}"; do
   if [ -z "${EXISTING[$key]:-}" ]; then
     MISSING+=("$key")
   fi
@@ -124,16 +117,6 @@ if [ ${#MISSING[@]} -gt 0 ]; then
     echo "" >> "$ENV_FILE"
     echo "# ── Restored by scripts/ensure-env.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ) ──" >> "$ENV_FILE"
     for key in "${MISSING[@]}"; do
-      # Skip presence-only keys (AI providers) — their values are secrets
-      # that must NOT be committed to git. Just print a warning.
-      is_presence_only=0
-      for pkey in "${PRESENCE_ONLY_KEYS[@]}"; do
-        if [ "$key" = "$pkey" ]; then is_presence_only=1; break; fi
-      done
-      if [ "$is_presence_only" -eq 1 ]; then
-        echo "  ⚠ $key is missing (add the real value to .env manually)"
-        continue
-      fi
       echo "$key=${REQUIRED_VARS[$key]}" >> "$ENV_FILE"
       RESTORED=$((RESTORED + 1))
     done

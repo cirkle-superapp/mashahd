@@ -47,7 +47,7 @@ Generate exactly 4 short comment-style conversation starters (each <= 120 chars)
 
 Respond with EXACTLY 4 lines, nothing else.`;
 
-  // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
+  // aiChat() returns source from the 5-provider consensus: "groq"|"openrouter"|"nvidia"|"gemini"|"hf"|"fallback". Normalize
   // to the legacy "ai"|"fallback" values the client already checks against.
   const { text, source: aiSource } = await aiChat({
     system: "You emit exactly 4 short lines, no preamble, no numbering.",

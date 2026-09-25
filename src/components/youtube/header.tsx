@@ -66,7 +66,7 @@ export function Header() {
           onClick={() => navigate({ kind: "home" })}
           aria-label="Mashahd home"
         >
-          <MashahdLogo size={28} />
+          <MashahdLogo size={32} />
         </button>
 
       {/* Center: search */}

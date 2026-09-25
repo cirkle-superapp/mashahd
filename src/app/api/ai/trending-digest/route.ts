@@ -79,7 +79,7 @@ ${lines.join("\n")}
 
 Respond with the digest text only — no markdown, no quotes, no preamble.`;
 
-  // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
+  // aiChat() returns source from the 5-provider consensus: "groq"|"openrouter"|"nvidia"|"gemini"|"hf"|"fallback". Normalize
   // to the legacy "ai"|"fallback" values the client already checks against.
   const { text, source: aiSource } = await aiChat({
     system: "You write short, punchy editorial digests for a video app.",

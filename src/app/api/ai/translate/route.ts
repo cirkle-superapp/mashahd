@@ -49,7 +49,7 @@ Respond as a JSON object with an array "translations" of ${arr.length} strings, 
 Input:
 ${numbered}`;
 
-  // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
+  // aiChat() returns source from the 5-provider consensus: "groq"|"openrouter"|"nvidia"|"gemini"|"hf"|"fallback". Normalize
   // to the legacy "ai"|"fallback" values the client already checks against.
   const { text, source: aiSource } = await aiChat({
     system: "You are a professional translator. You emit valid JSON only.",

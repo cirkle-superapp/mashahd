@@ -55,7 +55,18 @@ while IFS='=' read -r key id; do
 done < /tmp/existing-envs.txt
 echo "Found ${#EXISTING_IDS[@]} existing env vars"
 
-# The 13 production credentials for the 5-service stack.
+# The production credentials for the 5-service stack + 5 AI providers (Pass 81).
+# SECRET HANDLING: the 5 AI provider keys (GROQ_API_KEY, OPENROUTER_API_KEY,
+# NVIDIA_API_KEY, GEMINI_API_KEY, HF_API_KEY) are NEVER hardcoded in this
+# script (GitHub Push Protection blocks commits containing API keys). The
+# operator exports them as OS env vars before running this script:
+#   export GROQ_API_KEY=gsk_...
+#   export OPENROUTER_API_KEY=sk-or-v1-...
+#   export NVIDIA_API_KEY=nvapi-...
+#   export GEMINI_API_KEY=AQ.Ab...
+#   export HF_API_KEY=hf_...
+#   VERCEL_TOKEN=<token> bash scripts/set-vercel-env.sh
+# The script reads them via ${VAR:-} expansion and pushes to Vercel.
 declare -a VARS=(
   "APP_URL=https://mashahd.vercel.app"
   "BROWSER_ID_SECRET=mashahd-dev-stable-secret-9f3b7e2a8c1d4f6b0e5a2c8d7f1b4e9a"
@@ -67,7 +78,46 @@ declare -a VARS=(
   "INNGEST_KEY=signkey-prod-5e79fc7120134801543036c7ea0f33fea548e5ddda74443b0e4d627a62675b0d"
   "INNGEST_WEBHOOK_SECRET=signkey-prod-5e79fc7120134801543036c7ea0f33fea548e5ddda74443b0e4d627a62675b0d"
   "ALLOWED_ORIGINS=https://mashahd.vercel.app,http://localhost:3000"
+  # AI Providers — 5-provider consensus mode (Pass 81, 2026-09-25).
+  # All 5 are invoked in parallel by src/lib/ai-provider.ts; longest non-empty
+  # response wins. Values are read from operator's OS env vars (see header).
+  "GROQ_API_KEY=${GROQ_API_KEY:-}"
+  "OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}"
+  "NVIDIA_API_KEY=${NVIDIA_API_KEY:-}"
+  "GEMINI_API_KEY=${GEMINI_API_KEY:-}"
+  "HF_API_KEY=${HF_API_KEY:-}"
 )
+
+# Validate AI keys are exported before pushing — otherwise Vercel would
+# receive empty values and AI consensus would fail in production.
+AI_MISSING=()
+for k in GROQ_API_KEY OPENROUTER_API_KEY NVIDIA_API_KEY GEMINI_API_KEY HF_API_KEY; do
+  if [ -z "${!k:-}" ]; then AI_MISSING+=("$k"); fi
+done
+if [ ${#AI_MISSING[@]} -gt 0 ]; then
+  echo ""
+  echo "═══════════════════════════════════════════════════════════════"
+  echo "  ⚠ ${#AI_MISSING[@]} AI provider key(s) NOT exported — skipping them."
+  echo "═══════════════════════════════════════════════════════════════"
+  for k in "${AI_MISSING[@]}"; do echo "  ✗ $k"; done
+  echo ""
+  echo "  To set them on Vercel, export each before running this script:"
+  echo "    export GROQ_API_KEY=...      # from https://console.groq.com/keys"
+  echo "    export OPENROUTER_API_KEY=...# from https://openrouter.ai/keys"
+  echo "    export NVIDIA_API_KEY=...    # from https://build.nvidia.com/"
+  echo "    export GEMINI_API_KEY=...    # from https://aistudio.google.com/"
+  echo "    export HF_API_KEY=...        # from https://huggingface.co/settings/tokens"
+  echo ""
+  # Filter out the missing-AI entries from VARS so we don't push empty values.
+  NEW_VARS=()
+  for entry in "${VARS[@]}"; do
+    KEY="${entry%%=*}"
+    skip=0
+    for m in "${AI_MISSING[@]}"; do [ "$KEY" = "$m" ] && skip=1 && break; done
+    [ "$skip" = "0" ] && NEW_VARS+=("$entry")
+  done
+  VARS=("${NEW_VARS[@]}")
+fi
 
 SUCCESS=0
 FAILED=0

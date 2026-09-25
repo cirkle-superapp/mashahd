@@ -64,7 +64,7 @@ Description: ${(video.description || "").slice(0, 700)}
 
 ${boundUserInput(safeQuestion, "Oracle", "Answer the viewer's question about the video above in 2-4 sentences, conversational, no markdown headers.")}`;
 
-  // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
+  // aiChat() returns source from the 5-provider consensus: "groq"|"openrouter"|"nvidia"|"gemini"|"hf"|"fallback". Normalize
   // to the legacy "ai"|"fallback" values the client already checks against.
   const { text, source: aiSource } = await aiChat({
     system: "You are the Mashahd Oracle — concise, helpful, honest.",

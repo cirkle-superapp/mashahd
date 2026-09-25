@@ -86,7 +86,7 @@ export function Footer() {
           shadcn/ui. Brand mark &amp; AI feature concepts adapted from CIRKLE
           (دواير). All channels, videos and comments shown here are demo
           content. Video playback uses Google&apos;s public sample MP4s;
-          thumbnails are fetched via the z-ai image-search service.
+          thumbnails are fetched via an image-search service.
         </p>
       </div>
     </footer>

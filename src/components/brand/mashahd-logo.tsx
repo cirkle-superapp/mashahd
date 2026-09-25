@@ -52,10 +52,14 @@ export function MashahdMark({
       {...(animProps as Record<string, unknown>)}
     >
       <defs>
+        {/* Gradient stops mirror CIRKLE's CircleMark exactly: gold → rose → teal.
+            We use the saturated base tokens (--gold, --teal) rather than the
+            -light variants, so the brand mark reads at small sizes (28-32px)
+            and stays visually identical to the CIRKLE super-app mark. */}
         <linearGradient id="mashahd-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="hsl(var(--gold-light))" />
+          <stop offset="0%" stopColor="hsl(var(--gold))" />
           <stop offset="50%" stopColor="hsl(var(--rose))" />
-          <stop offset="100%" stopColor="hsl(var(--teal-light))" />
+          <stop offset="100%" stopColor="hsl(var(--teal))" />
         </linearGradient>
       </defs>
       {/* Three interlocking circles forming a triangle (Venn-like). */}

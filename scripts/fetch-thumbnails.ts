@@ -1,13 +1,35 @@
 /**
- * One-off script: fetch real video thumbnails via the z-ai image-search service.
- * ALREADY RUN — thumbnails are in /home/z/my-project/tmp/img-search/all.json.
- * Kept for reference only. z-ai has been removed from the project.
+ * One-off script: fetch real video thumbnails via an image-search service.
  *
- * Run with: bun run scripts/fetch-thumbnails.ts (will fail — z-ai removed)
+ * STATUS: ALREADY RUN — thumbnails are in /home/z/my-project/tmp/img-search/all.json.
+ * Kept for reference only.
+ *
+ * HISTORY: This script originally used z-ai-web-dev-sdk. As of Pass 81
+ * (2026-09-25), z-ai has been COMPLETELY REMOVED from the project (no
+ * z-ai-web-dev-sdk in package.json, no z-ai imports anywhere in src/).
+ * The original z-ai SDK import is therefore stubbed out below — re-running
+ * this script will print a clear "z-ai removed" message and exit.
+ *
+ * To re-fetch thumbnails in the future, swap the stub for any direct
+ * image-search API (e.g. Pexels, Unsplash, Bing Image Search) — none of
+ * them touch the runtime app code.
  */
-// @ts-ignore - z-ai-web-dev-sdk has been removed from the project
-import ZAI from "z-ai-web-dev-sdk";
 import { writeFileSync, mkdirSync } from "node:fs";
+
+// Stub for the removed z-ai-web-dev-sdk. Calling .create() throws a clear
+// error so any future developer who tries to re-run this knows immediately
+// what's missing and what to swap in.
+const ZAI = {
+  create(): Promise<never> {
+    return Promise.reject(
+      new Error(
+        "z-ai-web-dev-sdk has been removed from this project (Pass 81, 2026-09-25). " +
+          "Re-fetching thumbnails requires swapping in a direct image-search API. " +
+          "See the header doc of this script for details."
+      )
+    );
+  },
+};
 
 const queries: { key: string; query: string }[] = [
   { key: "travel", query: "scenic mountain landscape travel destination aerial view" },
@@ -23,7 +45,10 @@ const queries: { key: string; query: string }[] = [
 const OUT_DIR = "/home/z/my-project/tmp/img-search";
 mkdirSync(OUT_DIR, { recursive: true });
 
-const zai = await ZAI.create();
+const zai = await ZAI.create().catch((e: Error) => {
+  console.error(`[fetch-thumbnails] ${e.message}`);
+  process.exit(1);
+});
 
 const all: Record<string, { original_url: string; source: string; width: string; height: string }[]> = {};
 

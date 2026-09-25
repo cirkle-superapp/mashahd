@@ -9,8 +9,9 @@ import { rateLimit, getClientIP } from "@/lib/rate-limiter";
  *
  * AI Recap (adapted from CIRKLE's ai-recap overlay). Generates a concise
  * "recap" of a video — a 2-sentence TL;DR plus 3-4 key-takeaway bullets —
- * using the multi-provider LLM abstraction (z-ai → Groq → Gemini → HF →
- * deterministic fallback). Falls back to a deterministic summary if every
+ * using the 5-provider consensus LLM abstraction (Groq + OpenRouter +
+ * NVIDIA + Gemini + HuggingFace, fired in parallel; longest non-empty
+ * response wins). Falls back to a deterministic summary if every
  * provider fails or the response isn't valid JSON.
  */
 export async function POST(req: NextRequest) {
@@ -54,7 +55,7 @@ Respond in EXACTLY this JSON shape (no markdown fences, no extra text):
   "vibe": "one-word mood label, e.g. Reflective, Energetic, Cozy, Curious"
 }`;
 
-  // aiChat() returns source: "z-ai"|"groq"|"gemini"|"hf"|"fallback". Normalize
+  // aiChat() returns source from the 5-provider consensus: "groq"|"openrouter"|"nvidia"|"gemini"|"hf"|"fallback". Normalize
   // to the legacy "ai"|"fallback" values the client already checks against.
   const { text, source: aiSource } = await aiChat({
     system: "You produce tight, accurate video recaps in JSON.",

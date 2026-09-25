@@ -1,7 +1,8 @@
 /**
  * Seed data for the YouTube-like demo. All thumbnails are real images
- * fetched via z-ai image-search (OSS-hosted, embeddable). Channel avatars
- * use DiceBear (deterministic). Video files are Google's public sample MP4s.
+ * fetched via an image-search service (OSS-hosted, embeddable). Channel
+ * avatars use DiceBear (deterministic). Video files are Google's public
+ * sample MP4s.
  *
  * The seed route imports this and writes everything to SQLite.
  */
@@ -153,7 +154,7 @@ export const channels: SeedChannel[] = [
   },
 ];
 
-// Thumbnails keyed by category (from z-ai image-search)
+// Thumbnails keyed by category (from image-search service)
 const T = {
   tech: [
     "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/e4eefcaed8df.jpg",
