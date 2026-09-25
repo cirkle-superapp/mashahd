@@ -8382,3 +8382,60 @@ Stage Summary:
 - AI consensus: all 5 providers active in production (groq + openrouter + nvidia + gemini + hf = 5/5). Production AI summarize returns valid JSON in 3.75s.
 - Cost: $0/month (zero-cost-by-default 5-service stack: GitHub + Vercel + Inngest + Neon + Turso).
 - Open item: the new Groq key is in .env (gitignored) and on the dev box, but is NOT yet set as a Vercel env var (no VERCEL_TOKEN available in this session). The existing Vercel deployment is still using the OLD Groq key for production AI calls. To push the new Groq key to Vercel, the operator must run: `export GROQ_API_KEY=gsk_...; VERCEL_TOKEN=<token> bash scripts/set-vercel-env.sh`. The other 4 AI keys are unchanged and already on Vercel from prior runs.
+
+---
+Task ID: 83
+Agent: main
+Task: User request (wearing COO + CTO + PM + Social Media Structuring Expert + UI Architect hats): verify nothing deleted, harden + backup + prevent rollback to older git, implement per-provider model fallback ("if one model fails, make the model choose another model for each model"), push to all 5 services (GitHub + Vercel + Inngest + Turso + Neon).
+
+Work Log:
+- COO/CTO/PM/Social-Media audit (Phase 1):
+  * scripts/verify-protected.sh --check → exit 0. All 107 protected files present on disk.
+  * Git hooks intact: .git/hooks/pre-commit (9160 bytes, hardened) + .git/hooks/pre-push (4749 bytes, anti-rollback).
+  * Pre-push hook blocks 3 anti-rollback scenarios: (1) main/master deletion, (2) rollback pushes (local BEHIND remote), (3) force-push to main (non-fast-forward history rewrite). Override: MASHAHD_ALLOW_FORCE_PUSH=1 (disaster recovery only).
+- Found + fixed STALE-PATH BUG in protected-files manifest: scripts/verify-protected.sh + .git/hooks/pre-commit both listed 'src/app/providers.tsx' which NEVER existed in git HEAD (actual file is at src/components/providers.tsx). The bug was silently passing because the script's logic was: if file missing on disk AND not in HEAD → silently skip. Fixed:
+  * Updated both manifests: 'src/app/providers.tsx' → 'src/components/providers.tsx'.
+  * Hardened scripts/verify-protected.sh: added STALE[] detection that fails LOUDLY with exit 2 (distinct from MISSING's exit 1) when a manifest path never existed in HEAD. The old silent-ignore behavior gave false confidence the audit was working.
+- UI Architect audit (Phase 2): VLM brutally audited the home page (modal was visible). Brand-mark clarity rated 3/10 — "extremely faint, light grey outline, lacks vibrant Gold→Rose→Teal gradient". Other dimensions 8-9/10.
+- Root-caused the brand-mark ghostliness:
+  * CIRKLE's original CircleMark uses default gradientUnits (objectBoundingBox). This means EACH circle gets its OWN gold→rose→teal gradient mapped to its OWN 44×44 bounding box. At small render sizes (28-48px), the per-circle gradient renders as a uniform muddy grey.
+  * The 3 circles are clustered around the vertical middle of the viewBox (top circle y=10-54, bottom circles y=38-82). A diagonal gradient (0,0 → 100,100) maps all 3 circles to the gradient's middle (rose), making the mark uniformly dusty rose.
+  * opacity=0.9 was further dropping color saturation on the modal's glass-strong background.
+- UI fix (3 iterations):
+  * Iter 1: Added strokeWidth prop to MashahdMark; bumped modal logo from 48px stroke=1.5 → 56px stroke=4. VLM still rated 2/10 ("very faint").
+  * Iter 2: Changed gradient to gradientUnits='userSpaceOnUse' with x1=0 y1=0 x2=100 y2=100 (whole-SVG bounding box). VLM rated 2/10 ("uniform dusty rose" — because all 3 circles map to the gradient's middle).
+  * Iter 3 (final): Changed gradient to VERTICAL (x1=0 y1=0 x2=0 y2=100) with userSpaceOnUse. Top circle now in gold→rose band, bottom circles in rose→teal band. Bumped opacity 0.9 → 1.0. Bumped modal stroke to 5 + size to 64px. VLM rated 8/10: "Top: Gold/Warm Amber. Left: Rose/Dusty Pink. Right: Teal/Muted Blue-Green. Center dot shows concentrated blend."
+- AI provider enhancement (Phase 3): per user request "if one model fails, make the model choose another model for each model":
+  * Expanded each provider's model fallback chain. Groq (3 models) + OpenRouter (4 models) were already chains — kept.
+  * NVIDIA: 1 → 4 models: meta/llama-3.2-11b-vision-instruct → meta/llama-3.1-70b-instruct → meta/llama-3.1-8b-instruct → nvidia/llama-3.1-nemotron-70b-instruct.
+  * Gemini: 1 → 4 models: gemini-flash-latest → gemini-1.5-flash → gemini-1.5-flash-8b → gemini-2.0-flash.
+  * HuggingFace: 1 → 4 models: mistralai/Mistral-7B-Instruct-v0.2 → meta-llama/Meta-Llama-3-8B-Instruct → HuggingFaceH4/zephyr-7b-beta → google/gemma-7b-it.
+  * Each provider tries its models in sequence; first non-empty response wins. If all 4 models fail, the provider returns null and the consensus moves on.
+  * TWO LAYERS OF FALLBACK: Layer A (per-provider) tries each provider's models in sequence. Layer B (cross-provider) fires all 5 providers in parallel via Promise.allSettled; longest non-empty response wins (consensus quorum). Total up to 5 × 4 = 20 model attempts per request.
+- Backup (Phase 5): ran scripts/backup.sh. 3 backups retained at backups/custom-20260925-183748.db, schema-20260925-183748.prisma, worklog-20260925-183748.md.
+- Push to GitHub: commit 64dc6ae pushed to origin/main (6c1f158..64dc6ae main -> main). No Push Protection violations (all AI key values use ${VAR:-} expansion, no hardcoded secrets in source).
+- Vercel auto-deploy (Phase 6): waited 90s. All endpoints verified:
+  * https://mashahd.vercel.app/ → HTTP 200 (0.36s).
+  * /api/ready → {"status":"ready"}.
+  * /api/cost-dashboard → all 5 services HEALTHY:
+    - Turso: HEALTHY, circuit CLOSED, 144 rows total (35 videos + 13 channels + 89 comments + 3 users + 4 sessions).
+    - Vercel: HEALTHY, free tier.
+    - Inngest: HEALTHY, configured=true (auto-synced from /api/inngest on Vercel deploy).
+    - Neon: HEALTHY (analytics + DR).
+    - AI (5): HEALTHY, activeCount=5/5 (groq + openrouter + nvidia + gemini + hf all configured).
+  * Cost: $0/month (zero-cost-by-default 5-service stack).
+- Production AI consensus smoke test (5 providers × 4 models = 20 attempts):
+  * POST /api/ai/summarize { videoId: cmtxhplp0dolq3ghq } → 200 in 3.85s. Valid JSON recap with tldr + 3 takeaways + bestMoment + vibe="Triumphant". Source: "ai" (consensus winner).
+  * POST /api/ai/oracle { videoId, question } → 200 in 1.74s. Valid response. Source: "ai".
+- Inngest auto-sync: NO manual sync needed — Inngest auto-discovers functions via the /api/inngest endpoint on every Vercel deploy.
+- Turso schema sync: NO sync needed — prisma/schema.prisma unchanged in this session.
+- Neon schema sync: NO sync needed — same reason.
+
+Stage Summary:
+- COO/CTO audit: 107 protected files present. Stale-path bug in manifest found + fixed. Stale-path detection now fails loudly (exit 2) instead of silently passing.
+- Anti-rollback guards: pre-push hook blocks 3 cases (deletion, rollback, force-push). Override: MASHAHD_ALLOW_FORCE_PUSH=1 for disaster recovery only.
+- Backup: 3 backups retained (DB + schema + worklog).
+- UI Architect: brand-mark visibility 2/10 → 8/10 (added strokeWidth prop, fixed gradient to vertical+userSpaceOnUse, bumped opacity to 1.0, modal logo 48→64px stroke 1.5→5).
+- AI consensus: 5 providers × 4 models = 20 model attempts per request. Two layers of fallback (per-provider model chain + cross-provider consensus).
+- Production verified: all 5 services HEALTHY, AI consensus returns valid responses in 1.7-3.9s, cost $0/month.
+- Commit 64dc6ae on GitHub main, Vercel auto-deployed, Inngest auto-synced, Turso + Neon schemas unchanged.
