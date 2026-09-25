@@ -75,6 +75,8 @@ declare -A REQUIRED_VARS=(
 )
 
 # Read existing .env into an associative array.
+# Also check actual environment variables (for Vercel/production where
+# env vars are set directly, not via a .env file).
 declare -A EXISTING=()
 if [ -f "$ENV_FILE" ]; then
   while IFS='=' read -r key value; do
@@ -85,6 +87,14 @@ if [ -f "$ENV_FILE" ]; then
     EXISTING["$key"]="$value"
   done < "$ENV_FILE"
 fi
+
+# Also check OS environment variables (Vercel sets these directly).
+for key in "${!REQUIRED_VARS[@]}" "${PRESENCE_ONLY_KEYS[@]:-}"; do
+  env_val=$(printenv "$key" 2>/dev/null || true)
+  if [ -n "$env_val" ] && [ -z "${EXISTING[$key]:-}" ]; then
+    EXISTING["$key"]="$env_val"
+  fi
+done
 
 # Check each required var.
 for key in "${!REQUIRED_VARS[@]}"; do

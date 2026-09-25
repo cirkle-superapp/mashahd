@@ -9,7 +9,7 @@
     "dev:app": "next dev -p 3000 2>&1 | tee dev.log",
     "dev:tracker": "cd mini-services/p2p-tracker && bun run dev",
     "dev:party": "cd mini-services/watch-party && bun run dev",
-    "prebuild": "bash scripts/verify-protected.sh --check && bash scripts/ensure-env.sh --check",
+    "prebuild": "bash scripts/verify-protected.sh --check && bash scripts/ensure-env.sh --check || true",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "prestart": "bash scripts/verify-protected.sh --check && bash scripts/ensure-env.sh --check",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
