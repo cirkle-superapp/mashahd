@@ -18,9 +18,13 @@ import { writeFileSync, mkdirSync } from "node:fs";
 
 // Stub for the removed z-ai-web-dev-sdk. Calling .create() throws a clear
 // error so any future developer who tries to re-run this knows immediately
-// what's missing and what to swap in.
+// what's missing and what to swap in. The `as any` cast on the .create()
+// return lets the script keep its original zai.images.search.create(...)
+// call shape without TypeScript flagging it (the stub never returns
+// successfully — it always throws — so the script never reaches the
+// .images.search.create line at runtime).
 const ZAI = {
-  create(): Promise<never> {
+  create(): Promise<any> {
     return Promise.reject(
       new Error(
         "z-ai-web-dev-sdk has been removed from this project (Pass 81, 2026-09-25). " +
@@ -45,7 +49,10 @@ const queries: { key: string; query: string }[] = [
 const OUT_DIR = "/home/z/my-project/tmp/img-search";
 mkdirSync(OUT_DIR, { recursive: true });
 
-const zai = await ZAI.create().catch((e: Error) => {
+// zai is typed as `any` because ZAI.create() throws at runtime; the stub
+// never actually returns a value. The .catch() exits the process before
+// any code below this line can run.
+const zai: any = await ZAI.create().catch((e: Error) => {
   console.error(`[fetch-thumbnails] ${e.message}`);
   process.exit(1);
 });

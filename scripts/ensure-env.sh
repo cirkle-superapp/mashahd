@@ -114,17 +114,53 @@ done
 if [ ${#MISSING[@]} -gt 0 ]; then
   if [ "$CHECK_ONLY" -eq 0 ]; then
     # Restore: append the missing vars to .env.
-    echo "" >> "$ENV_FILE"
-    echo "# ── Restored by scripts/ensure-env.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ) ──" >> "$ENV_FILE"
+    # CRITICAL: do NOT restore AI provider keys with empty values. The
+    # ${VAR:-} expansion in REQUIRED_VARS gives an empty string when the
+    # operator hasn't exported the AI keys to OS env. Writing empty values
+    # to .env would clobber the real keys on the next dev server restart
+    # (Pass 85 regression — every AI call would fail).
+    SKIPPED_EMPTY=()
+    RESTORABLE=()
     for key in "${MISSING[@]}"; do
-      echo "$key=${REQUIRED_VARS[$key]}" >> "$ENV_FILE"
-      RESTORED=$((RESTORED + 1))
+      val="${REQUIRED_VARS[$key]}"
+      if [ -z "$val" ]; then
+        SKIPPED_EMPTY+=("$key")
+      else
+        RESTORABLE+=("$key")
+      fi
     done
+
+    if [ ${#RESTORABLE[@]} -gt 0 ]; then
+      echo "" >> "$ENV_FILE"
+      echo "# ── Restored by scripts/ensure-env.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ) ──" >> "$ENV_FILE"
+      for key in "${RESTORABLE[@]}"; do
+        echo "$key=${REQUIRED_VARS[$key]}" >> "$ENV_FILE"
+        RESTORED=$((RESTORED + 1))
+      done
+    fi
+
+    if [ ${#SKIPPED_EMPTY[@]} -gt 0 ]; then
+      echo ""
+      echo "═══════════════════════════════════════════════════════════════"
+      echo "  ⚠ ${#SKIPPED_EMPTY[@]} var(s) SKIPPED (empty value — would clobber real key)"
+      echo "═══════════════════════════════════════════════════════════════"
+      echo "  These vars are listed in REQUIRED_VARS but their value resolved to"
+      echo "  empty (the operator hasn't exported them to OS env). NOT writing them"
+      echo "  to .env to avoid clobbering the real values."
+      echo ""
+      for key in "${SKIPPED_EMPTY[@]}"; do
+        echo "  ⚠ skipped: $key"
+      done
+      echo ""
+      echo "  To restore manually, add the real value to .env:"
+      echo "    echo '$key=<real-value>' >> .env"
+      echo ""
+    fi
     echo ""
     echo "═══════════════════════════════════════════════════════════════"
-    echo "  .ENV VERIFICATION — ${#MISSING[@]} missing var(s) restored"
+    echo "  .ENV VERIFICATION — ${#RESTORABLE[@]} restored, ${#SKIPPED_EMPTY[@]} skipped (empty values)"
     echo "═══════════════════════════════════════════════════════════════"
-    for key in "${MISSING[@]}"; do
+    for key in "${RESTORABLE[@]}"; do
       echo "  ↻ restored: $key"
     done
     echo ""
