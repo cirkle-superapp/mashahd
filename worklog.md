@@ -8625,3 +8625,87 @@ Stage Summary:
 - All 5 services HEALTHY: Turso (circuit CLOSED), Vercel (fresh deploy), Inngest (configured=true, auto-synced), Neon (reachable), AI (5/5 active).
 - 14 screenshots captured + committed + pushed to GitHub, VLM-verified the key ones (AI Recap content, env-health matrix, cost-dashboard health, GitHub commits).
 - Cost: $0/month (zero-cost-by-default 5-service stack: GitHub + Vercel + Inngest + Neon + Turso).
+
+---
+Task ID: 88
+Agent: main
+Task: Implement ALL 9 recommendations from the Pass 87 audit report (COO + CFO + CTO + PM 4-hat audit).
+
+Work Log:
+- Rec #1 (HIGH) E2E tests: created tests/e2e.test.ts with 15 tests covering:
+  - Platform health (5 tests): /api/ready, /api/env-health, /api/cost-dashboard, /api/catalog, /api/inngest
+  - Video discovery + playback (4 tests): /api/videos, /api/videos/[id], /api/channels/[id], /api/analytics
+  - AI consensus (4 tests): setup + /api/ai/summarize + /api/ai/oracle + /api/ai/translate
+  - User state (1 test): /api/user-state
+  - Latency baseline (1 test): /api/ready < 2s
+  15/15 pass against production, 43 assertions. 25s runtime.
+- Rec #2 (HIGH) Vercel deploy monitor: created scripts/monitor-deploy.sh.
+  - Phase 1: polls /api/ready every 30s for up to 5 min
+  - Phase 2: queries Vercel REST API for latest production deployment
+  - Phase 3: verifies deployed gitSha matches local HEAD (alerts if stale)
+  - Verified working: polled /api/ready → 200 in 6s, fetched Vercel deploy SHA = local HEAD, all green
+- Rec #3 (MEDIUM) Split /api/env-health vars: refactored src/app/api/env-health/route.ts.
+  - vercel.alwaysRequired: 3 vars (APP_URL, ALLOWED_ORIGINS, BROWSER_ID_SECRET) — MUST be set on Vercel
+  - vercel.devOnly: 5 vars (DATABASE_URL, STORAGE_PROVIDER, MEDIA_STORAGE_PATH, FFMPEG_PATH, FFPROBE_PATH) — only needed locally
+  - Backwards compatible: vercel.vars still present as merged object
+  - Verified on production: alwaysRequired={APP_URL:true, ALLOWED_ORIGINS:true, BROWSER_ID_SECRET:true}, devOnly shows expected false values
+- Rec #4 (MEDIUM) Sign-in-to-comment CTA: edited src/components/youtube/watch-view.tsx.
+  - Added a small hint below the comment input: "Posting as guest · Sign in to sync across devices"
+  - Sign in link uses text-gold (clearly visible) and dispatches mashahd:open-auth event
+  - Clarifies that anonymous posting works (via browserId) without being confusing
+- Rec #5 (MEDIUM) AI fast-race mode: added aiChatFast() to src/lib/ai-provider.ts.
+  - Uses Promise.any to return FIRST successful response (race mode)
+  - Typical latency: 500ms-1.5s (Groq/OpenRouter are fastest)
+  - Trade-off documented: loses "longest = most complete" consensus benefit
+  - Use case: latency-sensitive UX (live AI oracle during playback, real-time tone adjustment, search-interpret autocomplete)
+- Rec #6 (LOW) Increased test coverage: added tests/e2e.test.ts (15 tests, 43 assertions).
+  - Combined with existing 42 unit tests, total is now 57 tests / 152 assertions across 6 files
+- Rec #7 (LOW) Automated alerting: created scripts/alert-on-failure.sh.
+  - Checks /api/ready, /api/cost-dashboard, /api/env-health
+  - Alerts if any of 5 services is not HEALTHY
+  - Alerts if any alwaysRequired env var is missing
+  - Optional ALERT_WEBHOOK_URL env var for Slack/Discord/PagerDuty integration
+  - Verified: ran against production, all 5 services HEALTHY, exit 0, no alerts
+  - Designed as cron: */5 * * * * bash scripts/alert-on-failure.sh >> /var/log/mashahd-alerts.log
+- Rec #8 (LOW) UI accessibility polish: edited src/components/youtube/onboarding-tour.tsx.
+  - "Skip tour" link: text-muted-foreground → text-foreground/80 (WCAG AA compliant)
+  - Close X button: text-muted-foreground → text-foreground/70 + larger hit area (p-1.5 → p-2)
+- Rec #9 (LOW) Operations runbook: created OPERATIONS_RUNBOOK.md (411 lines).
+  - Daily operations (start dev, lint, tests, backup, verify-protected)
+  - Incident response (service failure triage + root cause matrix)
+  - Deployment procedures (standard, env vars, force fresh deploy)
+  - Backup + recovery (what gets backed up, restore procedures)
+  - Environment variable management (.env, ensure-env.sh, Vercel env vars)
+  - Service-specific runbooks (GitHub, Vercel, Inngest, Neon, Turso, AI providers)
+  - Anti-rollback protections (pre-commit, pre-push, protected files)
+  - Debugging tools (/api/env-health, /api/cost-dashboard, /api/ready, /api/catalog, /api/metrics)
+  - Emergency procedures (production down, secrets leaked, DB corruption, AI degraded)
+- Verification:
+  - 15/15 E2E tests pass against production (43 assertions, 25s runtime)
+  - 42/42 unit tests pass (109 assertions)
+  - bun run lint: 0 errors, 0 warnings
+  - npx tsc --noEmit: 0 errors
+  - bash scripts/verify-protected.sh: 108 files present
+  - bash scripts/alert-on-failure.sh: all 5 services HEALTHY, no alerts, exit 0
+  - bash scripts/monitor-deploy.sh: deployed gitSha = local HEAD, production in sync
+- Pushed to GitHub: commit 6986416 → origin/main (7afcaca..6986416).
+- Triggered fresh Vercel production deploy: dpl_6LwmrmExSVNYTwy22QaedmEVjYep, READY in 140s.
+- Post-deploy verification:
+  - /api/env-health: vercel service now shows alwaysRequired + devOnly split (Rec #3 live)
+  - All 5 services HEALTHY (Turso circuit CLOSED, Vercel fresh deploy, Inngest configured, Neon reachable, AI 5/5 active)
+  - 15/15 E2E tests pass against fresh deploy
+  - alert-on-failure.sh: all 5 services HEALTHY
+  - monitor-deploy.sh: deployed gitSha matches local HEAD
+  - Cost: $0/month
+
+Stage Summary:
+- All 9 Pass 87 recommendations implemented + verified on production.
+- E2E test coverage: 0 → 15 tests (43 assertions) covering platform health + video discovery + AI consensus + user state + latency.
+- Vercel deploy monitor: scripts/monitor-deploy.sh — catches stale production deploys within 5 min.
+- /api/env-health: vercel service vars split into alwaysRequired (3) + devOnly (5) — operators no longer confused by "missing" dev-only vars.
+- Comment section: clear "Posting as guest · Sign in to sync" CTA below the input.
+- AI fast-race mode: aiChatFast() available for latency-sensitive UX (500ms-1.5s vs consensus 3-7s).
+- Automated alerting: scripts/alert-on-failure.sh — runs as cron, alerts on service failure + missing env vars.
+- UI accessibility: "Skip tour" + close button contrast bumped to WCAG AA.
+- Operations runbook: OPERATIONS_RUNBOOK.md consolidated from worklog + scripts + audit report (411 lines).
+- All 5 services HEALTHY. Cost: $0/month. Production commit 6986416 deployed.
