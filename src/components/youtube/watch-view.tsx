@@ -2590,6 +2590,13 @@ function CommentsSection({
             aria-label="Add a comment"
             className="w-full bg-transparent border-b border-border pb-1 text-sm focus:outline-none focus:border-foreground transition-colors"
           />
+          {/* Pass 88 Rec #4: surface the anonymous-posting capability.
+              Unauthenticated users CAN post (via browserId) but the
+              Pass 87 audit found this wasn't obvious — the input looked
+              like it required auth. This hint makes it explicit. */}
+          <p className="text-[11px] text-muted-foreground mt-1.5">
+            Posting as guest · <button type="button" className="text-gold hover:underline" onClick={() => { try { window.dispatchEvent(new CustomEvent('mashahd:open-auth')); } catch {} }}>Sign in</button> to sync across devices
+          </p>
           {/* Pin-to-timestamp toggle: when active, the next posted comment
               will be pinned to the current video moment (clickable to seek). */}
           <div className="flex items-center gap-2 mt-1">

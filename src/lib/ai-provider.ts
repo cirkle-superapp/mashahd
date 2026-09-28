@@ -156,6 +156,78 @@ export async function aiChat(opts: AIChatOptions): Promise<AIChatResult> {
   return { text: "", source: "fallback", sources: [] };
 }
 
+/**
+ * FAST RACE MODE — returns the FIRST successful response (latency-optimized).
+ *
+ * Per user request (Pass 88, Rec #5): the consensus mode waits for all 5
+ * providers to finish (3-7s latency, slowest provider determines). For
+ * latency-sensitive UX (e.g. live AI oracle during video playback, real-
+ * time comment tone adjustment, search-interpret autocomplete), use
+ * aiChatFast() instead — it races all 5 providers via Promise.any and
+ * returns the first non-empty response. Typical latency: 500ms-1.5s
+ * (whichever of Groq/OpenRouter responds first).
+ *
+ * Trade-off: race mode loses the "longest = most complete" consensus
+ * benefit. Use only when latency matters more than completeness.
+ *
+ * USAGE:
+ *   const { text, source } = await aiChatFast({
+ *     system: "You are a helpful assistant.",
+ *     user: "Quick question...",
+ *     maxTokens: 200,
+ *   });
+ */
+export async function aiChatFast(opts: AIChatOptions): Promise<AIChatResult> {
+  // Track AI requests for observability (§180).
+  try {
+    const { incrementMetric } = await import("./metrics-store");
+    incrementMetric("aiRequests");
+  } catch { /* metrics store not available */ }
+
+  // Fire all 5 providers in parallel. Each is wrapped in a timeout so a
+  // slow provider can't hold the race hostage.
+  const attempts: Array<Promise<ProviderAttempt | null>> = [
+    withTimeout(tryGroq(opts), "groq"),
+    withTimeout(tryOpenRouter(opts), "openrouter"),
+    withTimeout(tryNvidia(opts), "nvidia"),
+    withTimeout(tryGemini(opts), "gemini"),
+    withTimeout(tryHF(opts), "hf"),
+  ];
+
+  // Promise.any: resolves with the FIRST fulfilled promise. If all 5
+  // reject, falls through to the catch block (deterministic fallback).
+  // We use a custom race that returns the first ATTEMPT with text > 5 chars.
+  try {
+    const winner = await Promise.any(attempts.map(async (p, i) => {
+      const result = await p;
+      if (result && result.text && result.text.length > 5) {
+        return result;
+      }
+      // Reject so Promise.any moves on to the next provider.
+      throw new Error(`provider ${i} returned no text`);
+    }));
+
+    if (winner) {
+      return {
+        text: winner.text,
+        source: winner.name,
+        sources: [winner.name], // race mode — only the winner is known
+      };
+    }
+  } catch {
+    // All 5 providers rejected (no text > 5 chars from any of them).
+    // Fall through to deterministic fallback below.
+  }
+
+  // All 5 providers failed — track the fallback.
+  try {
+    const { incrementMetric } = await import("./metrics-store");
+    incrementMetric("aiFallbacks");
+  } catch { /* metrics store not available */ }
+
+  return { text: "", source: "fallback", sources: [] };
+}
+
 /** Wrap a provider attempt with a hard timeout. */
 async function withTimeout(
   p: Promise<{ text: string } | null>,

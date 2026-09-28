@@ -61,18 +61,32 @@ export async function GET() {
   // Vercel: this endpoint itself is proof Vercel is running. We expose
   // the app-level env vars that Vercel needs to talk to the other 4
   // services + run the app correctly.
+  // Pass 88: split vars into "alwaysRequired" (must be set on Vercel) and
+  // "devOnly" (only needed for local dev — Vercel production uses Turso
+  // instead of DATABASE_URL, read-only filesystem instead of
+  // STORAGE_PROVIDER=local, etc.). The previous flat list showed
+  // "4/8 vars" which confused operators into thinking 4 were missing
+  // when they were actually intentional dev-only vars.
+  const vercelAlwaysRequiredVars = {
+    APP_URL: has("APP_URL"),
+    ALLOWED_ORIGINS: has("ALLOWED_ORIGINS"),
+    BROWSER_ID_SECRET: has("BROWSER_ID_SECRET"),
+  };
+  const vercelDevOnlyVars = {
+    DATABASE_URL: has("DATABASE_URL"),         // Vercel uses Turso (TURSO_URL) instead
+    STORAGE_PROVIDER: has("STORAGE_PROVIDER"), // Vercel is read-only; uses R2/external
+    MEDIA_STORAGE_PATH: has("MEDIA_STORAGE_PATH"), // Vercel read-only FS
+    FFMPEG_PATH: has("FFMPEG_PATH"),           // Vercel doesn't transcode (Inngest does)
+    FFPROBE_PATH: has("FFPROBE_PATH"),         // same as FFMPEG_PATH
+  };
   const vercel = {
     configured: true, // this endpoint is running, so Vercel is up
-    vars: {
-      APP_URL: has("APP_URL"),
-      ALLOWED_ORIGINS: has("ALLOWED_ORIGINS"),
-      BROWSER_ID_SECRET: has("BROWSER_ID_SECRET"),
-      DATABASE_URL: has("DATABASE_URL"),
-      STORAGE_PROVIDER: has("STORAGE_PROVIDER"),
-      MEDIA_STORAGE_PATH: has("MEDIA_STORAGE_PATH"),
-      FFMPEG_PATH: has("FFMPEG_PATH"),
-      FFPROBE_PATH: has("FFPROBE_PATH"),
-    },
+    alwaysRequired: vercelAlwaysRequiredVars,
+    devOnly: vercelDevOnlyVars,
+    // Backwards compat: keep `vars` as the merged object so existing
+    // consumers (e.g. /api/cost-dashboard) don't break.
+    vars: { ...vercelAlwaysRequiredVars, ...vercelDevOnlyVars },
+    note: "alwaysRequired vars MUST be set on Vercel. devOnly vars are only needed locally — Vercel production uses Turso (not DATABASE_URL), read-only FS (not STORAGE_PROVIDER=local), and Inngest (not FFMPEG_PATH). If alwaysRequired shows any false, fix immediately. devOnly showing false on Vercel is EXPECTED and not a problem.",
   };
 
   // Inngest: Vercel needs INNGEST_KEY + INNGEST_WEBHOOK_SECRET to sign

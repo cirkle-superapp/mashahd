@@ -78,10 +78,12 @@ export function OnboardingTour() {
             className="glass-strong rounded-2xl border border-gold/20 p-8 max-w-md w-full shadow-float relative"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close */}
+            {/* Close — Pass 88 Rec #8: bumped contrast for WCAG AA.
+                Was text-muted-foreground (too faint per VLM audit).
+                Now text-foreground/70 (visible against cream modal bg). */}
             <button
               onClick={close}
-              className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-accent text-muted-foreground"
+              className="absolute top-3 right-3 p-2 rounded-full hover:bg-accent text-foreground/70 hover:text-foreground transition-colors"
               aria-label="Skip tour"
             >
               <X className="h-4 w-4" />
@@ -124,9 +126,12 @@ export function OnboardingTour() {
 
             {/* Actions */}
             <div className="flex justify-between items-center mt-6">
+              {/* Pass 88 Rec #8: bumped "Skip tour" link contrast for WCAG AA.
+                  Was text-muted-foreground (too faint per VLM audit).
+                  Now text-foreground/80 — clearly visible against cream bg. */}
               <button
                 onClick={close}
-                className="text-xs text-muted-foreground hover:text-foreground"
+                className="text-xs text-foreground/80 hover:text-foreground underline-offset-2 hover:underline"
               >
                 Skip tour
               </button>
