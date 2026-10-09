@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
+import { sanitizeUrl } from "@/lib/format";
+
 /**
  * GET /api/videos/[id]/context
  *
@@ -87,7 +89,7 @@ export async function GET(
       sourceVideos: sourceVideos.map((v: any) => ({
         id: v.id,
         title: v.title,
-        thumbnailUrl: v.thumbnailUrl,
+        thumbnailUrl: sanitizeUrl(v.thumbnailUrl),
         channel: v.channel?.name,
       })),
       note: sourceUrls.length > 0 || sourceVideos.length > 0

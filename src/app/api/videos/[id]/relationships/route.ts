@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
+import { sanitizeUrl } from "@/lib/format";
+
 /**
  * Video Relationships API (spec §41).
  *
@@ -152,7 +154,7 @@ export async function GET(
         ? {
             id: rv.id,
             title: rv.title,
-            thumbnailUrl: rv.thumbnailUrl,
+            thumbnailUrl: sanitizeUrl(rv.thumbnailUrl),
             channel: { name: rv.channel?.name ?? "Unknown" },
           }
         : null,

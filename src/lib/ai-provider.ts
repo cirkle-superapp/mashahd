@@ -73,8 +73,12 @@ const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || "";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const HF_API_KEY = process.env.HF_API_KEY || "";
 
-/** Per-provider timeout. Slower than this and we give up on that one. */
-const CONSENSUS_TIMEOUT_MS = 12_000;
+/** Per-provider timeout. Slower than this and we give up on that one.
+ *  Pass 93: lowered from 12s to 8s to reduce latency variance (was 3-12s,
+ *  now should be 3-8s). The 12s timeout was causing calls that waited
+ *  for a slow provider to hit the 12s wall. 8s is enough for all 5
+ *  providers to respond (typical: 500ms-4s) while cutting the tail. */
+const CONSENSUS_TIMEOUT_MS = 8_000;
 
 export interface AIChatOptions {
   system?: string;
@@ -334,6 +338,12 @@ async function tryGroq(opts: AIChatOptions): Promise<{ text: string } | null> {
           messages,
           max_tokens: opts.maxTokens || 1000,
           temperature: opts.temperature ?? 0.7,
+          // Pass 93: request JSON output mode when the prompt asks for JSON.
+          // This makes Groq return valid JSON instead of prose — fixes the
+          // issue where only NVIDIA was returning valid JSON.
+          ...(opts.system && /json|recap|summarize/i.test(opts.system + opts.user)
+            ? { response_format: { type: "json_object" } }
+            : {}),
         }),
       });
 
@@ -377,6 +387,10 @@ async function tryOpenRouter(opts: AIChatOptions): Promise<{ text: string } | nu
           messages,
           max_tokens: opts.maxTokens || 1000,
           temperature: opts.temperature ?? 0.7,
+          // Pass 93: request JSON output mode when the prompt asks for JSON.
+          ...(opts.system && /json|recap|summarize/i.test(opts.system + opts.user)
+            ? { response_format: { type: "json_object" } }
+            : {}),
         }),
       });
 
@@ -467,6 +481,11 @@ async function tryGemini(opts: AIChatOptions): Promise<{ text: string } | null> 
             generationConfig: {
               maxOutputTokens: opts.maxTokens || 1000,
               temperature: opts.temperature ?? 0.7,
+              // Pass 93: request JSON output mode when the prompt asks for JSON.
+              // Gemini uses responseMimeType (not response_format like OpenAI).
+              ...(opts.system && /json|recap|summarize/i.test(opts.system + opts.user)
+                ? { responseMimeType: "application/json" }
+                : {}),
             },
           }),
         }

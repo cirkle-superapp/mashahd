@@ -4,6 +4,8 @@ import { verifyBrowserId } from "@/lib/browser-id-security";
 import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 import { randomBytes, createHash } from "node:crypto";
 
+import { sanitizeUrl } from "@/lib/format";
+
 /**
  * Live Streams API — real DB-backed live broadcasting (Pass 47).
  *
@@ -121,7 +123,7 @@ export async function POST(req: NextRequest) {
         peakViewerCount: 0,
         streamKey,
         watchPartyCode,
-        thumbnailUrl: "",
+        thumbnailUrl: sanitizeUrl(""),
         startedAt: isoNow,
         endedAt: "",
       },
@@ -226,7 +228,7 @@ export async function GET(req: NextRequest) {
         watchPartyCode: s.watchPartyCode,
         startedAt: s.startedAt,
         endedAt: s.endedAt,
-        thumbnailUrl: s.thumbnailUrl,
+        thumbnailUrl: sanitizeUrl(s.thumbnailUrl),
       })),
       count: (streams as any[]).length,
     });

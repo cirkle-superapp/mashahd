@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 import { createNotification } from "@/lib/notify";
 
+import { sanitizeUrl } from "@/lib/format";
+
 /**
  * Creator Corrections API (spec §66).
  *
@@ -311,7 +313,7 @@ export async function PATCH(
     title: `${channelName} posted a correction to "${videoTitle}"`,
     body: `At ${tsLabel}: ${correctionSummary}`,
     linkUrl: `/?v=watch&id=${id}&t=${correction.timestamp}`,
-    thumbnailUrl: videoRow?.thumbnailUrl,
+    thumbnailUrl: sanitizeUrl(videoRow?.thumbnailUrl),
     actorName: channelName,
   };
 

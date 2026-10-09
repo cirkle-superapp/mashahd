@@ -91,42 +91,31 @@ export async function rateLimit(
       const windowStart = now - (now % windowMs);
       const resetAt = windowStart + windowMs;
 
-      // Upsert: if the row doesn't exist, create it with count=1. If it does
-      // exist AND the window is still current, increment. If the window
-      // expired, reset to count=1.
-      // We do this in 2 steps because libSQL doesn't support a single
-      // upsert-with-condition statement.
-      const existing = await client.execute({
-        sql: "SELECT count, windowStart FROM RateLimit WHERE key = ?",
-        args: [key],
+      // Pass 93: ATOMIC UPSERT — eliminates the race condition where
+      // concurrent requests all read the same count via SELECT before
+      // any of them writes the UPDATE. Now a single SQL statement:
+      //   1. INSERT the row with count=1 if it doesn't exist
+      //   2. On conflict (key exists), atomically:
+      //      - If window is still current: increment count
+      //      - If window expired: reset count to 1
+      //   3. RETURNING count gives us the new value in one round-trip
+      //
+      // This is safe under concurrent requests because SQLite/libSQL
+      // serializes writes — the UPSERT is atomic.
+      const result = await client.execute({
+        sql: `INSERT INTO RateLimit (key, count, windowStart) VALUES (?, 1, ?)
+              ON CONFLICT(key) DO UPDATE SET
+                count = CASE WHEN RateLimit.windowStart = excluded.windowStart
+                  THEN RateLimit.count + 1
+                  ELSE 1 END,
+                windowStart = excluded.windowStart
+              RETURNING count`,
+        args: [key, windowStart],
       });
 
-      let newCount: number;
-      if (existing.rows.length === 0) {
-        // First request — insert.
-        await client.execute({
-          sql: "INSERT INTO RateLimit (key, count, windowStart) VALUES (?, 1, ?)",
-          args: [key, windowStart],
-        });
-        newCount = 1;
-      } else {
-        const row = existing.rows[0] as unknown as { count: number; windowStart: number };
-        const rowWindow = Number(row.windowStart);
-        if (rowWindow !== windowStart) {
-          // Window expired — reset.
-          await client.execute({
-            sql: "UPDATE RateLimit SET count = 1, windowStart = ? WHERE key = ?",
-            args: [windowStart, key],
-          });
-          newCount = 1;
-        } else {
-          // Same window — increment.
-          newCount = Number(row.count) + 1;
-          await client.execute({
-            sql: "UPDATE RateLimit SET count = count + 1 WHERE key = ?",
-            args: [key],
-          });
-        }
+      let newCount = 1;
+      if (result.rows && result.rows.length > 0) {
+        newCount = Number((result.rows[0] as any).count);
       }
 
       if (newCount > limit) {

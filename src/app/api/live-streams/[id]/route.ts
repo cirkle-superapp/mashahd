@@ -22,6 +22,8 @@ import { verifyBrowserId } from "@/lib/browser-id-security";
 
 import { timingSafeEqual } from "node:crypto";
 
+import { sanitizeUrl } from "@/lib/format";
+
 function safeEqual(a: string, b: string): boolean {
   const ba = Buffer.from(a);
   const bb = Buffer.from(b);
@@ -58,7 +60,7 @@ export async function GET(
         watchPartyCode: stream.watchPartyCode,
         startedAt: stream.startedAt,
         endedAt: stream.endedAt,
-        thumbnailUrl: stream.thumbnailUrl,
+        thumbnailUrl: sanitizeUrl(stream.thumbnailUrl),
       },
     });
   } catch {

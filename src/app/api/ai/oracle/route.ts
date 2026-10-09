@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { aiChat } from "@/lib/ai-provider";
+import { aiChatFast } from "@/lib/ai-provider";
 import { db } from "@/lib/db";
 import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 import { sanitizeUserInput, boundUserInput } from "@/lib/ai-prompt-security";
@@ -64,9 +64,12 @@ Description: ${(video.description || "").slice(0, 700)}
 
 ${boundUserInput(safeQuestion, "Oracle", "Answer the viewer's question about the video above in 2-4 sentences, conversational, no markdown headers.")}`;
 
-  // aiChat() returns source from the 5-provider consensus: "groq"|"openrouter"|"nvidia"|"gemini"|"hf"|"fallback". Normalize
-  // to the legacy "ai"|"fallback" values the client already checks against.
-  const { text, source: aiSource } = await aiChat({
+  // Pass 93: Oracle is interactive (user asks a question + expects a fast
+  // conversational reply), so we use aiChatFast() — race mode that returns
+  // the FIRST successful response (500ms-1.5s) instead of waiting for all 5
+  // providers (3-8s consensus). The Oracle prioritizes latency over
+  // completeness — a fast "good enough" answer beats a slow "perfect" one.
+  const { text, source: aiSource } = await aiChatFast({
     system: "You are the Mashahd Oracle — concise, helpful, honest.",
     user: prompt,
     maxTokens: 400,

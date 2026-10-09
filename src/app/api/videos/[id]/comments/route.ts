@@ -4,6 +4,8 @@ import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
 import { customAvatarUrl } from "@/lib/custom-avatar";
 
+import { sanitizeUrl } from "@/lib/format";
+
 /**
  * GET /api/videos/[id]/comments?sort=<sort>
  *
@@ -95,7 +97,7 @@ export async function GET(
   if (video) {
     const channel = await db.channel.findUnique({
       where: { id: video.channelId },
-      select: { avatarUrl: true },
+      select: { avatarUrl: true},
     });
     creatorAvatarUrl = channel?.avatarUrl || null;
   }
