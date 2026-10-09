@@ -29,6 +29,7 @@ ESSENTIAL_FILES=(
   "src/app/api/seed/route.ts"
   "src/app/api/ready/route.ts"
   "src/app/api/env-health/route.ts"
+  "src/app/api/architecture/route.ts"
   "src/app/api/user-state/route.ts"
   "src/app/api/videos/route.ts"
   "src/app/api/videos/[id]/route.ts"
