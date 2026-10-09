@@ -111,11 +111,43 @@ export function seededRandom(seed: string, max: number): number {
  * The seed determines the avatar's geometric composition (3-circle motif
  * + constellation dots + monogram) + color palette (4 brand-tuned
  * variants). Same seed = same avatar, forever.
+ *
+ * Pass 89 addendum: also sanitizes any EXISTING DiceBear URLs in the
+ * database (legacy from before Pass 89). If a stored URL points to
+ * api.dicebear.com, it's converted at read-time to a CustomAvatar
+ * data URL using the seed from the URL query string. This way, old
+ * DB rows don't require a migration — they're transparently upgraded
+ * on read.
  */
 import { customAvatarDataUrl } from "./custom-avatar";
 
+// Sanitize: if the URL is a legacy DiceBear URL, extract the seed + return a CustomAvatar.
+function sanitizeLegacyExternalUrls(url: string): string {
+  if (!url) return url;
+  // DiceBear URL pattern: https://api.dicebear.com/7.x/<style>/svg?seed=<seed>&...
+  const dicebearMatch = url.match(/api\.dicebear\.com\/[^?]+\?seed=([^&]+)/);
+  if (dicebearMatch) {
+    const seed = decodeURIComponent(dicebearMatch[1]);
+    try { return customAvatarDataUrl(seed, 48); } catch { /* fall through */ }
+  }
+  // image-search URL pattern (legacy): https://z-cdn.chatglm.cn/...
+  if (url.includes("z-cdn.chatglm.cn") || url.includes("image-search-mcp")) {
+    // Can't recover the original title/category from the URL, so use a generic thumbnail.
+    // The caller can pass a better seed if available.
+    try { return customAvatarDataUrl("legacy-thumbnail", 48); } catch { /* fall through */ }
+  }
+  // Google Cloud Storage sample MP4s (legacy)
+  if (url.includes("commondatastorage.googleapis.com")) {
+    // Replace with local path — operator should drop the file at /public/samples/
+    return url.replace(/https?:\/\/[^/]+\/[^/]+\/([^/]+\.mp4)/, "/samples/$1");
+  }
+  return url;
+}
+
 export function getImageUrl(url: string | undefined | null, seed: string): string {
-  if (url && url.trim().length > 0) return url;
+  // Pass 89: sanitize any legacy external URLs first.
+  const sanitized = url ? sanitizeLegacyExternalUrls(url) : "";
+  if (sanitized && sanitized.trim().length > 0) return sanitized;
   try {
     return customAvatarDataUrl(seed || "mashahd", 48);
   } catch {
@@ -126,4 +158,14 @@ export function getImageUrl(url: string | undefined | null, seed: string): strin
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48"><rect width="48" height="48" rx="24" fill="#FDFCF9"/><text x="24" y="30" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="700" fill="#1A4A5A">${safe}</text></svg>`
     )}`;
   }
+}
+
+/**
+ * sanitizeUrl — Pass 89: converts any legacy external URL to a from-scratch
+ * equivalent. Use this on any URL read from the DB to ensure no external
+ * HTTP dependency leaks through (even for rows written before Pass 89).
+ */
+export function sanitizeUrl(url: string | undefined | null, seed?: string): string {
+  if (!url) return seed ? getImageUrl(url, seed) : "";
+  return sanitizeLegacyExternalUrls(url);
 }

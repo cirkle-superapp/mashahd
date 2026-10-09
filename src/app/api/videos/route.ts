@@ -7,6 +7,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 
 import { customAvatarUrl } from "@/lib/custom-avatar";
+import { sanitizeUrl } from "@/lib/format";
 
 /**
  * GET /api/videos
@@ -118,8 +119,20 @@ export async function GET(req: NextRequest) {
   // Apply pagination AFTER sort/filter.
   const paginated = filtered.slice(offset, offset + limit);
 
+  // Pass 89: sanitize any legacy external URLs in the DB (DiceBear, image-search,
+  // Google Cloud Storage). Old DB rows still have these URLs — convert them
+  // to from-scratch CustomAvatar/CustomThumbnail data URLs at read time.
+  const sanitizedVideos = paginated.map((v: any) => ({
+    ...v,
+    thumbnailUrl: v.thumbnailUrl ? sanitizeUrl(v.thumbnailUrl, v.title) : v.thumbnailUrl,
+    channel: v.channel ? {
+      ...v.channel,
+      avatarUrl: v.channel.avatarUrl ? sanitizeUrl(v.channel.avatarUrl, v.channel.name) : v.channel.avatarUrl,
+    } : v.channel,
+  }));
+
   return NextResponse.json({
-    videos: paginated,
+    videos: sanitizedVideos,
     total: filtered.length,
     limit,
     offset,
