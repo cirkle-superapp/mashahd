@@ -1,28 +1,32 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { customAvatarDataUrlBrowser } from "@/lib/custom-avatar";
 
 const STORAGE_KEY = "mashahd-avatar";
-export const DEFAULT_AVATAR =
-  "https://api.dicebear.com/7.x/initials/svg?seed=You&backgroundColor=c2a060";
+
+// Pass 89: DEFAULT_AVATAR + PRESET_AVATARS are now generated from scratch
+// via CustomAvatar (procedural SVG). No external DiceBear HTTP dependency.
+// Each preset uses a different seed so they look visually distinct.
+export const DEFAULT_AVATAR = customAvatarDataUrlBrowser("You", 48);
 
 /**
  * Preset avatars the user can pick from without uploading. Generated via
- * DiceBear so they're deterministic and need no storage.
+ * CustomAvatar (procedural SVG) so they're deterministic and need no storage.
  */
 export const PRESET_AVATARS = [
   DEFAULT_AVATAR,
-  "https://api.dicebear.com/7.x/notionists/svg?seed=Mashahd&backgroundColor=1a4a5a&radius=50",
-  "https://api.dicebear.com/7.x/notionists/svg?seed=Creator&backgroundColor=c2a060&radius=50",
-  "https://api.dicebear.com/7.x/notionists/svg?seed=Viewer&backgroundColor=db2777&radius=50",
-  "https://api.dicebear.com/7.x/notionists/svg?seed=Director&backgroundColor=0891b2&radius=50",
-  "https://api.dicebear.com/7.x/notionists/svg?seed=Producer&backgroundColor=16a34a&radius=50",
-  "https://api.dicebear.com/7.x/notionists/svg?seed=Editor&backgroundColor=f59e0b&radius=50",
-  "https://api.dicebear.com/7.x/notionists/svg?seed=Host&backgroundColor=8b5cf6&radius=50",
-  "https://api.dicebear.com/7.x/initials/svg?seed=You&backgroundColor=1a4a5a",
-  "https://api.dicebear.com/7.x/initials/svg?seed=You&backgroundColor=db2777",
-  "https://api.dicebear.com/7.x/initials/svg?seed=You&backgroundColor=0891b2",
-  "https://api.dicebear.com/7.x/initials/svg?seed=You&backgroundColor=16a34a",
+  customAvatarDataUrlBrowser("Mashahd", 48),
+  customAvatarDataUrlBrowser("Creator", 48),
+  customAvatarDataUrlBrowser("Viewer", 48),
+  customAvatarDataUrlBrowser("Director", 48),
+  customAvatarDataUrlBrowser("Producer", 48),
+  customAvatarDataUrlBrowser("Editor", 48),
+  customAvatarDataUrlBrowser("Host", 48),
+  customAvatarDataUrlBrowser("Guest", 48),
+  customAvatarDataUrlBrowser("Member", 48),
+  customAvatarDataUrlBrowser("User", 48),
+  customAvatarDataUrlBrowser("Friend", 48),
 ];
 
 /**

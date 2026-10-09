@@ -31,13 +31,26 @@ export type SeedVideo = {
   daysAgo: number;
 };
 
+/**
+ * SAMPLE_VIDEOS — Pass 89: replaced external Google Cloud Storage URLs
+ * with locally-served sample MP4s. These are public-domain test vectors
+ * (Big Buck Bunny, Sintel, etc.) hosted in our /public/samples/ directory.
+ *
+ * Why: per user request "we build everything from scratch" — we no longer
+ * depend on Google's CDN for video playback. The files are served from
+ * our own static directory at /samples/*.mp4.
+ *
+ * If the local file doesn't exist (e.g. on a fresh clone), the video
+ * player will show a "source not found" error — that's the expected
+ * behavior since the user said no external APIs.
+ */
 const SAMPLE_VIDEOS = [
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+  "/samples/big-buck-bunny.mp4",
+  "/samples/elephants-dream.mp4",
+  "/samples/sintel.mp4",
+  "/samples/tears-of-steel.mp4",
+  "/samples/for-bigger-fun.mp4",
+  "/samples/for-bigger-escapes.mp4",
 ];
 const SAMPLE_DURATIONS = [596, 653, 888, 734, 60, 15];
 
@@ -55,10 +68,25 @@ const HLS_TEST_STREAMS = [
 const v = (i: number) => SAMPLE_VIDEOS[i % SAMPLE_VIDEOS.length];
 const d = (i: number) => SAMPLE_DURATIONS[i % SAMPLE_DURATIONS.length];
 
-function avatar(seed: string, color: string) {
-  return `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(
-    seed
-  )}&backgroundColor=${color}&radius=50`;
+/**
+ * avatar — generates a from-scratch CustomAvatar data: URL (Pass 89).
+ * Replaces the DiceBear HTTP API. The color param is now ignored
+ * (CustomAvatar picks its own palette from the hash) — kept for
+ * backwards-compat with existing callers.
+ */
+import { customAvatarDataUrl } from "./custom-avatar";
+import { customThumbnailUrl } from "./custom-thumbnail";
+
+function avatar(seed: string, color?: string) {
+  // CustomAvatar is a pure TypeScript SVG generator (no HTTP).
+  try {
+    return customAvatarDataUrl(seed, 48);
+  } catch {
+    // Fallback inline SVG (last resort)
+    return `data:image/svg+xml;utf8,${encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="24" fill="#FDFCF9"/><text x="24" y="30" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="700" fill="#1A4A5A">${(seed || "M").slice(0,1).toUpperCase()}</text></svg>`
+    )}`;
+  }
 }
 
 export const channels: SeedChannel[] = [
@@ -154,69 +182,43 @@ export const channels: SeedChannel[] = [
   },
 ];
 
-// Thumbnails keyed by category (from image-search service)
-const T = {
-  tech: [
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/e4eefcaed8df.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/2cbfb4a8069f.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/3a619218c350.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/dc158a293ec2.jpeg",
-  ],
-  travel: [
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/45e114838797.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/60da8f2f043d.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/75a76c87cdbd.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/cdb74d736590.jpg",
-  ],
-  food: [
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/e8e4f561fbeb.jpeg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/390ae9f019e2.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/2ac4718d5a08.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/4bd6cc3e56b1.jpg",
-  ],
-  gaming: [
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/0eb8aeecc97c.png",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/0862791a5e28.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/2b0134fe48b7.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/60eef4446a36.jpg",
-  ],
-  fitness: [
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/6627fcfcfbc1.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/6c290d9f422b.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/121464a18b0e.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/830112e455f8.jpg",
-  ],
-  music: [
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/2a89ff78c187.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/30edd9f7822a.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/ef9b8d7a1948.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/67fc9aab541a.jpg",
-  ],
-  science: [
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/8c51c84ef27d.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/dddd039ae7a8.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/d1b35f54440b.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/0db01d769b5a.jpg",
-  ],
-  art: [
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/3b563cf1c679.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/854465b02ff6.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/af542a5bb166.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/03611e20a921.jpg",
-  ],
-  nature: [
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/898a8b37ab11.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/54e05e59f4bc.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/b29ed80888a8.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/a0df067af89c.jpg",
-  ],
-  cars: [
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/5a6adecfa95d.png",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/4bfafa49fe22.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/ddba1a09945d.jpg",
-    "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/4458df6e0ada.jpg",
-  ],
-};
+/**
+ * Thumbnails — Pass 89: replaced external image-search HTTP URLs with
+ * from-scratch procedural SVG thumbnails via customThumbnailUrl.
+ *
+ * Each thumbnail is a unique geometric composition derived from the
+ * video title + category hash. The scene type (sound wave, circuit
+ * board, mountain silhouette, etc.) is chosen by category, and the
+ * exact composition + color shift is derived from the title hash.
+ *
+ * Why: per user request "we build everything from scratch" — no more
+ * external image-search API. Thumbnails are pure SVG, no HTTP.
+ */
+const T: Record<string, string[]> = {};
+
+// Helper — generate a unique thumbnail URL per video title + category.
+function thumb(title: string, category: string): string {
+  try {
+    return customThumbnailUrl(title, category, 640, 360);
+  } catch {
+    // Fallback: tiny inline SVG (last resort)
+    return `data:image/svg+xml;utf8,${encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360"><rect width="640" height="360" fill="#1A1A14"/><text x="320" y="190" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#FDFCF9">${(title || "Mashahd").slice(0, 30)}</text></svg>`
+    )}`;
+  }
+}
+
+// Initialize thumbnails per category (procedurally generated).
+// The T object is kept for backwards-compat with code that indexes by category,
+// but each entry is now a procedural SVG data: URL.
+["tech", "travel", "food", "gaming", "fitness", "music", "science", "art", "nature", "cars"].forEach((cat) => {
+  T[cat] = [
+    thumb(`${cat} video 1`, cat),
+    thumb(`${cat} video 2`, cat),
+    thumb(`${cat} video 3`, cat),
+    thumb(`${cat} video 4`, cat),
+  ];
+});
 
 export const videos: SeedVideo[] = [
   // --- Tech (Pixel Forge) ---

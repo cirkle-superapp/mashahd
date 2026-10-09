@@ -99,7 +99,31 @@ export function seededRandom(seed: string, max: number): number {
  * The placeholder is deterministic (same seed → same image) so it's stable
  * across re-renders.
  */
+/**
+ * getImageUrl — returns the URL if non-empty, otherwise generates a
+ * from-scratch CustomAvatar data: URL (Pass 89).
+ *
+ * Previously: fell back to DiceBear HTTP API (https://api.dicebear.com/...).
+ * Per user request Pass 89 ("we build everything from scratch"), this
+ * is replaced with our own procedural SVG avatar generator. The fallback
+ * is now a self-contained data: URL — no external HTTP dependency.
+ *
+ * The seed determines the avatar's geometric composition (3-circle motif
+ * + constellation dots + monogram) + color palette (4 brand-tuned
+ * variants). Same seed = same avatar, forever.
+ */
+import { customAvatarDataUrl } from "./custom-avatar";
+
 export function getImageUrl(url: string | undefined | null, seed: string): string {
   if (url && url.trim().length > 0) return url;
-  return `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(seed || "mashahd")}&radius=50`;
+  try {
+    return customAvatarDataUrl(seed || "mashahd", 48);
+  } catch {
+    // Fallback: a tiny inline SVG data URL (no dependency on custom-avatar module).
+    // This is the absolute last-resort fallback.
+    const safe = (seed || "M").slice(0, 1).toUpperCase();
+    return `data:image/svg+xml;utf8,${encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48"><rect width="48" height="48" rx="24" fill="#FDFCF9"/><text x="24" y="30" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="700" fill="#1A4A5A">${safe}</text></svg>`
+    )}`;
+  }
 }

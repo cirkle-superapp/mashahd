@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { verifyBrowserId } from "@/lib/browser-id-security";
 import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
+import { customAvatarUrl } from "@/lib/custom-avatar";
+
 /**
  * POST /api/channels
  * Body: { browserId, name, handle, description?, avatarUrl?, bannerColors?, bannerUrl? }
@@ -91,7 +93,7 @@ export async function POST(req: NextRequest) {
         name,
         handle,
         description,
-        avatarUrl: avatarUrl || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(name)}&radius=50`,
+        avatarUrl: avatarUrl || customAvatarUrl(encodeURIComponent(name)),
         bannerColors,
         bannerUrl,
         links: links || (ownerId ? "" : `owner:${verification.id}`),
@@ -108,7 +110,7 @@ export async function POST(req: NextRequest) {
           name,
           handle,
           description,
-          avatarUrl: avatarUrl || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(name)}&radius=50`,
+          avatarUrl: avatarUrl || customAvatarUrl(encodeURIComponent(name)),
           bannerColors,
           bannerUrl,
           links: `owner:${verification.id}`,

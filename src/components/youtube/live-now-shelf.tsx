@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useAppStore } from "@/store/app-store";
 
+import { customAvatarUrl } from "@/lib/custom-avatar";
+
 interface LiveStream {
   id: string;
   title: string;
@@ -103,7 +105,7 @@ export function LiveNowShelf() {
 function LiveStreamCard({ stream }: { stream: LiveStream }) {
   const { navigate } = useAppStore();
   const [copied, setCopied] = useState(false);
-  const avatarUrl = `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(stream.streamerName)}&radius=50`;
+  const avatarUrl = customAvatarUrl(encodeURIComponent(stream.streamerName));
 
   const copyCode = async (e: React.MouseEvent) => {
     // Stop propagation so the click doesn't also navigate to the stream.

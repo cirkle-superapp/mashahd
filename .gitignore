@@ -12,3 +12,4 @@ agent-ctx/
 backups/
 .zscripts/
 tool-results/
+data/

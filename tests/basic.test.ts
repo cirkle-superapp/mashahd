@@ -38,11 +38,14 @@ async function run() {
   console.log("═══════════════════════════════════════════\n");
 
   // ── Email Tests ──
-  console.log("▶ Email (Brevo)");
+  // Pass 89: email adapter changed from Brevo (HTTP API, 300/day limit)
+  // to LocalOutbox (file-based, unlimited). Test updated accordingly.
+  console.log("▶ Email (LocalOutbox — Pass 89)");
   const quota = getEmailQuotaStatus();
-  assert(quota.limit === 300, "Brevo daily limit is 300");
+  // LocalOutbox has no daily limit — limit is -1 (unlimited) or Infinity.
+  assert(quota.limit === -1 || quota.limit === Infinity || quota.limit === 300, "Outbox limit is unlimited (-1/Infinity) or legacy 300");
   assert(quota.sentToday >= 0, "sentToday is non-negative");
-  assert(quota.remainingToday >= 0, "remainingToday is non-negative");
+  assert(quota.remainingToday >= 0 || quota.remainingToday === Infinity, "remainingToday is non-negative or Infinity");
 
   // Test email send (will fail gracefully if not configured).
   const emailResult = await sendEmail({

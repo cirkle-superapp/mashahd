@@ -6,6 +6,8 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
+import { customAvatarUrl } from "@/lib/custom-avatar";
+
 /**
  * GET /api/videos
  * Query params:
@@ -293,7 +295,7 @@ export async function POST(req: NextRequest) {
             name: "My Uploads",
             handle: `uploads_${verification.id.slice(0, 20)}`,
             description: "Videos I uploaded to Mashahd.",
-            avatarUrl: `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(verification.id)}&radius=50`,
+            avatarUrl: customAvatarUrl(encodeURIComponent(verification.id)),
             bannerColors: "#1e293b,#0f172a,#c2a060",
             subscribers: 0,
             verified: false,
@@ -339,7 +341,7 @@ export async function POST(req: NextRequest) {
   // videoUrl was set above (cloud URL for R2/Filebase, local route for local FS).
   // Thumbnail: use a DiceBear placeholder (in production, the transcoding
   // worker would extract a frame + write it to storage).
-  const thumbnailUrl = `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(title)}&radius=50`;
+  const thumbnailUrl = customAvatarUrl(encodeURIComponent(title));
 
   // Duration: unknown without ffprobe — default to 0. The transcoding
   // worker would fill this in later. The player handles duration=0

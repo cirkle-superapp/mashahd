@@ -23,6 +23,8 @@ import { useBrowserId } from "@/hooks/use-browser-id";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+import { customAvatarUrl } from "@/lib/custom-avatar";
+
 /**
  * LiveStreamView — the viewer experience for a live stream (Pass 48).
  *
@@ -80,7 +82,7 @@ function colorForName(name: string): string {
 }
 
 function streamerAvatar(name: string): string {
-  return `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(name)}&radius=50`;
+  return customAvatarUrl(encodeURIComponent(name));
 }
 
 function elapsed(iso: string): string {

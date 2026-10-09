@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { rateLimit, getClientIP } from "@/lib/rate-limiter";
 
+import { customAvatarUrl } from "@/lib/custom-avatar";
+
 /**
  * GET /api/videos/[id]/comments?sort=<sort>
  *
@@ -183,7 +185,7 @@ export async function POST(
   const author: string = (body.author || "Anonymous").slice(0, 60);
   const avatarUrl: string =
     body.avatarUrl ||
-    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(author)}`;
+    customAvatarUrl(encodeURIComponent(author));
   const text: string = (body.text || "").trim().slice(0, 1000);
   const parentId: string | null = body.parentId ? String(body.parentId).slice(0, 60) : null;
   const timestamp: number | null =

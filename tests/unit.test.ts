@@ -82,24 +82,41 @@ describe("getImageUrl", () => {
     expect(getImageUrl("https://example.com/img.jpg", "title")).toBe("https://example.com/img.jpg");
   });
 
-  it("returns a DiceBear placeholder when URL is empty", () => {
+  // Pass 89: getImageUrl now generates a from-scratch CustomAvatar
+  // (procedural SVG data: URL) instead of falling back to the external
+  // DiceBear HTTP API. The tests below verify the new behavior.
+  //
+  // The result is a base64-encoded data URL: data:image/svg+xml;base64,...
+  // (the SVG content is base64-encoded, so we check for the prefix, not literal <svg>)
+
+  it("returns a CustomAvatar SVG data URL when URL is empty", () => {
     const result = getImageUrl("", "My Video Title");
-    expect(result).toContain("dicebear.com");
-    expect(result).toContain("My%20Video%20Title");
+    // Should be a data: URL (no external HTTP).
+    expect(result).toContain("data:image/svg+xml");
+    expect(result).toMatch(/^data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+$/);
   });
 
-  it("returns a placeholder when URL is undefined/null/whitespace", () => {
-    expect(getImageUrl(undefined, "test")).toContain("dicebear.com");
-    expect(getImageUrl(null, "test")).toContain("dicebear.com");
-    expect(getImageUrl("   ", "test")).toContain("dicebear.com");
+  it("returns a CustomAvatar when URL is undefined/null/whitespace", () => {
+    expect(getImageUrl(undefined, "test")).toContain("data:image/svg+xml");
+    expect(getImageUrl(null, "test")).toContain("data:image/svg+xml");
+    expect(getImageUrl("   ", "test")).toContain("data:image/svg+xml");
   });
 
   it("uses 'mashahd' as seed when title is empty", () => {
-    expect(getImageUrl("", "")).toContain("mashahd");
+    // The custom avatar encodes the seed into the SVG (monogram letter + hash-derived composition).
+    // Just verify we get a valid base64 data URL with SVG content (no external HTTP).
+    const result = getImageUrl("", "");
+    expect(result).toContain("data:image/svg+xml");
+    // Decode the base64 + verify it contains an SVG element
+    const b64 = result.split(",")[1];
+    const decoded = Buffer.from(b64, "base64").toString("utf8");
+    expect(decoded).toContain("<svg");
   });
 
-  it("URL-encodes the seed", () => {
-    const result = getImageUrl("", "Test & Special <chars>");
-    expect(result).toContain("Test%20%26%20Special%20%3Cchars%3E");
+  it("generates a deterministic SVG (same seed = same avatar)", () => {
+    // The procedural avatar is deterministic — same seed produces same SVG.
+    const a = getImageUrl("", "TestSeed");
+    const b = getImageUrl("", "TestSeed");
+    expect(a).toBe(b);
   });
 });

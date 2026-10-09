@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { channels, videos, commentTemplates } from "@/lib/seed-data";
 
+import { customAvatarUrl } from "@/lib/custom-avatar";
+
 /**
  * POST /api/seed
  * Idempotently seeds the database with demo channels, videos, and comments.
@@ -101,7 +103,7 @@ export async function POST(req: NextRequest) {
         data: {
           videoId: created.id,
           author: t.author,
-          avatarUrl: `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(t.author)}&backgroundColor=64748b&radius=50`,
+          avatarUrl: customAvatarUrl(encodeURIComponent(t.author)),
           text: t.text,
           likes: Math.floor(vid.likes * 0.001 * (i + 1)),
           createdAt: new Date(now - daysAgo * 24 * 60 * 60 * 1000),
