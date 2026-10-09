@@ -228,6 +228,69 @@ export async function aiChatFast(opts: AIChatOptions): Promise<AIChatResult> {
   return { text: "", source: "fallback", sources: [] };
 }
 
+/**
+ * STATE-OF-ART CONSENSUS — returns ALL successful responses (not just the winner).
+ *
+ * Per user request (Pass 91): "make ai summarise the videos in state of art
+ * consensus way." The existing aiChat() returns only the longest non-empty
+ * response. For state-of-art consensus (ensemble fusion, majority vote,
+ * best-of-N synthesis), we need access to ALL 5 responses.
+ *
+ * This function fires all 5 providers in parallel + returns every successful
+ * response with its source + latency. Callers can then:
+ *   - Score each response on quality metrics
+ *   - Synthesize a best-of-all response (union of takeaways, majority vote on labels)
+ *   - Compute a confidence score (how many providers agreed)
+ *
+ * USAGE:
+ *   const responses = await aiConsensusAll({ system, user, maxTokens });
+ *   // responses = [{ text, source, ms }, { text, source, ms }, ...]
+ *   // (up to 5 entries — one per provider that succeeded)
+ *
+ * See src/lib/ai-summarize-consensus.ts for the specialized state-of-art
+ * consensus implementation for video summarization.
+ */
+export interface ConsensusResponse {
+  text: string;
+  source: ProviderName;
+  ms: number;
+}
+
+export async function aiConsensusAll(opts: AIChatOptions): Promise<ConsensusResponse[]> {
+  // Track AI requests for observability (§180).
+  try {
+    const { incrementMetric } = await import("./metrics-store");
+    incrementMetric("aiRequests");
+  } catch { /* metrics store not available */ }
+
+  const attempts: Array<Promise<ProviderAttempt | null>> = [
+    withTimeout(tryGroq(opts), "groq"),
+    withTimeout(tryOpenRouter(opts), "openrouter"),
+    withTimeout(tryNvidia(opts), "nvidia"),
+    withTimeout(tryGemini(opts), "gemini"),
+    withTimeout(tryHF(opts), "hf"),
+  ];
+
+  const settled = await Promise.allSettled(attempts);
+
+  const responses: ConsensusResponse[] = [];
+  for (const r of settled) {
+    if (r.status === "fulfilled" && r.value && r.value.text && r.value.text.length > 5) {
+      responses.push({ text: r.value.text, source: r.value.name, ms: r.value.ms });
+    }
+  }
+
+  // Track fallback if 0 responses.
+  if (responses.length === 0) {
+    try {
+      const { incrementMetric } = await import("./metrics-store");
+      incrementMetric("aiFallbacks");
+    } catch { /* metrics store not available */ }
+  }
+
+  return responses;
+}
+
 /** Wrap a provider attempt with a hard timeout. */
 async function withTimeout(
   p: Promise<{ text: string } | null>,

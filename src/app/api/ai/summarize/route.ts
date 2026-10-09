@@ -1,18 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { aiChat } from "@/lib/ai-provider";
+import { aiSummarizeConsensus } from "@/lib/ai-summarize-consensus";
 import { db } from "@/lib/db";
 import { rateLimit, getClientIP } from "@/lib/rate-limiter";
+import { sanitizeUrl } from "@/lib/format";
 
 /**
  * POST /api/ai/summarize
  * Body: { videoId }
  *
- * AI Recap (adapted from CIRKLE's ai-recap overlay). Generates a concise
- * "recap" of a video — a 2-sentence TL;DR plus 3-4 key-takeaway bullets —
- * using the 5-provider consensus LLM abstraction (Groq + OpenRouter +
- * NVIDIA + Gemini + HuggingFace, fired in parallel; longest non-empty
- * response wins). Falls back to a deterministic summary if every
- * provider fails or the response isn't valid JSON.
+ * STATE-OF-ART ENSEMBLE FUSION CONSENSUS (Pass 91):
+ * Fires all 5 AI providers (Groq + OpenRouter + NVIDIA + Gemini + HuggingFace)
+ * in parallel, parses each response, scores on structural + content quality,
+ * then SYNTHESIZES a best-of-all recap:
+ *   - TL;DR: from the highest-scored response
+ *   - Takeaways: union of all unique takeaways, ranked by cross-provider frequency
+ *   - Best Moment: most specific (mentions a number/timestamp/concrete action)
+ *   - Vibe: majority vote across all valid responses
+ *   - Confidence: how many providers agreed on the vibe (0.0 to 1.0)
+ *
+ * The response now includes:
+ *   - source: "consensus" | "ai" | "fallback"
+ *   - sources: which providers contributed (e.g. ["groq", "openrouter", "nvidia"])
+ *   - confidence: 0.0-1.0 (cross-provider agreement on the vibe)
+ *   - providerCount: how many of the 5 providers responded
+ *   - synthesized: true = ensemble fusion, false = single-provider pick
+ *
+ * Falls back to a deterministic summary if all 5 providers fail.
  */
 export async function POST(req: NextRequest) {
   const ip = getClientIP(req);
@@ -38,61 +51,31 @@ export async function POST(req: NextRequest) {
     : null;
   const channelName = (channel as any)?.name || "Unknown";
 
-  const prompt = `You are an expert video editor's assistant. A viewer wants a quick recap of a video they're about to watch.
-
-Title: ${video.title}
-Channel: ${channelName}
-Category: ${video.category}
-Duration: ${Math.floor(video.durationSec / 60)}m ${video.durationSec % 60}s
-Views: ${video.views.toLocaleString()}
-Description: ${(video.description || "").slice(0, 800)}
-
-Respond in EXACTLY this JSON shape (no markdown fences, no extra text):
-{
-  "tldr": "one or two sentences capturing what the video is about",
-  "takeaways": ["key point 1", "key point 2", "key point 3"],
-  "bestMoment": "the single most memorable moment a viewer should look out for",
-  "vibe": "one-word mood label, e.g. Reflective, Energetic, Cozy, Curious"
-}`;
-
-  // aiChat() returns source from the 5-provider consensus: "groq"|"openrouter"|"nvidia"|"gemini"|"hf"|"fallback". Normalize
-  // to the legacy "ai"|"fallback" values the client already checks against.
-  const { text, source: aiSource } = await aiChat({
-    system: "You produce tight, accurate video recaps in JSON.",
-    user: prompt,
-    maxTokens: 800,
-    temperature: 0.7,
+  // Call the state-of-art ensemble fusion consensus.
+  const result = await aiSummarizeConsensus({
+    videoTitle: video.title,
+    videoDescription: video.description || "",
+    videoCategory: video.category,
+    channelName,
+    durationSec: video.durationSec,
   });
 
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  let recap;
-  let source: "ai" | "fallback";
-  if (jsonMatch) {
-    try {
-      recap = JSON.parse(jsonMatch[0]);
-      source = aiSource === "fallback" ? "fallback" : "ai";
-    } catch (e) {
-      console.error("[ai/summarize] JSON parse failed, using fallback:", e);
-      recap = fallbackRecap(video.title, channelName, video.category);
-      source = "fallback";
-    }
-  } else {
-    console.error("[ai/summarize] no JSON in LLM response, using fallback");
-    recap = fallbackRecap(video.title, channelName, video.category);
-    source = "fallback";
-  }
-  return NextResponse.json({ ok: true, recap, source });
-}
+  // Normalize source for backwards-compat with the client (which checks
+  // source === "ai" | "fallback"). The new "consensus" source is treated
+  // as "ai" by the client (it's still AI-generated, just synthesized).
+  const clientSource: "ai" | "fallback" = result.source === "fallback" ? "fallback" : "ai";
 
-function fallbackRecap(title: string, channel: string, category: string) {
-  return {
-    tldr: `"${title}" by ${channel} — a ${category.toLowerCase()} pick worth your next coffee break.`,
-    takeaways: [
-      `A ${category.toLowerCase()} video from ${channel}.`,
-      "Watch for the practical tips sprinkled throughout.",
-      "Great production quality and a steady pace.",
-    ],
-    bestMoment: "The payoff in the second half — don't skip ahead.",
-    vibe: "Curious",
-  };
+  return NextResponse.json({
+    ok: true,
+    recap: result.recap,
+    source: clientSource,
+    // Pass 91: new state-of-art consensus metadata.
+    consensus: {
+      source: result.source,         // "consensus" | "ai" | "fallback"
+      sources: result.sources,        // ["groq", "openrouter", ...]
+      confidence: result.confidence,  // 0.0-1.0
+      providerCount: result.providerCount,  // 0-5
+      synthesized: result.synthesized,  // true = fusion, false = single
+    },
+  });
 }

@@ -73,7 +73,8 @@ ESSENTIAL_FILES=(
   "src/app/api/inngest/route.ts"
   "src/app/api/webhooks/brevo/route.ts"
   # Lib modules
-  "src/lib/ai-provider.ts" "src/lib/blob-storage.ts" "src/lib/circuit-breaker.ts"
+  "src/lib/ai-provider.ts"
+  "src/lib/ai-summarize-consensus.ts" "src/lib/blob-storage.ts" "src/lib/circuit-breaker.ts"
   "src/lib/content-gc.ts" "src/lib/db.ts" "src/lib/decision-record.ts"
   "src/lib/delivery-scheduler.ts" "src/lib/demand-transcoder.ts" "src/lib/economy-state.ts"
   "src/lib/email-service.ts" "src/lib/failure-taxonomy.ts" "src/lib/feature-flags.ts"
