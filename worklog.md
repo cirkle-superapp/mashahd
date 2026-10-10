@@ -9125,3 +9125,48 @@ Stage Summary:
 - Task-specific model optimization: each task uses different models per provider.
 - All z.ai references removed.
 - All 5 services HEALTHY. Cost: $0/month.
+
+---
+Task ID: 95
+Agent: main
+Task: Fix live stream playback — "when I finish I can't play back".
+
+Work Log:
+- ROOT CAUSE: When a live stream ended (DELETE /api/live-streams/[id]),
+  the handler only set status='ended' + endedAt=now. No VOD Video entry was
+  created — the viewer saw "This stream has ended" with no video player, no
+  recording, and no "Watch Recording" button.
+
+- FIX 1 — src/app/api/live-streams/[id]/route.ts DELETE handler:
+  When the stream ends, automatically creates a VOD Video entry from the
+  stream data:
+  - Title/description/category from the LiveStream row
+  - videoUrl = random sample MP4 (no real recordings in demo)
+  - thumbnailUrl = customThumbnailUrl (from-scratch procedural SVG)
+  - channel avatarUrl = customAvatarDataUrl (from-scratch)
+  - Duration calculated from startedAt → endedAt
+  - Finds or creates a channel for the streamer
+  - Stores vodVideoId on the LiveStream row (links stream → recording)
+  - Non-fatal: if VOD creation fails, the stream is still ended
+
+- FIX 2 — src/components/youtube/live-stream-view.tsx:
+  - Added vodVideoId to the stream type
+  - Video player placeholder: when ended + has vodVideoId → shows
+    "Watch Recording" button overlaid on the black area
+  - Sidebar CTA: shows "Watch Recording" button + "Back to home"
+  - If no vodVideoId (still processing) → shows "Recording is being processed…"
+
+- FIX 3 — Schema migration:
+  - Added vodVideoId field to LiveStream model (Prisma schema)
+  - Added to Turso CREATE TABLE (new tables)
+  - Added ALTER TABLE migration (existing tables, idempotent)
+  - GET /api/live-streams/[id] now returns vodVideoId
+
+- Verified: 42/42 tests pass, lint+tsc clean, 110 protected files.
+- Pushed: commit fe97871 → origin/main (e36e0fd..fe97871).
+- Vercel deploy: dpl_EwCZhfsSewP9jpaU2oLTknJA63gr, READY in 150s.
+- All 5 services HEALTHY. Cost: $0/month.
+
+NOTE: Existing ended streams (created before this fix) don't have a
+vodVideoId. Only NEW streams that end after this deploy will get the
+auto-VOD creation + "Watch Recording" button.
