@@ -935,6 +935,10 @@ model LiveStream {
   // ISO 8601 timestamps (SQLite stores TEXT).
   startedAt       String   @default("")
   endedAt         String   @default("")
+  // Pass 95: VOD Video ID — when the stream ends, a VOD Video entry is
+  // created from the stream data. This field links the stream to its
+  // recording, enabling playback after the stream ends.
+  vodVideoId      String   @default("")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

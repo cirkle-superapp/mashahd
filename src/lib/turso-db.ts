@@ -566,7 +566,7 @@ async function ensureAllTables(client: Client): Promise<void> {
     { name: "PlaybackTelemetry", sql: "CREATE TABLE IF NOT EXISTS PlaybackTelemetry (id TEXT PRIMARY KEY, sessionId TEXT, videoId TEXT, cdnBytes INTEGER DEFAULT 0, p2pBytes INTEGER DEFAULT 0, rebufferCount INTEGER DEFAULT 0, rebufferDuration REAL DEFAULT 0, startupTime REAL DEFAULT 0, peerCount INTEGER DEFAULT 0, p2pFailures INTEGER DEFAULT 0, httpFallbackCount INTEGER DEFAULT 0, currentRendition TEXT DEFAULT '', timestamp TEXT)" },
     // ── LiveStream (Pass 47): real DB-backed live broadcasting. Replaces the
     // previous client-only go-live component which had no DB record at all.
-    { name: "LiveStream", sql: "CREATE TABLE IF NOT EXISTS LiveStream (id TEXT PRIMARY KEY, channelId TEXT DEFAULT '', streamerId TEXT DEFAULT '', streamerName TEXT DEFAULT 'Anonymous', title TEXT, description TEXT DEFAULT '', category TEXT DEFAULT 'Tech', privacy TEXT DEFAULT 'public', status TEXT DEFAULT 'preparing', viewerCount INTEGER DEFAULT 0, peakViewerCount INTEGER DEFAULT 0, streamKey TEXT UNIQUE, watchPartyCode TEXT DEFAULT '', thumbnailUrl TEXT DEFAULT '', startedAt TEXT DEFAULT '', endedAt TEXT DEFAULT '', createdAt TEXT, updatedAt TEXT)" },
+    { name: "LiveStream", sql: "CREATE TABLE IF NOT EXISTS LiveStream (id TEXT PRIMARY KEY, channelId TEXT DEFAULT '', streamerId TEXT DEFAULT '', streamerName TEXT DEFAULT 'Anonymous', title TEXT, description TEXT DEFAULT '', category TEXT DEFAULT 'Tech', privacy TEXT DEFAULT 'public', status TEXT DEFAULT 'preparing', viewerCount INTEGER DEFAULT 0, peakViewerCount INTEGER DEFAULT 0, streamKey TEXT UNIQUE, watchPartyCode TEXT DEFAULT '', thumbnailUrl TEXT DEFAULT '', startedAt TEXT DEFAULT '', endedAt TEXT DEFAULT '', vodVideoId TEXT DEFAULT '', createdAt TEXT, updatedAt TEXT)" },
     // ── LiveTVChannel (Pass 77) ──
     { name: "LiveTVChannel", sql: "CREATE TABLE IF NOT EXISTS LiveTVChannel (id TEXT PRIMARY KEY, name TEXT, slug TEXT UNIQUE, logoUrl TEXT DEFAULT '', description TEXT DEFAULT '', category TEXT DEFAULT 'General', country TEXT DEFAULT '', language TEXT DEFAULT '', streamUrl TEXT, streamType TEXT DEFAULT 'hls', isLive INTEGER DEFAULT 1, isVerified INTEGER DEFAULT 0, nowPlaying TEXT DEFAULT '', nextProgram TEXT DEFAULT '', viewers INTEGER DEFAULT 0, ownerId TEXT DEFAULT '', createdAt TEXT, updatedAt TEXT)" },
   ];
@@ -623,14 +623,16 @@ async function ensureAllTables(client: Client): Promise<void> {
   }
 
   // Pass 94: Add aiVibe column to existing Video table (migration).
-  // ALTER TABLE ADD COLUMN is idempotent-safe via try/catch (SQLite throws
-  // "duplicate column name" if the column already exists — we ignore it).
   try {
     await client.execute("ALTER TABLE Video ADD COLUMN aiVibe TEXT DEFAULT ''").catch(() => {});
     console.log("[turso] Migration: added aiVibe column to Video table");
-  } catch {
-    /* column already exists — ignore */
-  }
+  } catch { /* column already exists — ignore */ }
+
+  // Pass 95: Add vodVideoId column to existing LiveStream table (migration).
+  try {
+    await client.execute("ALTER TABLE LiveStream ADD COLUMN vodVideoId TEXT DEFAULT ''").catch(() => {});
+    console.log("[turso] Migration: added vodVideoId column to LiveStream table");
+  } catch { /* column already exists — ignore */ }
 }
 
 export type TursoDB = ReturnType<typeof createTursoDB>;

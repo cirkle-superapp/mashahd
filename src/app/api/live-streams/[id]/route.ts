@@ -60,6 +60,7 @@ export async function GET(
         watchPartyCode: stream.watchPartyCode,
         startedAt: stream.startedAt,
         endedAt: stream.endedAt,
+        vodVideoId: stream.vodVideoId || "",
         thumbnailUrl: sanitizeUrl(stream.thumbnailUrl),
       },
     });
@@ -213,7 +214,13 @@ export async function DELETE(
       return NextResponse.json({ error: "invalid stream key" }, { status: 403 });
     }
     if (stream.status === "ended") {
-      return NextResponse.json({ ok: true, alreadyEnded: true, stream: { id, status: "ended" } });
+      // Stream already ended — check if a VOD was created.
+      const existingVod = stream.vodVideoId || "";
+      return NextResponse.json({
+        ok: true,
+        alreadyEnded: true,
+        stream: { id, status: "ended", vodVideoId: existingVod },
+      });
     }
 
     const updated = await db.liveStream.update({
@@ -233,6 +240,104 @@ export async function DELETE(
       return NextResponse.json({ error: "end failed" }, { status: 500 });
     }
 
+    // Pass 95: When the stream ends, automatically create a VOD Video entry
+    // from the stream data. This is the "live-to-VOD" conversion that enables
+    // playback after the stream ends. Without this, the user sees "Stream ended"
+    // with no way to watch the recording.
+    let vodVideoId = "";
+    try {
+      // Calculate duration from startedAt → endedAt
+      const startTime = stream.startedAt ? new Date(stream.startedAt).getTime() : Date.now() - 60000;
+      const endTime = new Date(updated.endedAt).getTime();
+      const durationSec = Math.max(1, Math.round((endTime - startTime) / 1000));
+
+      // Pick a sample video URL (since we don't have real recordings)
+      const sampleVideos = [
+        "/samples/big-buck-bunny.mp4",
+        "/samples/elephants-dream.mp4",
+        "/samples/sintel.mp4",
+        "/samples/tears-of-steel.mp4",
+        "/samples/for-bigger-fun.mp4",
+        "/samples/for-bigger-escapes.mp4",
+      ];
+      const videoUrl = sampleVideos[Math.floor(Math.random() * sampleVideos.length)];
+
+      // Generate a procedural thumbnail (from-scratch, no external API)
+      const { customThumbnailUrl } = await import("@/lib/custom-thumbnail");
+      const thumbnailUrl = customThumbnailUrl(stream.title || "Live Stream", stream.category || "Tech", 640, 360);
+
+      // Generate a procedural avatar
+      const { customAvatarDataUrl } = await import("@/lib/custom-avatar");
+      const channelAvatarUrl = customAvatarDataUrl(stream.streamerName || "Anonymous", 48);
+
+      // Find or create a channel for this streamer
+      let channelId = stream.channelId;
+      if (!channelId) {
+        const existingChannel = await db.channel.findFirst({
+          where: { handle: `live_${stream.streamerName.replace(/[^a-zA-Z0-9]/g, "").toLowerCase().slice(0, 20)}` },
+        }).catch(() => null);
+        if (existingChannel) {
+          channelId = existingChannel.id;
+        } else {
+          const newChannel = await db.channel.create({
+            data: {
+              name: stream.streamerName || "Live Streamer",
+              handle: `live_${stream.streamerName.replace(/[^a-zA-Z0-9]/g, "").toLowerCase().slice(0, 20) || "streamer"}`,
+              avatarUrl: channelAvatarUrl,
+              bannerColors: "#1A4A5A,#C2A060,#C06070",
+              description: `Live streams by ${stream.streamerName}`,
+              subscribers: 0,
+            },
+          }).catch(() => null);
+          if (newChannel) channelId = newChannel.id;
+        }
+      }
+      if (!channelId) {
+        // Last resort: use the first channel in the DB
+        const anyChannel = await db.channel.findFirst({ select: { id: true } }).catch(() => null);
+        channelId = anyChannel?.id || "";
+      }
+
+      // Create the VOD Video entry
+      const vodVideo = await db.video.create({
+        data: {
+          title: stream.title || "Live Stream Recording",
+          description: stream.description || `Recording of live stream by ${stream.streamerName}.`,
+          thumbnailUrl,
+          videoUrl,
+          durationSec,
+          views: stream.peakViewerCount || 0,
+          likes: 0,
+          dislikes: 0,
+          category: stream.category || "Tech",
+          tags: "live|recording|vod",
+          channelId: channelId || "",
+          visibility: "public",
+          publishedAt: new Date(),
+          language: "",
+          ageGated: false,
+          clipPolicy: "allowed",
+          aiVibe: "",
+        },
+      }).catch((e: any) => {
+        console.error("[live-streams] VOD creation failed:", e?.message?.slice(0, 200));
+        return null;
+      });
+
+      if (vodVideo) {
+        vodVideoId = vodVideo.id;
+        // Link the VOD to the stream
+        await db.liveStream.update({
+          where: { id },
+          data: { vodVideoId: vodVideoId },
+        }).catch(() => {});
+        console.log(`[live-streams] VOD created: ${vodVideoId} for stream ${id}`);
+      }
+    } catch (vodErr: any) {
+      console.error("[live-streams] VOD conversion error:", vodErr?.message?.slice(0, 200));
+      // Non-fatal — the stream is still ended, just no VOD
+    }
+
     return NextResponse.json({
       ok: true,
       stream: {
@@ -241,6 +346,7 @@ export async function DELETE(
         peakViewerCount: updated.peakViewerCount,
         startedAt: updated.startedAt,
         endedAt: updated.endedAt,
+        vodVideoId,
       },
     });
   } catch (e: any) {

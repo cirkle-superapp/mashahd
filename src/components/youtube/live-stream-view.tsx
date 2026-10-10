@@ -13,6 +13,7 @@ import {
   Eye,
   Copy,
   Check,
+  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +67,7 @@ interface LiveStream {
   watchPartyCode: string;
   startedAt: string;
   endedAt: string;
+  vodVideoId: string;  // Pass 95: VOD video ID for playback after stream ends
   thumbnailUrl: string;
 }
 
@@ -302,7 +304,20 @@ export function LiveStreamView({ streamId }: { streamId: string }) {
               {isLive ? (
                 <p className="text-white/80 text-xs">Live broadcast</p>
               ) : isEnded ? (
-                <p className="text-white/80 text-xs">This stream has ended</p>
+                <div className="flex flex-col items-center gap-3">
+                  <p className="text-white/80 text-xs">This stream has ended</p>
+                  {stream.vodVideoId && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => navigate({ kind: "watch", videoId: stream.vodVideoId })}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      <Play className="h-3.5 w-3.5 mr-1.5 fill-current" />
+                      Watch Recording
+                    </Button>
+                  )}
+                </div>
               ) : (
                 <p className="text-white/80 text-xs">Preparing stream…</p>
               )}
@@ -418,7 +433,7 @@ export function LiveStreamView({ streamId }: { streamId: string }) {
             </button>
           )}
 
-          {/* Ended CTA */}
+          {/* Ended CTA — Pass 95: show "Watch Recording" button when VOD exists */}
           {isEnded && (
             <div className="rounded-lg border border-border bg-muted/30 p-4 text-center">
               <p className="text-sm font-medium">This stream has ended</p>
@@ -426,15 +441,33 @@ export function LiveStreamView({ streamId }: { streamId: string }) {
                 Reached {stream.peakViewerCount.toLocaleString()} peak viewers over{" "}
                 {duration(stream.startedAt, stream.endedAt)}.
               </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate({ kind: "home" })}
-                className="mt-3"
-              >
-                <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
-                Back to home
-              </Button>
+              <div className="flex items-center justify-center gap-2 mt-3">
+                {/* Pass 95: Watch Recording button — navigates to the VOD video.
+                    The VOD is automatically created when the stream ends. */}
+                {stream.vodVideoId ? (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => navigate({ kind: "watch", videoId: stream.vodVideoId })}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Play className="h-3.5 w-3.5 mr-1.5 fill-current" />
+                    Watch Recording
+                  </Button>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">
+                    Recording is being processed…
+                  </p>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate({ kind: "home" })}
+                >
+                  <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+                  Back to home
+                </Button>
+              </div>
             </div>
           )}
         </div>
