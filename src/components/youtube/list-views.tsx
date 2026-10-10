@@ -322,14 +322,66 @@ export function SearchView({ query }: { query: string }) {
 }
 
 export function TrendingView() {
+  const [country, setCountry] = useState("global");
   const { data, isLoading } = useQuery({
-    queryKey: ["videos", "trending"],
-    queryFn: () => fetchVideosRaw({ sort: "trending" }),
+    queryKey: ["trending", country],
+    queryFn: async () => {
+      // Pass 97: use the new /api/trending endpoint with country support
+      const res = await fetch(`/api/trending?country=${country}&limit=30`);
+      if (!res.ok) {
+        // Fallback to the old /api/videos?sort=trending
+        return fetchVideosRaw({ sort: "trending" });
+      }
+      const d = await res.json();
+      return (d.videos || []).map((v: any) => ({
+        id: v.id,
+        title: v.title,
+        thumbnailUrl: v.thumbnailUrl,
+        videoUrl: v.videoUrl,
+        durationSec: v.durationSec,
+        views: v.views,
+        likes: v.likes,
+        dislikes: v.dislikes,
+        category: v.category,
+        tags: v.tags,
+        channelId: v.channelId,
+        createdAt: v.createdAt,
+        channel: v.channel,
+      })) as Video[];
+    },
   });
+
+  const COUNTRIES = [
+    { code: "global", label: "🌍 Global" },
+    { code: "US", label: "🇺🇸 United States" },
+    { code: "GB", label: "🇬🇧 United Kingdom" },
+    { code: "AE", label: "🇦🇪 UAE" },
+    { code: "JP", label: "🇯🇵 Japan" },
+    { code: "KR", label: "🇰🇷 Korea" },
+    { code: "IN", label: "🇮🇳 India" },
+    { code: "BR", label: "🇧🇷 Brazil" },
+    { code: "DE", label: "🇩🇪 Germany" },
+    { code: "FR", label: "🇫🇷 France" },
+    { code: "EG", label: "🇪🇬 Egypt" },
+    { code: "SA", label: "🇸🇦 Saudi Arabia" },
+  ];
 
   return (
     <div className="px-4 sm:px-6 py-6 max-w-[1400px] mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Trending</h1>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <h1 className="text-2xl font-bold">Trending</h1>
+        {/* Pass 97: Country selector (gap feature from YouTube) */}
+        <select
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          className="text-sm bg-surface border border-border rounded-full px-3 py-1.5 cursor-pointer hover:border-gold/30 transition-colors"
+          aria-label="Select country for trending"
+        >
+          {COUNTRIES.map((c) => (
+            <option key={c.code} value={c.code}>{c.label}</option>
+          ))}
+        </select>
+      </div>
       <div className="flex flex-col gap-5">
         {isLoading
           ? Array.from({ length: 10 }).map((_, i) => (

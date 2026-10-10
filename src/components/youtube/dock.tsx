@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Home, Flame, ListVideo, Clock, ThumbsUp, User, LayoutGrid, X, Compass, Sparkles, Settings, HelpCircle, MessageSquare, Heart, Bookmark, ListMusic, Zap } from "lucide-react";
+import { Home, Flame, ListVideo, Clock, ThumbsUp, User, LayoutGrid, X, Compass, Sparkles, Settings, HelpCircle, MessageSquare, Heart, Bookmark, ListMusic, Zap, MessageCircle, Globe2, Info } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -48,6 +48,9 @@ const MORE_LINKS: { label: string; icon: React.ComponentType<{ className?: strin
   { label: "Liked", icon: ThumbsUp, view: { kind: "liked" } },
   { label: "Playlists", icon: ListMusic, view: { kind: "library" } },
   { label: "History", icon: Clock, view: { kind: "history" } },
+  // Pass 97: gap feature links
+  { label: "Trending", icon: Flame, view: { kind: "trending" } },
+  { label: "Shorts", icon: Zap, view: { kind: "shorts" } },
   { label: "Settings", icon: Settings, view: { kind: "settings", tab: "general" } },
   { label: "Help", icon: HelpCircle, view: { kind: "settings", tab: "help" } },
   { label: "Send feedback", icon: MessageSquare, view: { kind: "settings", tab: "feedback" } },
