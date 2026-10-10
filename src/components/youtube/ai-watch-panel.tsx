@@ -19,7 +19,7 @@ import { toast } from "sonner";
 
 /**
  * AiWatchPanel — a tabbed overlay on the watch page that exposes three
- * CIRKLE-inspired AI features:
+ * CIRKLE-inspired CIRKLE BRAIN features:
  *
  *   1. **Starters** (ai-conversation-starters) — 4 comment-style
  *      conversation starters the viewer can post as-is.

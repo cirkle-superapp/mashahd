@@ -66,6 +66,10 @@ model Video {
   // §43: Creator controls clipping behavior. Default: allowed.
   // Values: "allowed" (default) | "disabled" (no clips) | "followers_only"
   clipPolicy   String   @default("allowed")
+  // Pass 94: CIRKLE BRAIN vibe label — populated when the user first
+  // clicks CIRKLE BRAIN Recap. Used by the Mood Engine + Vibe Matching.
+  // Values: "Energetic", "Cozy", "Curious", "Awe", "Triumphant", etc.
+  aiVibe       String   @default("")
   createdAt    DateTime @default(now())
 
   channel      Channel  @relation(fields: [channelId], references: [id])

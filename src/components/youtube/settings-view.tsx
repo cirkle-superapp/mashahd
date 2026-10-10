@@ -542,7 +542,7 @@ export function SettingsView({ initialTab = "general" }: { initialTab?: string }
 
           {tab === "help" && (
             <div className="space-y-3">
-              <HelpItem q="How does AI Recap work?" a="AI Recap reads a video's title, description and metadata, then asks the LLM for a concise TL;DR, key takeaways, and a standout moment." />
+              <HelpItem q="How does CIRKLE BRAIN Recap work?" a="CIRKLE BRAIN Recap reads a video's title, description and metadata, then asks the LLM for a concise TL;DR, key takeaways, and a standout moment." />
               <HelpItem q="How do Smart Chapters seek the video?" a="Each chapter has a timestamp. Clicking a chapter sets the player's currentTime and resumes playback from there." />
               <HelpItem q="How do recommendations work?" a="Mashahd builds a category + channel affinity profile from your likes and watches. You can tune the discovery mix, block topics/creators, and give feedback (not interested) — all of which directly affect your feed." />
               <HelpItem q="Is Mashahd part of a larger app?" a="Yes. Mashahd is the video pillar of a super-app (alongside Wasl chat, Lamahat photos, and Midan square). A parent shell can navigate into Mashahd via window.mashahd." />
@@ -1244,7 +1244,7 @@ function ApiCatalogSection() {
  * CostDashboardSection — §40 unified infrastructure/cost dashboard.
  * Wires the Settings → Cost & Quotas tab to the real /api/cost-dashboard
  * endpoint. Shows each provider (Cloudflare, Turso, Vercel, Inngest, Brevo,
- * Filebase, Neon, AI providers, SMS) with its fundingModel, status, and key
+ * Filebase, Neon, CIRKLE BRAIN providers, SMS) with its fundingModel, status, and key
  * limits as a compact card. The costSummary appears at the bottom showing
  * platformMonthlyCost + the zero-cost model.
  *
@@ -1396,7 +1396,7 @@ function CostDashboardSection() {
           <ProviderCard key={p.provider} p={p} />
         ))}
 
-        {/* AI providers card — slightly different shape */}
+        {/* CIRKLE BRAIN providers card — slightly different shape */}
         <Card className="py-3 gap-2">
           <div className="px-4 space-y-2">
             <div className="flex items-center gap-2 flex-wrap">

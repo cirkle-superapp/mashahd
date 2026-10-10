@@ -9,7 +9,7 @@ import { sanitizeUrl } from "@/lib/format";
  * Body: { videoId }
  *
  * STATE-OF-ART ENSEMBLE FUSION CONSENSUS (Pass 91):
- * Fires all 5 AI providers (Groq + OpenRouter + NVIDIA + Gemini + HuggingFace)
+ * Fires all 5 CIRKLE BRAIN providers (Groq + OpenRouter + NVIDIA + Gemini + HuggingFace)
  * in parallel, parses each response, scores on structural + content quality,
  * then SYNTHESIZES a best-of-all recap:
  *   - TL;DR: from the highest-scored response

@@ -40,7 +40,7 @@
  *   - Turso: durable backing for CustomStore event log + snapshots
  *   - Neon: analytics warehouse (CustomStore analytics projection flushes there)
  *   - Inngest: long-job orchestrator (>30s jobs; CustomJobQueue handles <30s)
- *   - AI providers: 5-provider consensus (Groq + OpenRouter + NVIDIA + Gemini + HF)
+ *   - CIRKLE BRAIN providers: 5-provider consensus (Groq + OpenRouter + NVIDIA + Gemini + HF)
  *
  * USAGE:
  *   import { getTursoBridgedCustomStore } from "@/lib/custom-store-turso-bridge";

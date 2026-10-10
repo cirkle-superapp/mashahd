@@ -553,7 +553,7 @@ async function ensureAllTables(client: Client): Promise<void> {
     // NOT auto-created here, causing silent 500s on fresh Turso databases.
     // Now they are ensured on every cold start, matching the Prisma schema.
     { name: "Channel", sql: "CREATE TABLE IF NOT EXISTS Channel (id TEXT PRIMARY KEY, name TEXT, handle TEXT UNIQUE, avatarUrl TEXT, bannerColors TEXT, bannerUrl TEXT DEFAULT '', description TEXT, subscribers INTEGER DEFAULT 0, verified INTEGER DEFAULT 0, ownerId TEXT, links TEXT DEFAULT '', country TEXT DEFAULT '', createdAt TEXT)" },
-    { name: "Video", sql: "CREATE TABLE IF NOT EXISTS Video (id TEXT PRIMARY KEY, title TEXT, description TEXT, thumbnailUrl TEXT, videoUrl TEXT, durationSec INTEGER, views INTEGER DEFAULT 0, likes INTEGER DEFAULT 0, dislikes INTEGER DEFAULT 0, category TEXT, tags TEXT DEFAULT '', channelId TEXT, visibility TEXT DEFAULT 'public', publishedAt TEXT, language TEXT DEFAULT '', ageGated INTEGER DEFAULT 0, clipPolicy TEXT DEFAULT 'allowed', createdAt TEXT)" },
+    { name: "Video", sql: "CREATE TABLE IF NOT EXISTS Video (id TEXT PRIMARY KEY, title TEXT, description TEXT, thumbnailUrl TEXT, videoUrl TEXT, durationSec INTEGER, views INTEGER DEFAULT 0, likes INTEGER DEFAULT 0, dislikes INTEGER DEFAULT 0, category TEXT, tags TEXT DEFAULT '', channelId TEXT, visibility TEXT DEFAULT 'public', publishedAt TEXT, language TEXT DEFAULT '', ageGated INTEGER DEFAULT 0, clipPolicy TEXT DEFAULT 'allowed', aiVibe TEXT DEFAULT '', createdAt TEXT)" },
     { name: "Comment", sql: "CREATE TABLE IF NOT EXISTS Comment (id TEXT PRIMARY KEY, videoId TEXT, author TEXT, avatarUrl TEXT, text TEXT, likes INTEGER DEFAULT 0, timestamp INTEGER, parentId TEXT, createdAt TEXT)" },
     { name: "User", sql: "CREATE TABLE IF NOT EXISTS User (id TEXT PRIMARY KEY, email TEXT UNIQUE, phone TEXT UNIQUE, username TEXT UNIQUE, displayName TEXT, avatarUrl TEXT DEFAULT '', bio TEXT DEFAULT '', passwordHash TEXT DEFAULT '', verified INTEGER DEFAULT 0, createdAt TEXT, updatedAt TEXT)" },
     { name: "Session", sql: "CREATE TABLE IF NOT EXISTS Session (id TEXT PRIMARY KEY, userId TEXT, token TEXT UNIQUE, browserId TEXT, createdAt TEXT, expiresAt TEXT)" },
@@ -620,6 +620,16 @@ async function ensureAllTables(client: Client): Promise<void> {
     } catch (e) {
       console.warn(`[turso] Failed to ensure table ${name}:`, e);
     }
+  }
+
+  // Pass 94: Add aiVibe column to existing Video table (migration).
+  // ALTER TABLE ADD COLUMN is idempotent-safe via try/catch (SQLite throws
+  // "duplicate column name" if the column already exists — we ignore it).
+  try {
+    await client.execute("ALTER TABLE Video ADD COLUMN aiVibe TEXT DEFAULT ''").catch(() => {});
+    console.log("[turso] Migration: added aiVibe column to Video table");
+  } catch {
+    /* column already exists — ignore */
   }
 }
 

@@ -97,7 +97,7 @@ export async function GET() {
       },
     },
 
-    // ── AI providers (the ONLY external APIs we use) ──
+    // ── CIRKLE BRAIN providers (the ONLY external APIs we use) ──
     ai: {
       role: "5-provider consensus + per-provider model fallback chains",
       design: "5×4=20 model attempts per request (Groq + OpenRouter + NVIDIA + Gemini + HF)",

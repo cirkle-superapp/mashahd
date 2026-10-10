@@ -120,7 +120,7 @@ export async function GET() {
     note: "Turso is the main transactional DB. If TURSO_URL or TURSO_AUTH_TOKEN is missing, every DB query fails and /api/videos, /api/channels, etc. return 500.",
   };
 
-  // AI providers: 5 keys for the consensus mode.
+  // CIRKLE BRAIN providers: 5 keys for the consensus mode.
   const aiProviderStatus = getAIProviderStatus();
   const ai = {
     configured: Object.values(aiProviderStatus).filter(Boolean).length > 0,

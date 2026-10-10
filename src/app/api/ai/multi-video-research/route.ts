@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "at least 2 valid videos required" }, { status: 400 });
   }
 
-  // Build the context for the AI.
+  // Build the context for the CIRKLE BRAIN.
   const videoContext = videos.map((v: any, i: number) =>
     `Video ${i + 1}: "${v.title}" by ${v.channel.name}\n  Description: ${v.description.slice(0, 300)}\n  Category: ${v.category}\n  Tags: ${v.tags}`
   ).join("\n\n");
@@ -100,7 +100,9 @@ export async function POST(req: NextRequest) {
       system: prompt.system,
       user: prompt.user,
       maxTokens: 1000,
-    });
+    
+    task: "search",
+  });
 
     if (result.text && result.text.length > 10) {
       return NextResponse.json({

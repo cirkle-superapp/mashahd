@@ -117,6 +117,8 @@ The first segment MUST start at 0. The last segment MUST end at or before ${dura
     user: prompt,
     maxTokens: 1500,
     temperature: 0.7,
+  
+    task: "summarize",
   });
 
   let transcript: TranscriptSegment[];

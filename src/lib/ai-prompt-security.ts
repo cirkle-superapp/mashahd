@@ -12,9 +12,9 @@
  *
  * Defense strategy (multi-layered):
  *   1. SANITIZE — strip known injection patterns from user input
- *   2. BOUND — wrap user input in clear delimiters so the AI knows where
+ *   2. BOUND — wrap user input in clear delimiters so the CIRKLE BRAIN knows where
  *      the user content ends
- *   3. REINFORCE — append a safety suffix that reminds the AI of its role
+ *   3. REINFORCE — append a safety suffix that reminds the CIRKLE BRAIN of its role
  *
  * This is NOT perfect defense (prompt injection is an arms race), but it
  * raises the bar significantly + prevents the most common attacks.
@@ -78,8 +78,8 @@ export function sanitizeUserInput(
 /**
  * Wrap user input in clear delimiters + add a safety suffix.
  *
- * The delimiters tell the AI: "everything between these markers is user
- * content, not instructions." The safety suffix reinforces the AI's role.
+ * The delimiters tell the CIRKLE BRAIN: "everything between these markers is user
+ * content, not instructions." The safety suffix reinforces the CIRKLE BRAIN's role.
  *
  * Usage:
  *   const { sanitized, injectionDetected } = sanitizeUserInput(question);

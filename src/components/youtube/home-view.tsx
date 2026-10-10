@@ -11,6 +11,7 @@ import { TimeOfDayMood } from "./time-of-day-mood";
 import { ShortsShelf } from "./shorts-shelf";
 import { TrendingDigest } from "./trending-digest";
 import { CinematicHeroBanner } from "./cinematic-hero-banner";
+import { MoodEngine } from "./mood-engine";
 import { ContinueWatchingShelf } from "./continue-watching-shelf";
 import { LiveNowShelf } from "./live-now-shelf";
 import { LiveTVShelf } from "./live-tv-shelf";
@@ -265,6 +266,11 @@ export function HomeView() {
       {/* Cinematic Hero Banner — featured video at the top of the home page.
           Only on the default home view (not when a category/mood is selected). */}
       {isDefaultHome && <CinematicHeroBanner />}
+      {/* Pass 94: Mood Engine — the #1 feature that sets Mashahd apart.
+          Asks "How are you feeling?" with 6 mood buttons that transform
+          the feed. Only shows on default home (not when a category/mood
+          is already selected). */}
+      {isDefaultHome && <MoodEngine />}
       <CategoryChips active={mood ? "All" : category} onSelect={(c) => { setCategory(c); setMood(null); }} />
       {/* §15 — Trending sponsored hashtags. A single horizontal row of
           gold-tinted chips shown only on the default home view, hidden
@@ -310,8 +316,8 @@ export function HomeView() {
       {isDefaultHome && (
         <TimeOfDayMood onAccept={(m) => setMood(m as MoodId)} />
       )}
-      {/* AI Trending Digest — only on the default home feed, where it
-          reinforces Mashahd's AI-native identity with a curated editorial
+      {/* CIRKLE BRAIN Trending Digest — only on the default home feed, where it
+          reinforces Mashahd's CIRKLE BRAIN-native identity with a curated editorial
           wrap-up of today's trending videos. */}
       {isDefaultHome && <TrendingDigest />}
       {/* Premium section divider between AI digest and live shelves */}
@@ -460,7 +466,7 @@ export function VideoCardSkeleton() {
 /**
  * §40 — ResearchDialog. Lets the user pick up to N videos from the current
  * feed + an operation, then POSTs to /api/ai/multi-video-research. Shows
- * the AI-generated analysis in a scrollable area, plus the disclaimer
+ * the CIRKLE BRAIN-generated analysis in a scrollable area, plus the disclaimer
  * (per spec §40: "Do not manufacture consensus").
  */
 function ResearchDialog({

@@ -7,7 +7,7 @@ import { sanitizeUserInput, boundUserInput } from "@/lib/ai-prompt-security";
  * POST /api/ai/tone
  * Body: { text, tone }
  *
- * AI Tone Adjuster (adapted from CIRKLE's ai-tone-adjuster overlay). Rewrites
+ * CIRKLE BRAIN Tone Adjuster (adapted from CIRKLE's ai-tone-adjuster overlay). Rewrites
  * a viewer's draft comment in a different tone before they post it. Tones:
  * friendly, witty, formal, concise, enthusiastic. Falls back to the original
  * text if the LLM is unavailable.
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "text + tone required" }, { status: 400 });
   }
 
-  // Sanitize the user's comment text before inserting it into the AI prompt.
+  // Sanitize the user's comment text before inserting it into the CIRKLE BRAIN prompt.
   const { sanitized: safeText } = sanitizeUserInput(text, 500);
 
   const prompt = `Rewrite this comment in a ${tone} tone. Keep it under 120 characters. Preserve the core meaning. Respond with ONLY the rewritten comment, no quotes, no preamble.
@@ -44,6 +44,8 @@ ${boundUserInput(safeText, "Tone Adjuster", "Rewrite the comment above in the re
     user: prompt,
     maxTokens: 200,
     temperature: 0.7,
+  
+    task: "tone",
   });
 
   const rewritten = raw.trim().replace(/^"|"$/g, "");

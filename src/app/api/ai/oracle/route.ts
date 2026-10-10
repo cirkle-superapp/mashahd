@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Prompt injection defense (Pass 59) ──
-  // Sanitize the user's question before inserting it into the AI prompt.
+  // Sanitize the user's question before inserting it into the CIRKLE BRAIN prompt.
   // This prevents attacks like "Ignore previous instructions and..." from
   // hijacking the model's behavior.
   const { sanitized: safeQuestion, injectionDetected } = sanitizeUserInput(question, 1000);
@@ -52,9 +52,9 @@ export async function POST(req: NextRequest) {
   const channelName = (channel as any)?.name || "Unknown";
 
   // Build the prompt with BOUNDED user input — the question is wrapped in
-  // delimiters + a safety suffix prevents the AI from following injection
+  // delimiters + a safety suffix prevents the CIRKLE BRAIN from following injection
   // instructions embedded in the question.
-  const prompt = `You are the Mashahd Oracle — a knowledgeable assistant that answers questions about a video the viewer is watching. Ground your answer in the video's metadata below; if the question can't be answered from that, say so honestly and offer a related tangent.
+  const prompt = `You are the Mashahd CIRKLE BRAIN Oracle — a knowledgeable assistant that answers questions about a video the viewer is watching. Ground your answer in the video's metadata below; if the question can't be answered from that, say so honestly and offer a related tangent.
 
 Title: ${video.title}
 Channel: ${channelName}
@@ -70,10 +70,12 @@ ${boundUserInput(safeQuestion, "Oracle", "Answer the viewer's question about the
   // providers (3-8s consensus). The Oracle prioritizes latency over
   // completeness — a fast "good enough" answer beats a slow "perfect" one.
   const { text, source: aiSource } = await aiChatFast({
-    system: "You are the Mashahd Oracle — concise, helpful, honest.",
+    system: "You are the Mashahd CIRKLE BRAIN Oracle — concise, helpful, honest.",
     user: prompt,
     maxTokens: 400,
     temperature: 0.7,
+  
+    task: "oracle",
   });
 
   const answer = text.trim();

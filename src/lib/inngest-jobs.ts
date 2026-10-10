@@ -2,7 +2,7 @@
  * CustomJobQueue Background Jobs — from-scratch job queue (Pass 89).
  *
  * Per user request: "we build everything from scratch. only api we use
- * external is AI models api." This REPLACES the external Inngest service
+ * external is CIRKLE BRAIN models api." This REPLACES the external Inngest service
  * (https://api.inngest.com) with our own CustomJobQueue — an event-sourced
  * job queue built on top of CustomStore.
  *

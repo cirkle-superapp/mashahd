@@ -15,7 +15,7 @@ type DigestResponse = {
 
 /**
  * TrendingDigest — an AI-generated editorial wrap-up of today's trending
- * videos, shown on the home page. Reinforces Mashahd's AI-native identity:
+ * videos, shown on the home page. Reinforces Mashahd's CIRKLE BRAIN-native identity:
  * instead of a bare list, the viewer gets a curator's note.
  *
  * Fetches from GET /api/ai/trending-digest (10-min server cache). Includes
@@ -46,7 +46,7 @@ export function TrendingDigest() {
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" aria-hidden />
 
         <div className="flex items-start gap-3">
-          {/* Sparkle icon — the AI signature */}
+          {/* Sparkle icon — the CIRKLE BRAIN signature */}
           <div className="shrink-0 mt-0.5 grid place-items-center h-9 w-9 rounded-full bg-gold/20 border border-gold/30">
             <Sparkles className="h-4 w-4 text-[hsl(var(--gold))]" />
           </div>

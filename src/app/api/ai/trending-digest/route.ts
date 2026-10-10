@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     (v, i) =>
       `${i + 1}. "${v.title}" by ${channelMap[v.channelId]?.name || "Unknown"} — ${v.views.toLocaleString()} views, ${v.category}`
   );
-  const prompt = `You are the AI editor of a video discovery app called Mashahd (مشاهِد).
+  const prompt = `You are the CIRKLE BRAIN editor of a video discovery app called Mashahd (مشاهِد).
 Write a short, engaging editorial digest of today's trending videos. It should:
 
 - Be 3-4 sentences, max ~80 words.
@@ -86,6 +86,8 @@ Respond with the digest text only — no markdown, no quotes, no preamble.`;
     user: prompt,
     maxTokens: 300,
     temperature: 0.7,
+  
+    task: "summarize",
   });
 
   let digest: string;

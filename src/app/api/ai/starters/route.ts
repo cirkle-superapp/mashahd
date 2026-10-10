@@ -54,6 +54,8 @@ Respond with EXACTLY 4 lines, nothing else.`;
     user: prompt,
     maxTokens: 300,
     temperature: 0.8,
+  
+    task: "default",
   });
 
   const starters = text

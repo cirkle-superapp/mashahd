@@ -14,10 +14,15 @@ type Recap = {
   vibe: string;
 };
 
-/** AI Recap panel — listens for the `mashahd:ai-summarize` window event. */
+/** CIRKLE BRAIN Recap panel — listens for the `mashahd:ai-summarize` window event. */
 export function AiRecap({ videoId }: { videoId: string }) {
   const [open, setOpen] = useState(false);
   const [recap, setRecap] = useState<Recap | null>(null);
+  // Pass 94: CIRKLE BRAIN consensus metadata for the transparency badge
+  const [consensus, setConsensus] = useState<{
+    source: string; sources: string[]; confidence: number;
+    providerCount: number; synthesized: boolean;
+  } | null>(null);
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -33,14 +38,21 @@ export function AiRecap({ videoId }: { videoId: string }) {
         body: JSON.stringify({ videoId }),
       });
       if (!res.ok) throw new Error("failed");
-      return res.json() as Promise<{ ok: boolean; recap: Recap; source: string }>;
+      return res.json() as Promise<{ ok: boolean; recap: Recap; source: string; consensus?: { source: string; sources: string[]; confidence: number; providerCount: number; synthesized: boolean } }>;
     },
     onSuccess: (data) => {
       setRecap(data.recap);
+      // Pass 94: store consensus metadata for the transparency badge
+      setConsensus(data.consensus || null);
       if (data.source === "fallback") {
-        toast.info("AI offline — showing a best-effort recap");
+        toast.info("CIRKLE BRAIN offline — showing a best-effort recap");
       } else {
-        toast.success("AI recap ready");
+        const c = data.consensus;
+        if (c && c.synthesized) {
+          toast.success(`CIRKLE BRAIN ready · ${c.providerCount}/5 providers · ${Math.round(c.confidence * 100)}% confidence`);
+        } else {
+          toast.success("CIRKLE BRAIN recap ready");
+        }
       }
     },
     onError: () => toast.error("Could not generate recap"),
@@ -60,10 +72,33 @@ export function AiRecap({ videoId }: { videoId: string }) {
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-gold/20 bg-[hsl(var(--gold)/0.06)]">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-[hsl(var(--gold))]" />
-            <span className="text-sm font-semibold gradient-text-gold">AI Recap</span>
+            <span className="text-sm font-semibold gradient-text-gold">CIRKLE BRAIN Recap</span>
             {recap?.vibe && (
               <span className="text-[10px] uppercase tracking-wide text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                 {recap.vibe}
+              </span>
+            )}
+            {/* Pass 94: CIRKLE BRAIN consensus transparency badge.
+                Shows provider count + confidence + synthesized flag.
+                This is what sets Mashahd apart from YouTube's black-box AI. */}
+            {consensus && consensus.providerCount > 0 && (
+              <span
+                className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded border"
+                style={{
+                  color: consensus.confidence >= 0.6
+                    ? "hsl(var(--teal))"
+                    : "hsl(var(--rose))",
+                  borderColor: consensus.confidence >= 0.6
+                    ? "hsl(var(--teal) / 0.3)"
+                    : "hsl(var(--rose) / 0.3)",
+                  background: consensus.confidence >= 0.6
+                    ? "hsl(var(--teal) / 0.08)"
+                    : "hsl(var(--rose) / 0.08)",
+                }}
+                title={`CIRKLE BRAIN consensus: ${consensus.providerCount}/5 providers responded, ${Math.round(consensus.confidence * 100)}% agreement on vibe. Sources: ${consensus.sources.join(", ")}`}
+              >
+                ⚡ {consensus.providerCount}/5 · {Math.round(consensus.confidence * 100)}%
+                {consensus.synthesized ? " · fused" : ""}
               </span>
             )}
           </div>

@@ -237,7 +237,7 @@ export function ProfileView() {
         <button
           onClick={() => {
             window.dispatchEvent(new CustomEvent("mashahd:ai-watch"));
-            toast.info("Open a video first to use AI features");
+            toast.info("Open a video first to use CIRKLE BRAIN features");
           }}
           className="w-full flex items-center gap-3 p-4 rounded-xl border border-gold/25 bg-gradient-to-br from-[hsl(var(--gold)/0.08)] to-transparent hover:from-[hsl(var(--gold)/0.14)] transition-colors text-left"
         >

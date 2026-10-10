@@ -57,7 +57,7 @@ type Item = {
 /**
  * CommandPalette — ⌘K launcher (adapted from CIRKLE's command-palette.tsx).
  *
- * Lets the user jump to any view, toggle theme, or trigger AI features
+ * Lets the user jump to any view, toggle theme, or trigger CIRKLE BRAIN features
  * (summarize, chapters, translate, pulse) all from one keyboard-driven
  * overlay. Tracks recent commands in localStorage.
  */
@@ -184,11 +184,11 @@ export function CommandPalette() {
       keywords: "new channel creator verify identity",
     },
 
-    // AI features (deep-link to current watch video if any)
+    // CIRKLE BRAIN features (deep-link to current watch video if any)
     {
       id: "ai-summarize",
       label: "Summarize current video",
-      hint: "AI Recap",
+      hint: "CIRKLE BRAIN Recap",
       icon: Sparkles,
       group: "AI Features",
       run: () => triggerAi("summarize", close),
@@ -214,7 +214,7 @@ export function CommandPalette() {
     {
       id: "ai-starters",
       label: "Comment starters",
-      hint: "AI Starters",
+      hint: "CIRKLE BRAIN Starters",
       icon: MessageSquarePlus,
       group: "AI Features",
       run: () => triggerWatch(close, "starters"),
@@ -283,10 +283,10 @@ export function CommandPalette() {
             requires a DialogTitle inside DialogContent). */}
         <DialogTitle className="sr-only">Command Palette</DialogTitle>
         <DialogDescription className="sr-only">
-          Search views, actions and AI features.
+          Search views, actions and CIRKLE BRAIN features.
         </DialogDescription>
         <Command className="[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12">
-          <CommandInput placeholder="Search views, actions, AI features…" />
+          <CommandInput placeholder="Search views, actions, CIRKLE BRAIN features…" />
           <CommandList className="custom-scroll max-h-[60vh]">
             <CommandEmpty>No results.</CommandEmpty>
             {(Object.keys(grouped) as Item["group"][]).map((g, idx) =>
@@ -320,7 +320,7 @@ export function CommandPalette() {
             <CommandGroup heading="Tips">
               <div className="px-2 py-3 text-xs text-muted-foreground space-y-1">
                 <p>Press <kbd className="rounded bg-muted px-1 py-0.5">⌘K</kbd> / <kbd className="rounded bg-muted px-1 py-0.5">Ctrl K</kbd> to open this palette anywhere.</p>
-                <p>AI features act on the video you&apos;re currently watching.</p>
+                <p>CIRKLE BRAIN features act on the video you&apos;re currently watching.</p>
               </div>
             </CommandGroup>
           </CommandList>
@@ -335,7 +335,7 @@ function triggerAi(feature: "summarize" | "chapters" | "translate", close: () =>
   const view = useAppStore.getState().view;
   if (view.kind !== "watch") {
     toast.error("Open a video first", {
-      description: `${feature === "summarize" ? "AI Recap" : feature === "chapters" ? "Smart Chapters" : "Live Translate"} needs an active video.`,
+      description: `${feature === "summarize" ? "CIRKLE BRAIN Recap" : feature === "chapters" ? "Smart Chapters" : "Live Translate"} needs an active video.`,
     });
     return;
   }
@@ -343,12 +343,12 @@ function triggerAi(feature: "summarize" | "chapters" | "translate", close: () =>
   close();
 }
 
-/** Open the AI Watch panel on a specific tab (starters / oracle / tone). */
+/** Open the CIRKLE BRAIN Watch panel on a specific tab (starters / oracle / tone). */
 function triggerWatch(close: () => void, tab: "starters" | "oracle" | "tone") {
   const view = useAppStore.getState().view;
   if (view.kind !== "watch") {
     toast.error("Open a video first", {
-      description: "AI Starters, Oracle, and Tone need an active video.",
+      description: "CIRKLE BRAIN Starters, Oracle, and Tone need an active video.",
     });
     return;
   }

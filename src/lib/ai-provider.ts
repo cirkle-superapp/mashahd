@@ -1,12 +1,27 @@
 /**
- * AI Provider Abstraction — 5-provider CONSENSUS mode.
+ * CIRKLE BRAIN — the brain that contains all 5 AI API providers in consensus.
  *
- * ARCHITECTURE (CTO decision, Pass 81 → expanded Pass 83 — 2026-09-26):
+ * Per user request (Pass 94): "cirkle brain is the brain that contains all
+ * AI API." The CIRKLE BRAIN is the abstraction layer that fires all 5 AI
+ * providers (Groq + OpenRouter + NVIDIA + Gemini + HuggingFace) in parallel
+ * and synthesizes the best response via ensemble fusion consensus.
  *
- *   z-ai has been COMPLETELY REMOVED (no z-ai-web-dev-sdk dependency in
- *   package.json, no z-ai imports anywhere in src/, no z-ai env vars).
- *   The system uses 5 independent AI providers invoked IN PARALLEL
- *   (consensus), with the longest non-empty response winning the quorum:
+ * TASK-SPECIFIC MODEL SELECTION (Pass 94):
+ *   Each CIRKLE BRAIN task uses different models per provider — optimized
+ *   for that task's requirements:
+ *     - SUMMARIZE (JSON): Groq llama-3.3-70b, OpenRouter gpt-4o-mini, NVIDIA nemotron-70b, Gemini 1.5-flash, HF Mistral-7B
+ *     - ORACLE (fast conversational): Groq llama-3.1-8b-instant, OpenRouter lfm-2.5, NVIDIA llama-3.1-8b, Gemini 1.5-flash-8b, HF zephyr-7b
+ *     - TRANSLATE (multilingual): Groq gemma2-9b-it, OpenRouter gpt-4o-mini, NVIDIA llama-3.1-70b, Gemini 1.5-flash, HF gemma-7b
+ *     - CHAPTERS (structured JSON): Groq llama-3.3-70b, OpenRouter gpt-4o-mini, NVIDIA nemotron-70b, Gemini 1.5-flash, HF Mistral-7B
+ *     - TONE (creative rewrite): Groq llama-3.3-70b, OpenRouter gpt-4o-mini, NVIDIA nemotron-70b, Gemini 1.5-flash, HF zephyr-7b
+ *     - SEARCH (intent extraction): Groq llama-3.3-70b, OpenRouter gpt-4o-mini, NVIDIA llama-3.1-70b, Gemini 1.5-flash, HF Mistral-7B
+ *
+ * All 5 providers work in consensus — the CIRKLE BRAIN synthesizes the best-of-all.
+ *
+ * ARCHITECTURE (Pass 81 → 83 → 91 → 94):
+ *
+ *   5 AI providers invoked IN PARALLEL (consensus), with task-specific
+ *   model selection per provider:
  *
  *     1. Groq         — ultra-fast inference (~500 tok/s), OpenAI-compatible
  *                       [3-model fallback chain: llama-3.1-8b-instant →
@@ -85,6 +100,85 @@ export interface AIChatOptions {
   user: string;
   maxTokens?: number;
   temperature?: number;
+  /** Pass 94: task hint for model selection. Each task uses different
+   *  models per provider — optimized for that task's requirements. */
+  task?: "summarize" | "oracle" | "translate" | "chapters" | "tone" | "search" | "default";
+}
+
+// ── Task-specific model selection (Pass 94) ──
+// Each CIRKLE BRAIN task uses different models per provider, optimized
+// for the task's requirements (JSON output, speed, multilingual, creativity).
+type TaskType = NonNullable<AIChatOptions["task"]>;
+
+const TASK_MODELS: Record<TaskType, {
+  groq: string[];
+  openrouter: string[];
+  nvidia: string[];
+  gemini: string[];
+  hf: string[];
+}> = {
+  // SUMMARIZE: needs JSON output → use models that support JSON mode
+  summarize: {
+    groq: ["llama-3.3-70b-versatile", "gemma2-9b-it", "llama-3.1-8b-instant"],
+    openrouter: ["openai/gpt-4o-mini", "meta-llama/llama-3.1-8b-instruct:free", "nvidia/nemotron-3.5-lightning:free"],
+    nvidia: ["meta/llama-3.1-nemotron-70b-instruct", "meta/llama-3.2-11b-vision-instruct", "meta/llama-3.1-8b-instruct"],
+    gemini: ["gemini-1.5-flash", "gemini-flash-latest", "gemini-1.5-flash-8b"],
+    hf: ["mistralai/Mistral-7B-Instruct-v0.2", "HuggingFaceH4/zephyr-7b-beta", "google/gemma-7b-it"],
+  },
+  // ORACLE: needs speed → use the fastest models per provider
+  oracle: {
+    groq: ["llama-3.1-8b-instant", "gemma2-9b-it", "llama-3.3-70b-versatile"],
+    openrouter: ["liquid/lfm-2.5-2.6b:free", "meta-llama/llama-3.1-8b-instruct:free", "openai/gpt-4o-mini"],
+    nvidia: ["meta/llama-3.1-8b-instruct", "meta/llama-3.2-11b-vision-instruct", "meta/llama-3.1-nemotron-70b-instruct"],
+    gemini: ["gemini-1.5-flash-8b", "gemini-1.5-flash", "gemini-flash-latest"],
+    hf: ["HuggingFaceH4/zephyr-7b-beta", "mistralai/Mistral-7B-Instruct-v0.2", "google/gemma-7b-it"],
+  },
+  // TRANSLATE: needs multilingual → use Google's models (best multilingual)
+  translate: {
+    groq: ["gemma2-9b-it", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
+    openrouter: ["openai/gpt-4o-mini", "meta-llama/llama-3.1-8b-instruct:free", "nvidia/nemotron-3.5-lightning:free"],
+    nvidia: ["meta/llama-3.1-70b-instruct", "meta/llama-3.1-8b-instruct", "meta/llama-3.2-11b-vision-instruct"],
+    gemini: ["gemini-1.5-flash", "gemini-flash-latest", "gemini-1.5-flash-8b"],
+    hf: ["google/gemma-7b-it", "mistralai/Mistral-7B-Instruct-v0.2", "HuggingFaceH4/zephyr-7b-beta"],
+  },
+  // CHAPTERS: needs structured JSON → same as summarize
+  chapters: {
+    groq: ["llama-3.3-70b-versatile", "gemma2-9b-it", "llama-3.1-8b-instant"],
+    openrouter: ["openai/gpt-4o-mini", "meta-llama/llama-3.1-8b-instruct:free", "nvidia/nemotron-3.5-lightning:free"],
+    nvidia: ["meta/llama-3.1-nemotron-70b-instruct", "meta/llama-3.2-11b-vision-instruct", "meta/llama-3.1-8b-instruct"],
+    gemini: ["gemini-1.5-flash", "gemini-flash-latest", "gemini-1.5-flash-8b"],
+    hf: ["mistralai/Mistral-7B-Instruct-v0.2", "HuggingFaceH4/zephyr-7b-beta", "google/gemma-7b-it"],
+  },
+  // TONE: needs creativity → use larger, more creative models
+  tone: {
+    groq: ["llama-3.3-70b-versatile", "gemma2-9b-it", "llama-3.1-8b-instant"],
+    openrouter: ["openai/gpt-4o-mini", "liquid/lfm-2.5-2.6b:free", "meta-llama/llama-3.1-8b-instruct:free"],
+    nvidia: ["meta/llama-3.1-nemotron-70b-instruct", "meta/llama-3.1-70b-instruct", "meta/llama-3.1-8b-instruct"],
+    gemini: ["gemini-1.5-flash", "gemini-flash-latest", "gemini-1.5-flash-8b"],
+    hf: ["HuggingFaceH4/zephyr-7b-beta", "mistralai/Mistral-7B-Instruct-v0.2", "google/gemma-7b-it"],
+  },
+  // SEARCH: needs intent extraction → use large, accurate models
+  search: {
+    groq: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"],
+    openrouter: ["openai/gpt-4o-mini", "meta-llama/llama-3.1-8b-instruct:free", "nvidia/nemotron-3.5-lightning:free"],
+    nvidia: ["meta/llama-3.1-70b-instruct", "meta/llama-3.1-nemotron-70b-instruct", "meta/llama-3.1-8b-instruct"],
+    gemini: ["gemini-1.5-flash", "gemini-flash-latest", "gemini-1.5-flash-8b"],
+    hf: ["mistralai/Mistral-7B-Instruct-v0.2", "google/gemma-7b-it", "HuggingFaceH4/zephyr-7b-beta"],
+  },
+  // DEFAULT: balanced (original model lists)
+  default: {
+    groq: ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "gemma2-9b-it"],
+    openrouter: ["meta-llama/llama-3.1-8b-instruct:free", "nvidia/nemotron-3.5-lightning:free", "liquid/lfm-2.5-2.6b:free", "openai/gpt-4o-mini"],
+    nvidia: ["meta/llama-3.2-11b-vision-instruct", "meta/llama-3.1-70b-instruct", "meta/llama-3.1-8b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct"],
+    gemini: ["gemini-flash-latest", "gemini-1.5-flash", "gemini-1.5-flash-8b", "gemini-2.0-flash"],
+    hf: ["mistralai/Mistral-7B-Instruct-v0.2", "meta-llama/Meta-Llama-3-8B-Instruct", "HuggingFaceH4/zephyr-7b-beta", "google/gemma-7b-it"],
+  },
+};
+
+// Helper: get task-specific models for a provider
+function getModelsForTask(provider: "groq" | "openrouter" | "nvidia" | "gemini" | "hf", task?: TaskType): string[] {
+  const taskType = task || "default";
+  return TASK_MODELS[taskType][provider];
 }
 
 export interface AIChatResult {
@@ -324,7 +418,7 @@ async function tryGroq(opts: AIChatOptions): Promise<{ text: string } | null> {
   messages.push({ role: "user", content: opts.user });
 
   // Try multiple models in case some are deprecated.
-  const models = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "gemma2-9b-it"];
+  const models = getModelsForTask("groq", opts.task);
   for (const model of models) {
     try {
       const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -366,12 +460,7 @@ async function tryOpenRouter(opts: AIChatOptions): Promise<{ text: string } | nu
   if (opts.system) messages.push({ role: "system", content: opts.system });
   messages.push({ role: "user", content: opts.user });
 
-  const models = [
-    "meta-llama/llama-3.1-8b-instruct:free",
-    "nvidia/nemotron-3.5-lightning:free",
-    "liquid/lfm-2.5-2.6b:free",
-    "openai/gpt-4o-mini",
-  ];
+  const models = getModelsForTask("openrouter", opts.task);
   for (const model of models) {
     try {
       const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -417,12 +506,7 @@ async function tryNvidia(opts: AIChatOptions): Promise<{ text: string } | null> 
   messages.push({ role: "user", content: opts.user });
 
   // 4-model chain. Verified working as of 2026-09-25. Order = priority.
-  const models = [
-    "meta/llama-3.2-11b-vision-instruct",  // primary — current default
-    "meta/llama-3.1-70b-instruct",          // fallback 1 — bigger Llama
-    "meta/llama-3.1-8b-instruct",           // fallback 2 — faster, smaller
-    "nvidia/llama-3.1-nemotron-70b-instruct", // fallback 3 — NVIDIA-tuned
-  ];
+  const models = getModelsForTask("nvidia", opts.task);
 
   for (const model of models) {
     try {
@@ -462,12 +546,7 @@ async function tryGemini(opts: AIChatOptions): Promise<{ text: string } | null> 
   const prompt = opts.system ? `${opts.system}\n\n${opts.user}` : opts.user;
   const contents = [{ parts: [{ text: prompt }] }];
 
-  const models = [
-    "gemini-flash-latest",       // primary — alias for the latest flash
-    "gemini-1.5-flash",         // fallback 1 — stable 1.5 flash
-    "gemini-1.5-flash-8b",      // fallback 2 — smaller/faster 1.5 flash
-    "gemini-2.0-flash",         // fallback 3 — 2.0 flash (experimental)
-  ];
+  const models = getModelsForTask("gemini", opts.task);
 
   for (const model of models) {
     try {
@@ -509,12 +588,7 @@ async function tryHF(opts: AIChatOptions): Promise<{ text: string } | null> {
 
   const prompt = opts.system ? `${opts.system}\n\n${opts.user}` : opts.user;
 
-  const models = [
-    "mistralai/Mistral-7B-Instruct-v0.2",         // primary
-    "meta-llama/Meta-Llama-3-8B-Instruct",          // fallback 1
-    "HuggingFaceH4/zephyr-7b-beta",                 // fallback 2
-    "google/gemma-7b-it",                            // fallback 3
-  ];
+  const models = getModelsForTask("hf", opts.task);
 
   for (const model of models) {
     try {
@@ -549,7 +623,7 @@ async function tryHF(opts: AIChatOptions): Promise<{ text: string } | null> {
 }
 
 /**
- * Check which AI providers are configured (for health/metrics).
+ * Check which CIRKLE BRAIN providers are configured (for health/metrics).
  */
 export function getAIProviderStatus(): Record<string, boolean> {
   return {

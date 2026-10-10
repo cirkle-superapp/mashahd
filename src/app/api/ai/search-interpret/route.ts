@@ -10,7 +10,7 @@ import { sanitizeUserInput, boundUserInput } from "@/lib/ai-prompt-security";
  * AI Smart Search — intent detection (Pass 71).
  *
  * When a user searches for something like "cozy winter vibes" or "videos
- * that make me feel inspired", the AI interprets the intent and returns:
+ * that make me feel inspired", the CIRKLE BRAIN interprets the intent and returns:
  *   - interpretation: a short explanation of what the user is looking for
  *   - keywords: search terms the backend can use to find matching videos
  *   - categories: suggested categories to browse
@@ -18,7 +18,7 @@ import { sanitizeUserInput, boundUserInput } from "@/lib/ai-prompt-security";
  * This is unique to Mashahd — YouTube's search is keyword-only. Our AI
  * understands the FEELING behind the search, not just the words.
  *
- * If the AI is unavailable, returns null (the frontend falls back to
+ * If the CIRKLE BRAIN is unavailable, returns null (the frontend falls back to
  * the standard keyword search).
  */
 
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   // Sanitize the query for prompt injection defense.
   const { sanitized: safeQuery } = sanitizeUserInput(query, 500);
 
-  const prompt = `You are the Mashahd AI Search Interpreter. A user searched for: "${safeQuery}"
+  const prompt = `You are the Mashahd CIRKLE BRAIN Search Interpreter. A user searched for: "${safeQuery}"
 
 Your job: interpret the user's intent and suggest better search terms.
 
@@ -67,9 +67,11 @@ Respond with ONLY the JSON object.`;
       user: prompt,
       maxTokens: 200,
       temperature: 0.3,
-    });
+    
+    task: "search",
+  });
 
-    // Parse the AI response as JSON.
+    // Parse the CIRKLE BRAIN response as JSON.
     let parsed: any = null;
     try {
       // Strip any markdown code fences if present.

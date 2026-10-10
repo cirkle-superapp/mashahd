@@ -56,6 +56,8 @@ ${numbered}`;
     user: prompt,
     maxTokens: Math.min(2000, 200 * arr.length + 200),
     temperature: 0.3,
+  
+    task: "translate",
   });
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);

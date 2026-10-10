@@ -12,7 +12,7 @@ import { getStorage } from "@/lib/storage";
  * the status of each subsystem independently so the caller can see what's
  * available, rather than failing hard on the first missing piece. The DB
  * is the only hard requirement — if the DB is up, the core app works
- * (browse, watch, AI features, auth, playlists). Media upload/transcoding
+ * (browse, watch, CIRKLE BRAIN features, auth, playlists). Media upload/transcoding
  * only works where storage is writable + FFmpeg is present (self-hosted).
  */
 export async function GET() {

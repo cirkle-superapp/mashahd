@@ -21,7 +21,7 @@ const tajawal = Tajawal({
 export const metadata: Metadata = {
   title: "Mashahd — مشاهِد | Video pillar of the super-app",
   description:
-    "Mashahd (مشاهِد) — the AI-native video pillar of the super-app. Watch, discover, summarize, and translate videos. Brand & concepts adapted from CIRKLE (دواير).",
+    "Mashahd (مشاهِد) — the CIRKLE BRAIN-native video pillar of the super-app. Watch, discover, summarize, and translate videos. Brand & concepts adapted from CIRKLE (دواير).",
   keywords: [
     "video",
     "streaming",
@@ -34,10 +34,10 @@ export const metadata: Metadata = {
     "typescript",
     "tailwind",
   ],
-  authors: [{ name: "Z.ai" }],
+  authors: [{ name: "Mashahd" }],
   openGraph: {
     title: "Mashahd — مشاهِد | Video pillar of the super-app",
-    description: "An AI-native video module. Brand & concepts adapted from CIRKLE.",
+    description: "An CIRKLE BRAIN-native video module. Brand & concepts adapted from CIRKLE.",
     siteName: "Mashahd",
     type: "website",
   },

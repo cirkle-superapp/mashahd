@@ -10,8 +10,8 @@ const STORAGE_KEY = "mashahd-onboarding-seen";
 const STEPS = [
   {
     icon: Sparkles,
-    title: "Discover with AI",
-    body: "Every video on Mashahd comes with AI Recap, Smart Chapters, an Oracle that answers your questions, and live comment translation — all powered by real LLM calls.",
+    title: "Discover with CIRKLE BRAIN",
+    body: "Every video on Mashahd comes with CIRKLE BRAIN Recap, Smart Chapters, an Oracle that answers your questions, and live comment translation — all powered by CIRKLE BRAIN real LLM calls.",
     color: "text-[hsl(var(--gold))]",
   },
   {

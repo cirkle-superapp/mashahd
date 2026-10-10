@@ -69,6 +69,8 @@ Rules:
     user: prompt,
     maxTokens: 900,
     temperature: 0.7,
+  
+    task: "chapters",
   });
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);

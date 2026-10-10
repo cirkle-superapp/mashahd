@@ -43,7 +43,7 @@
  *   - Union of takeaways = richer information than any single response
  *   - Confidence score surfaces when providers disagreed (low confidence)
  *   - All 5 providers fire in parallel — no extra latency vs single-call
- *   - Falls back to deterministic if all 5 fail (every AI feature always returns something)
+ *   - Falls back to deterministic if all 5 fail (every CIRKLE BRAIN feature always returns something)
  *
  * USAGE:
  *   import { aiSummarizeConsensus } from "@/lib/ai-summarize-consensus";
@@ -288,7 +288,7 @@ function synthesizeRecap(recaps: Recap[], category: string): { recap: Recap; con
 }
 
 /**
- * Deterministic fallback recap (used when all 5 AI providers fail).
+ * Deterministic fallback recap (used when all 5 CIRKLE BRAIN providers fail).
  */
 function fallbackRecap(input: SummarizeInput): Recap {
   return {
@@ -306,7 +306,7 @@ function fallbackRecap(input: SummarizeInput): Recap {
 /**
  * Main entry point — state-of-art ensemble fusion consensus for video summarization.
  *
- * Fires all 5 AI providers in parallel, scores each response, synthesizes a
+ * Fires all 5 CIRKLE BRAIN providers in parallel, scores each response, synthesizes a
  * best-of-all recap. Returns a confidence score based on cross-provider agreement.
  */
 export async function aiSummarizeConsensus(input: SummarizeInput): Promise<SummarizeConsensusResult> {
@@ -318,6 +318,7 @@ export async function aiSummarizeConsensus(input: SummarizeInput): Promise<Summa
     user,
     maxTokens: 800,
     temperature: 0.7,
+    task: "summarize",
   });
 
   // STAGE 2: Parse + score each response.

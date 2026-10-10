@@ -10,7 +10,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Mashahd — مشاهِد | Video",
     short_name: "Mashahd",
     description:
-      "Mashahd (مشاهِد) — the AI-native video pillar of the super-app. Watch, discover, summarize, and translate videos.",
+      "Mashahd (مشاهِد) — the CIRKLE BRAIN-native video pillar of the super-app. Watch, discover, summarize, and translate videos.",
     start_url: "/",
     display: "standalone",
     background_color: "#FDFCF9",

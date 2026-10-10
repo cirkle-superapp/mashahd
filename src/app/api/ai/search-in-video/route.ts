@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
         maxTokens: 500,
       });
 
-      // Parse the AI response — try to extract a JSON array.
+      // Parse the CIRKLE BRAIN response — try to extract a JSON array.
       const jsonMatch = aiResult.text.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const results = JSON.parse(jsonMatch[0]);

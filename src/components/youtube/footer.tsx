@@ -83,7 +83,7 @@ export function Footer() {
         </div>
         <p className="mt-4 text-xs text-muted-foreground max-w-2xl">
           Mashahd (مشاهِد) — built with Next.js 16, TypeScript, Tailwind CSS 4 &amp;
-          shadcn/ui. Brand mark &amp; AI feature concepts adapted from CIRKLE
+          shadcn/ui. Brand mark &amp; CIRKLE BRAIN feature concepts adapted from CIRKLE
           (دواير). All channels, videos and comments shown here are demo
           content. Video playback uses Google&apos;s public sample MP4s;
           thumbnails are fetched via an image-search service.

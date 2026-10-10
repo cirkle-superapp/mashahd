@@ -549,7 +549,7 @@ export function WatchView({ videoId }: { videoId: string }) {
   const reactionSeq = useRef(0);
 
   // §38 — AI search-in-video. Mutation so the loading state is shown while
-  // the AI thinks. Results are stored in local state (per-search).
+  // the CIRKLE BRAIN thinks. Results are stored in local state (per-search).
   const [searchQuery, setSearchQuery] = useState("");
   const searchMutation = useMutation({
     mutationFn: ({ q }: { q: string }) => searchInVideo(videoId, q),
@@ -1529,7 +1529,7 @@ export function WatchView({ videoId }: { videoId: string }) {
             </div>
           </div>
 
-          {/* §38 — AI Search-in-video. A small input + results list below the
+          {/* §38 — CIRKLE BRAIN Search-in-video. A small input + results list below the
               description. On Enter: POST to /api/ai/search-in-video with
               { videoId, query } via useMutation. Results render as clickable
               timestamps (formatted m:ss) that seek the player to the start
@@ -1688,7 +1688,7 @@ export function WatchView({ videoId }: { videoId: string }) {
             </div>
           )}
 
-          {/* AI features — Mashahd (adapted from CIRKLE overlays).
+          {/* CIRKLE BRAIN features — Mashahd (adapted from CIRKLE overlays).
               Triggered via ⌘K command palette or the gold ⭐ chip row below. */}
           <div className="mt-4 px-4 sm:px-0 flex items-center gap-2 flex-wrap">
             <button
@@ -1696,7 +1696,7 @@ export function WatchView({ videoId }: { videoId: string }) {
               className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-gold/30 bg-[hsl(var(--gold)/0.08)] text-foreground hover:bg-[hsl(var(--gold)/0.14)] transition-colors"
             >
               <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--gold))]" />
-              AI Recap
+              CIRKLE BRAIN Recap
             </button>
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("mashahd:ai-chapters"))}
@@ -1710,7 +1710,7 @@ export function WatchView({ videoId }: { videoId: string }) {
               className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-border bg-muted/60 hover:bg-accent transition-colors"
             >
               <MessageSquarePlus className="h-3.5 w-3.5" />
-              AI Starters
+              CIRKLE BRAIN Starters
             </button>
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("mashahd:ai-watch", { detail: { tab: "oracle" } }))}
