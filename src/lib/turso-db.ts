@@ -213,7 +213,8 @@ function createModel(client: Client, table: string) {
                   .map((r: any) => r[fk])
                   .filter((id: any) => id != null && id !== "")
               ),
-            ];
+              , { name: "CommunityPost", sql: "CREATE TABLE IF NOT EXISTS CommunityPost (id TEXT PRIMARY KEY, channelId TEXT, type TEXT DEFAULT 'text', text TEXT DEFAULT '', pollOptions TEXT DEFAULT '[]', pollVotes TEXT DEFAULT '[]', imageUrl TEXT DEFAULT '', likes INTEGER DEFAULT 0, comments INTEGER DEFAULT 0, createdAt TEXT)" },
+  ];
             if (fkIds.length === 0) {
               // No foreign keys to resolve — set all to null.
               for (const row of rows) row[relName] = null;

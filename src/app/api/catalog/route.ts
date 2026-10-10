@@ -202,6 +202,14 @@ const API_CATALOG = [
       { method: "GET", path: "/api/decisions", description: "Admin decision explanations" },
       { method: "GET", path: "/api/premium", description: "Premium features (§62)" },
       { method: "GET", path: "/api/platform-changelog", description: "Platform change log (§67)" },
+
+      { method: "GET", path: "/api/trending", description: "Trending by country (Pass 96 — gap feature from YouTube)" },
+      { method: "GET/POST", path: "/api/community", description: "Community Tab — posts, polls, images on channels (Pass 96 — gap from YouTube)" },
+      { method: "GET", path: "/api/channels/[id]/about", description: "Channel About page (Pass 96 — gap from YouTube)" },
+      { method: "GET", path: "/api/videos/[id]/speed", description: "Playback speed options (Pass 96 — gap from YouTube)" },
+      { method: "POST", path: "/api/videos/[id]/premiere", description: "Schedule video premiere (Pass 96 — gap from YouTube)" },
+      { method: "POST", path: "/api/live-streams/[id]/raid", description: "Twitch-style channel raid (Pass 96 — gap from Twitch)" },
+
       { method: "GET", path: "/api/catalog", description: "This API catalog (§71)" },
     ],
   },

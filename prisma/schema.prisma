@@ -7,8 +7,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "sqlite"
-  url       = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model Channel {
@@ -34,8 +34,9 @@ model Channel {
   country      String   @default("")
   createdAt    DateTime @default(now())
 
-  videos       Video[]
-  owner        User?    @relation("ChannelOwner", fields: [ownerId], references: [id])
+  videos         Video[]
+  owner          User?           @relation("ChannelOwner", fields: [ownerId], references: [id])
+  communityPosts CommunityPost[]
 
   @@index([ownerId])
 }
@@ -72,13 +73,13 @@ model Video {
   aiVibe       String   @default("")
   createdAt    DateTime @default(now())
 
-  channel      Channel  @relation(fields: [channelId], references: [id])
-  comments     Comment[]
-  sources      VideoSource[]
-  renditions   VideoRendition[]
-  manifests    VideoManifest[]
-  jobs         MediaProcessingJob[]
-  clips        Clip[]
+  channel    Channel              @relation(fields: [channelId], references: [id])
+  comments   Comment[]
+  sources    VideoSource[]
+  renditions VideoRendition[]
+  manifests  VideoManifest[]
+  jobs       MediaProcessingJob[]
+  clips      Clip[]
 
   @@index([category])
   @@index([channelId])
@@ -87,21 +88,21 @@ model Video {
 }
 
 model Comment {
-  id           String   @id @default(cuid())
-  videoId      String
-  author       String
-  avatarUrl    String
-  text         String
-  likes        Int      @default(0)
+  id        String   @id @default(cuid())
+  videoId   String
+  author    String
+  avatarUrl String
+  text      String
+  likes     Int      @default(0)
   // Timestamp the comment is pinned to (in seconds from video start).
   // null = a regular comment; a number = a timestamp comment (clickable).
-  timestamp    Int?
+  timestamp Int?
   // Threading: a reply has a parentId pointing to the top-level comment.
   // null = top-level comment; a string = a reply to that comment.
-  parentId     String?
-  createdAt    DateTime @default(now())
+  parentId  String?
+  createdAt DateTime @default(now())
 
-  video        Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@index([videoId])
   @@index([parentId])
@@ -112,18 +113,18 @@ model Comment {
 // watch history). We use an anonymous browserId (generated on the client)
 // rather than full auth to keep the demo simple.
 model UserState {
-  id        String   @id @default(cuid())
-  browserId String   @unique
-  likedVideoIds      String @default("") // pipe-separated video ids
-  dislikedVideoIds   String @default("") // pipe-separated video ids (audit: wire dislike)
-  subscribedChannelIds String @default("") // pipe-separated channel ids
-  watchedVideoIds    String @default("") // pipe-separated video ids, most recent first
-  favoriteVideoIds   String @default("") // pipe-separated video ids (Favorites / Save)
-  watchLaterIds      String @default("") // pipe-separated video ids (Watch Later queue)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  browserId            String   @unique
+  likedVideoIds        String   @default("") // pipe-separated video ids
+  dislikedVideoIds     String   @default("") // pipe-separated video ids (audit: wire dislike)
+  subscribedChannelIds String   @default("") // pipe-separated channel ids
+  watchedVideoIds      String   @default("") // pipe-separated video ids, most recent first
+  favoriteVideoIds     String   @default("") // pipe-separated video ids (Favorites / Save)
+  watchLaterIds        String   @default("") // pipe-separated video ids (Watch Later queue)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  playlists          Playlist[]
+  playlists Playlist[]
 }
 
 /// User-created playlists. A playlist belongs to a UserState (anonymous
@@ -141,8 +142,8 @@ model Playlist {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  userState   UserState     @relation(fields: [userStateId], references: [id], onDelete: Cascade)
-  items       PlaylistItem[]
+  userState UserState      @relation(fields: [userStateId], references: [id], onDelete: Cascade)
+  items     PlaylistItem[]
 
   @@index([userStateId])
 }
@@ -157,7 +158,7 @@ model PlaylistItem {
   position   Int      @default(0)
   addedAt    DateTime @default(now())
 
-  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
 
   @@unique([playlistId, videoId])
   @@index([playlistId, position])
@@ -173,14 +174,14 @@ model Clip {
   creatorId   String
   creatorName String   @default("Anonymous")
   title       String
-  startSec    Int      // clip start (seconds)
-  endSec      Int      // clip end (seconds)
+  startSec    Int // clip start (seconds)
+  endSec      Int // clip end (seconds)
   // Optional: a note the clipper adds.
   note        String   @default("")
   views       Int      @default(0)
   createdAt   DateTime @default(now())
 
-  video       Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@index([videoId])
   @@index([creatorId])
@@ -193,31 +194,31 @@ model Clip {
 // one is taken.
 
 model User {
-  id            String   @id @default(cuid())
-  email         String?  @unique
-  phone         String?  @unique
-  username      String   @unique // the CIRKLE username, chosen on signup
-  displayName   String
-  avatarUrl     String   @default("")
-  bio           String   @default("")
-  passwordHash  String   @default("") // bcrypt hash; empty for passkey-only
-  verified      Boolean  @default(false) // email/phone verified
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  email        String?  @unique
+  phone        String?  @unique
+  username     String   @unique // the CIRKLE username, chosen on signup
+  displayName  String
+  avatarUrl    String   @default("")
+  bio          String   @default("")
+  passwordHash String   @default("") // bcrypt hash; empty for passkey-only
+  verified     Boolean  @default(false) // email/phone verified
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   sessions      Session[]
   ownedChannels Channel[] @relation("ChannelOwner")
 }
 
 model Session {
-  id            String   @id @default(cuid())
-  userId        String
-  token         String   @unique // random session token
-  browserId     String?  // links to the anonymous UserState if upgraded
-  createdAt     DateTime @default(now())
-  expiresAt     DateTime
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique // random session token
+  browserId String? // links to the anonymous UserState if upgraded
+  createdAt DateTime @default(now())
+  expiresAt DateTime
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([token])
@@ -229,74 +230,74 @@ model Session {
 // Video / Channel / Comment models are preserved unchanged.
 
 model VideoSource {
-  id              String   @id @default(cuid())
-  videoId         String
-  sourceHash      String   // sha256 of the uploaded file
-  originalName    String
-  storagePath     String   // relative path under MEDIA_STORAGE_PATH
-  fileSize        Int      // bytes
-  duration        Float    // seconds
-  width           Int
-  height          Int
-  codec           String
-  audioCodec      String
-  frameRate       Float
-  bitrate         Int      // kbps
-  createdAt       DateTime @default(now())
+  id           String   @id @default(cuid())
+  videoId      String
+  sourceHash   String // sha256 of the uploaded file
+  originalName String
+  storagePath  String // relative path under MEDIA_STORAGE_PATH
+  fileSize     Int // bytes
+  duration     Float // seconds
+  width        Int
+  height       Int
+  codec        String
+  audioCodec   String
+  frameRate    Float
+  bitrate      Int // kbps
+  createdAt    DateTime @default(now())
 
-  video           Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@index([videoId])
 }
 
 model VideoRendition {
-  id            String   @id @default(cuid())
-  videoId       String
-  resolution    String   // "1080p", "720p", "480p", "360p"
-  height        Int
-  width         Int
-  bitrate       Int      // kbps
-  codec         String   // e.g. "h264"
-  manifestPath  String   // relative path to index.m3u8
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  videoId      String
+  resolution   String // "1080p", "720p", "480p", "360p"
+  height       Int
+  width        Int
+  bitrate      Int // kbps
+  codec        String // e.g. "h264"
+  manifestPath String // relative path to index.m3u8
+  createdAt    DateTime @default(now())
 
-  video         Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@index([videoId])
 }
 
 model VideoManifest {
-  id              String   @id @default(cuid())
-  videoId         String
-  version         String   // "v1", "v2", ...
-  hash            String   // sha256 of the manifest contents
-  manifestPath    String   // relative path to master.m3u8
-  createdAt       DateTime @default(now())
+  id           String   @id @default(cuid())
+  videoId      String
+  version      String // "v1", "v2", ...
+  hash         String // sha256 of the manifest contents
+  manifestPath String // relative path to master.m3u8
+  createdAt    DateTime @default(now())
 
-  video           Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@index([videoId])
 }
 
 model MediaProcessingJob {
-  id              String   @id @default(cuid())
-  videoId         String
-  status          String   // UPLOADING | UPLOADED | QUEUED | CLAIMED | PROCESSING | PACKAGING | VALIDATING | READY | FAILED | RETRYABLE_FAILURE | PERMANENT_FAILURE | CANCELLED
-  progress        Int      @default(0) // 0-100
-  error           String   @default("")
-  errorClass      String   @default("") // transient | permanent | ""
-  profile         String   @default("cpu-safe") // cpu-safe | balanced | high-quality
-  retryCount      Int      @default(0)
-  maxRetries      Int      @default(3)
-  priority        Int      @default(0) // higher = more urgent
-  claimedBy       String?  // worker identity (hostname + pid)
-  claimedAt       DateTime?
-  startedAt       DateTime?
-  completedAt     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id          String    @id @default(cuid())
+  videoId     String
+  status      String // UPLOADING | UPLOADED | QUEUED | CLAIMED | PROCESSING | PACKAGING | VALIDATING | READY | FAILED | RETRYABLE_FAILURE | PERMANENT_FAILURE | CANCELLED
+  progress    Int       @default(0) // 0-100
+  error       String    @default("")
+  errorClass  String    @default("") // transient | permanent | ""
+  profile     String    @default("cpu-safe") // cpu-safe | balanced | high-quality
+  retryCount  Int       @default(0)
+  maxRetries  Int       @default(3)
+  priority    Int       @default(0) // higher = more urgent
+  claimedBy   String? // worker identity (hostname + pid)
+  claimedAt   DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  video           Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@index([videoId])
   @@index([status])
@@ -318,35 +319,35 @@ model Swarm {
 }
 
 model PlaybackSession {
-  id              String   @id @default(cuid())
-  videoId         String
-  renditionId     String
-  peerId          String   // temporary, rotated per session
-  browserId       String
-  networkType     String   @default("unknown")
-  swarmId         String?
-  p2pEnabled      Boolean  @default(false)
-  startedAt       DateTime @default(now())
-  endedAt         DateTime?
+  id          String    @id @default(cuid())
+  videoId     String
+  renditionId String
+  peerId      String // temporary, rotated per session
+  browserId   String
+  networkType String    @default("unknown")
+  swarmId     String?
+  p2pEnabled  Boolean   @default(false)
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
 
   @@index([videoId])
   @@index([peerId])
 }
 
 model PlaybackTelemetry {
-  id              String   @id @default(cuid())
-  sessionId       String
-  videoId         String
-  cdnBytes        Int      @default(0)
-  p2pBytes        Int      @default(0)
-  rebufferCount   Int      @default(0)
-  rebufferDuration Float   @default(0) // seconds
-  startupTime     Float    @default(0) // seconds
-  peerCount       Int      @default(0)
-  p2pFailures     Int      @default(0)
-  httpFallbackCount Int    @default(0)
-  currentRendition String  @default("")
-  timestamp       DateTime @default(now())
+  id                String   @id @default(cuid())
+  sessionId         String
+  videoId           String
+  cdnBytes          Int      @default(0)
+  p2pBytes          Int      @default(0)
+  rebufferCount     Int      @default(0)
+  rebufferDuration  Float    @default(0) // seconds
+  startupTime       Float    @default(0) // seconds
+  peerCount         Int      @default(0)
+  p2pFailures       Int      @default(0)
+  httpFallbackCount Int      @default(0)
+  currentRendition  String   @default("")
+  timestamp         DateTime @default(now())
 
   @@index([sessionId])
   @@index([videoId])
@@ -357,21 +358,21 @@ model PlaybackTelemetry {
 // BUSINESS DATA + OUTBOX EVENT in the same Turso transaction.
 // Inngest processes the outbox asynchronously.
 model OutboxEvent {
-  id              String   @id @default(cuid())
-  aggregateType   String   // e.g. "User", "Video", "Comment"
-  aggregateId     String   // e.g. the user/video/comment ID
-  eventType       String   // e.g. "user.registered", "video.uploaded"
-  schemaVersion   Int      @default(1)
-  payload         String   // JSON-encoded event payload
-  tenantId        String   @default("default")
-  createdAt       DateTime @default(now())
-  processedAt     DateTime?
-  attemptCount    Int      @default(0)
-  status          String   @default("PENDING") // PENDING | PROCESSING | PROCESSED | FAILED | DEAD_LETTER
-  lastError       String   @default("")
-  idempotencyKey  String?  @unique
-  correlationId   String?
-  causationId     String?
+  id             String    @id @default(cuid())
+  aggregateType  String // e.g. "User", "Video", "Comment"
+  aggregateId    String // e.g. the user/video/comment ID
+  eventType      String // e.g. "user.registered", "video.uploaded"
+  schemaVersion  Int       @default(1)
+  payload        String // JSON-encoded event payload
+  tenantId       String    @default("default")
+  createdAt      DateTime  @default(now())
+  processedAt    DateTime?
+  attemptCount   Int       @default(0)
+  status         String    @default("PENDING") // PENDING | PROCESSING | PROCESSED | FAILED | DEAD_LETTER
+  lastError      String    @default("")
+  idempotencyKey String?   @unique
+  correlationId  String?
+  causationId    String?
 
   @@index([status, createdAt])
   @@index([aggregateType, aggregateId])
@@ -383,15 +384,15 @@ model OutboxEvent {
 // new subscriber, new video from a subscribed channel, tip received) and read
 // via /api/notifications (cursor-paginated).
 model Notification {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   // Recipient: a userId (authenticated) or browserId (anonymous).
   recipientId String
   // Type of notification for icon + routing.
-  type        String    // new_video | new_comment | new_subscriber | tip_received | system | mention
+  type        String // new_video | new_comment | new_subscriber | tip_received | system | mention
   // JSON-encoded payload (title, body, linkUrl, actorAvatarUrl, etc.).
   payload     String
-  read        Boolean   @default(false)
-  createdAt   DateTime  @default(now())
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
   @@index([recipientId, createdAt])
   @@index([recipientId, read])
@@ -417,13 +418,13 @@ model NotificationPreference {
 // ── Shares (engagement tracking — audit gap) ──
 // Records when a user shares a video (for virality metrics + recommendations).
 model Share {
-  id          String   @id @default(cuid())
-  videoId     String
+  id        String   @id @default(cuid())
+  videoId   String
   // The sharer (userId or anonymous browserId).
-  sharerId    String
+  sharerId  String
   // Where the share went (twitter | facebook | copy_link | email | ...).
-  platform    String   @default("copy_link")
-  createdAt   DateTime @default(now())
+  platform  String   @default("copy_link")
+  createdAt DateTime @default(now())
 
   @@index([videoId])
   @@index([sharerId])
@@ -434,64 +435,64 @@ model Share {
 // experience every visit. Quality, speed, Shorts, AI-content, home mode,
 // discovery mix, search sort, etc.
 model UserPreference {
-  id              String   @id @default(cuid())
+  id                          String   @id @default(cuid())
   // The signed browserId (anonymous) or userId (authenticated).
-  ownerId         String   @unique
+  ownerId                     String   @unique
   // ── Player defaults (§33-36) ──
-  preferredQuality String  @default("auto") // auto | 144p | 240p | 360p | 480p | 720p | 1080p | 1440p | 2160p
-  preferredSpeed   Float    @default(1) // 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2
-  preferredVolume  Int      @default(100) // 0-100
+  preferredQuality            String   @default("auto") // auto | 144p | 240p | 360p | 480p | 720p | 1080p | 1440p | 2160p
+  preferredSpeed              Float    @default(1) // 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2
+  preferredVolume             Int      @default(100) // 0-100
   // ── Subtitle + audio preferences (§35-36) ──
-  preferredSubtitleLang String @default("") // ISO 639-1, empty = off
-  preferredAudioLang String  @default("") // empty = original
+  preferredSubtitleLang       String   @default("") // ISO 639-1, empty = off
+  preferredAudioLang          String   @default("") // empty = original
   // ── Content preferences (§16-18) ──
-  disableShorts    Boolean  @default(false) // §16: persistent "disable Shorts"
-  aiContentFilter  String   @default("show_all") // show_all | prefer_human | reduce_ai | hide_ai
+  disableShorts               Boolean  @default(false) // §16: persistent "disable Shorts"
+  aiContentFilter             String   @default("show_all") // show_all | prefer_human | reduce_ai | hide_ai
   // ── Home feed preferences (§6) ──
-  homeMode         String   @default("smart") // focus | following | chronological | discovery | smart | random
+  homeMode                    String   @default("smart") // focus | following | chronological | discovery | smart | random
   // Discovery mix percentages (§9) — must sum to ~100.
-  discoveryFamiliar Int     @default(60) // % familiar content
-  discoveryNewCreators Int  @default(25) // % new creators
-  discoveryUnexpected Int   @default(15) // % unexpected subjects
+  discoveryFamiliar           Int      @default(60) // % familiar content
+  discoveryNewCreators        Int      @default(25) // % new creators
+  discoveryUnexpected         Int      @default(15) // % unexpected subjects
   // ── Search defaults (§12) ──
-  searchSort       String   @default("relevance") // relevance | newest | oldest | most_viewed | least_viewed | longest | shortest
+  searchSort                  String   @default("relevance") // relevance | newest | oldest | most_viewed | least_viewed | longest | shortest
   // ── Privacy (§26, §55) ──
-  pauseRecommendationLearning Boolean @default(false) // §26: pause rec learning
+  pauseRecommendationLearning Boolean  @default(false) // §26: pause rec learning
   // §55: Data privacy — control visibility of user activity.
   // Each can be: public | followers | private (default: private for a
   // user-controlled platform).
-  likesVisibility      String   @default("private") // §55
-  subscriptionsVisibility String @default("private") // §55
-  historyVisibility    String   @default("private") // §55
-  playlistsVisibility  String   @default("public") // §55 — playlists are shareable by default
-  commentsVisibility   String   @default("public") // §55 — comments are public by default
+  likesVisibility             String   @default("private") // §55
+  subscriptionsVisibility     String   @default("private") // §55
+  historyVisibility           String   @default("private") // §55
+  playlistsVisibility         String   @default("public") // §55 — playlists are shareable by default
+  commentsVisibility          String   @default("public") // §55 — comments are public by default
   // ── Accessibility (§58) ──
-  reducedMotion    Boolean  @default(false)
-  highContrast     Boolean  @default(false)
-  largeControls    Boolean  @default(false)
+  reducedMotion               Boolean  @default(false)
+  highContrast                Boolean  @default(false)
+  largeControls               Boolean  @default(false)
   // ── Continue Watching (§32) ──
-  continueWatchingEnabled Boolean @default(true)
-  autoplayNext     Boolean  @default(false)
+  continueWatchingEnabled     Boolean  @default(true)
+  autoplayNext                Boolean  @default(false)
   // §68: Simple mode = clean defaults; Advanced mode = full controls.
   // Advanced users must not lose capabilities (spec §68).
-  uiMode           String   @default("simple") // simple | advanced
+  uiMode                      String   @default("simple") // simple | advanced
   // Timestamps.
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
 }
 
 // ── Recommendation Feedback (§10 — negative controls) ──
 // Records explicit user feedback on recommendations. Each feedback has a
 // real, persistent effect on the recommendation engine.
 model RecommendationFeedback {
-  id          String   @id @default(cuid())
-  userId      String   // signed browserId or userId
-  videoId     String
+  id        String   @id @default(cuid())
+  userId    String // signed browserId or userId
+  videoId   String
   // The reason the user gave (§10).
-  reason      String   // not_interested | already_watched | wrong_topic | too_repetitive | low_quality | clickbait | misleading | wrong_language | wrong_format | ai_generated | dont_like_creator
+  reason    String // not_interested | already_watched | wrong_topic | too_repetitive | low_quality | clickbait | misleading | wrong_language | wrong_format | ai_generated | dont_like_creator
   // Optional free-text note from the user.
-  note        String   @default("")
-  createdAt   DateTime @default(now())
+  note      String   @default("")
+  createdAt DateTime @default(now())
 
   @@unique([userId, videoId]) // one feedback per user+video
   @@index([userId])
@@ -502,13 +503,13 @@ model RecommendationFeedback {
 // Persistent blocks that affect Home, Search, Up Next, Discovery, and
 // Notifications (§11). The FYP and search must filter these out.
 model UserBlock {
-  id          String   @id @default(cuid())
-  userId      String   // signed browserId or userId
+  id         String   @id @default(cuid())
+  userId     String // signed browserId or userId
   // The type of block (§11).
-  blockType   String   // topic | keyword | creator | content_type | language | ai_content
+  blockType  String // topic | keyword | creator | content_type | language | ai_content
   // The value being blocked (e.g. "technology" for topic, "@spammer" for creator).
-  blockValue  String
-  createdAt   DateTime @default(now())
+  blockValue String
+  createdAt  DateTime @default(now())
 
   @@unique([userId, blockType, blockValue])
   @@index([userId])
@@ -518,19 +519,19 @@ model UserBlock {
 // ── Continue Watching (§32 — cross-device playback state) ──
 // Persists where the user left off so they can resume on any device.
 model ContinueWatching {
-  id          String   @id @default(cuid())
-  userId      String   // signed browserId or userId
-  videoId     String
+  id            String   @id @default(cuid())
+  userId        String // signed browserId or userId
+  videoId       String
   // Where the user stopped (seconds into the video).
-  position    Float    @default(0)
+  position      Float    @default(0)
   // Whether the video was completed.
-  completed   Boolean  @default(false)
+  completed     Boolean  @default(false)
   // Playback state to restore (§32).
-  playbackSpeed Float  @default(1)
-  qualityPref String   @default("auto")
-  audioLang   String   @default("")
-  subtitleLang String  @default("")
-  updatedAt   DateTime @updatedAt
+  playbackSpeed Float    @default(1)
+  qualityPref   String   @default("auto")
+  audioLang     String   @default("")
+  subtitleLang  String   @default("")
+  updatedAt     DateTime @updatedAt
 
   @@unique([userId, videoId])
   @@index([userId])
@@ -540,18 +541,18 @@ model ContinueWatching {
 // ── Content Provenance (§17 — AI-content labeling) ──
 // Records the origin of a video so users can make informed choices (§18).
 model ContentProvenance {
-  id          String   @id @default(cuid())
-  videoId     String   @unique
+  id         String   @id @default(cuid())
+  videoId    String   @unique
   // The overall origin (§17).
-  origin      String   @default("unknown") // human | ai_assisted | ai_generated | mixed | unknown
+  origin     String   @default("unknown") // human | ai_assisted | ai_generated | mixed | unknown
   // Component-level origin (§17) — JSON-encoded: { voice, visuals, script, music, translation, dubbing }
-  components  String   @default("{}")
+  components String   @default("{}")
   // Creator-declared source/provenance metadata.
-  sourceNote  String   @default("")
+  sourceNote String   @default("")
   // Whether the provenance was creator-declared or platform-detected.
-  declared    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  declared   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([origin])
 }
@@ -561,15 +562,15 @@ model ContentProvenance {
 // Entertainment, etc.) WITHOUT separate accounts. Each profile has its own
 // affinity + feedback + blocks, but shares subscriptions + playlists.
 model InterestProfile {
-  id          String   @id @default(cuid())
-  userId      String   // signed browserId or userId
-  name        String   // e.g. "Personal", "Work", "Research"
+  id         String   @id @default(cuid())
+  userId     String // signed browserId or userId
+  name       String // e.g. "Personal", "Work", "Research"
   // Pipe-separated categories this profile is interested in (§28).
-  categories  String   @default("")
+  categories String   @default("")
   // Whether this is the active profile (only one active per user at a time).
-  isActive    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([userId])
 }
@@ -580,7 +581,7 @@ model InterestProfile {
 // technology saved during the last 30 days."
 model SmartPlaylist {
   id          String   @id @default(cuid())
-  userId      String   // signed browserId or userId
+  userId      String // signed browserId or userId
   name        String
   description String   @default("")
   // JSON-encoded rules: { categories: [], creators: [], maxDuration: N,
@@ -597,9 +598,9 @@ model SmartPlaylist {
 // Shows the user WHY their feed looks the way it does (transparency).
 model RecommendationChangelog {
   id          String   @id @default(cuid())
-  userId      String   // signed browserId or userId
+  userId      String // signed browserId or userId
   // The type of event (§70).
-  eventType   String   // followed_creator | blocked_topic | watched_repeated_topic | negative_feedback | positive_feedback | reset_profile | preference_changed
+  eventType   String // followed_creator | blocked_topic | watched_repeated_topic | negative_feedback | positive_feedback | reset_profile | preference_changed
   // Human-readable description of what happened.
   description String
   // Optional metadata (JSON-encoded: videoId, category, reason, etc.)
@@ -617,14 +618,14 @@ model RecommendationChangelog {
 // NOTE: We add these as a separate model to avoid destructive migrations
 // on the existing Comment table. The comments API joins them.
 model CommentMeta {
-  id            String   @id @default(cuid())
-  commentId     String   @unique
-  isQuestion    Boolean  @default(false)
-  isCreatorReply Boolean @default(false)
-  pinnedBy      String?  // creator userId who pinned, null = not pinned
-  pinnedAt      DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String    @id @default(cuid())
+  commentId      String    @unique
+  isQuestion     Boolean   @default(false)
+  isCreatorReply Boolean   @default(false)
+  pinnedBy       String? // creator userId who pinned, null = not pinned
+  pinnedAt       DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([commentId])
   @@index([isQuestion])
@@ -635,16 +636,16 @@ model CommentMeta {
 // Associates videos with: earlier videos, later updates, responses,
 // corrections, source materials, related tutorials, same topic, same creator.
 model VideoRelationship {
-  id            String   @id @default(cuid())
-  videoId       String   // the source video
-  relatedVideoId String  // the related video
+  id             String   @id @default(cuid())
+  videoId        String // the source video
+  relatedVideoId String // the related video
   // The type of relationship (§41).
-  relationType  String   // earlier | later | response | correction | source | tutorial | same_topic | same_creator | other
+  relationType   String // earlier | later | response | correction | source | tutorial | same_topic | same_creator | other
   // Optional note explaining the relationship.
-  note          String   @default("")
+  note           String   @default("")
   // Who created this relationship: creator | system | community
-  createdBy     String   @default("system")
-  createdAt     DateTime @default(now())
+  createdBy      String   @default("system")
+  createdAt      DateTime @default(now())
 
   @@unique([videoId, relatedVideoId, relationType])
   @@index([videoId])
@@ -656,20 +657,20 @@ model VideoRelationship {
 // Creators can mark and publish corrections to their videos.
 // Where appropriate, notify viewers who watched the affected content.
 model VideoCorrection {
-  id            String   @id @default(cuid())
-  videoId       String
+  id              String   @id @default(cuid())
+  videoId         String
   // The timestamp in the video where the correction applies (seconds).
-  timestamp     Int      @default(0)
+  timestamp       Int      @default(0)
   // What was wrong.
-  originalText  String
+  originalText    String
   // What it should be.
-  correctedText String
+  correctedText   String
   // Optional note from the creator.
-  note          String   @default("")
+  note            String   @default("")
   // Whether viewers who watched this video have been notified.
-  viewersNotified Boolean @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  viewersNotified Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([videoId])
 }
@@ -693,21 +694,21 @@ model PlaylistFolder {
 // ── Active Sessions (§57 — account security, device management) ──
 // Tracks all active sessions for a user (devices, IPs, last seen).
 model ActiveSession {
-  id          String   @id @default(cuid())
-  userId      String   // signed browserId or authenticated userId
+  id                String   @id @default(cuid())
+  userId            String // signed browserId or authenticated userId
   // A fingerprint of the device/browser (user agent + screen size hash).
   deviceFingerprint String
   // Human-readable device name (e.g. "Chrome on macOS").
-  deviceName  String   @default("Unknown device")
+  deviceName        String   @default("Unknown device")
   // The IP address of the session (for security display).
-  ipAddress   String   @default("")
+  ipAddress         String   @default("")
   // The user agent string.
-  userAgent   String   @default("")
+  userAgent         String   @default("")
   // When the session was last active.
-  lastSeenAt  DateTime @default(now())
+  lastSeenAt        DateTime @default(now())
   // Whether this is the current session.
-  isCurrent   Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  isCurrent         Boolean  @default(false)
+  createdAt         DateTime @default(now())
 
   @@index([userId])
   @@index([deviceFingerprint])
@@ -717,18 +718,18 @@ model ActiveSession {
 // Per the social-media audit: solo creators only. This model enables
 // creator teams with role-based access control.
 model ChannelRole {
-  id          String   @id @default(cuid())
-  channelId   String
+  id        String   @id @default(cuid())
+  channelId String
   // The user invited to the channel team.
-  userId      String
+  userId    String
   // The role assigned (§49).
-  role        String   @default("viewer") // owner | manager | editor | viewer
+  role      String   @default("viewer") // owner | manager | editor | viewer
   // Whether the invitation has been accepted.
-  accepted    Boolean  @default(false)
+  accepted  Boolean  @default(false)
   // Who invited this user.
-  invitedBy   String   @default("")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  invitedBy String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([channelId, userId])
   @@index([channelId])
@@ -748,7 +749,7 @@ model RightsClaim {
   // Who filed the claim (claimant name or ID).
   claimant        String
   // The type of claim (§53).
-  claimType       String   // copyright | trademark | music | audio | visual | other
+  claimType       String // copyright | trademark | music | audio | visual | other
   // The material that was matched (e.g. "Song: 'Example' by Artist").
   matchedMaterial String
   // Approximate location in the video where the match occurs (seconds).
@@ -774,20 +775,20 @@ model RightsClaim {
 // rights decisions. Track: submitted, under review, additional information
 // requested, accepted, rejected, closed."
 model RightsDispute {
-  id              String   @id @default(cuid())
-  claimId         String
+  id         String   @id @default(cuid())
+  claimId    String
   // Who filed the dispute (creator userId or name).
-  disputant       String
+  disputant  String
   // The reason for the dispute.
-  reason          String
+  reason     String
   // Evidence/note from the disputant.
-  evidence        String   @default("")
+  evidence   String   @default("")
   // The dispute status (§24).
-  status          String   @default("submitted") // submitted | under_review | info_requested | accepted | rejected | closed
+  status     String   @default("submitted") // submitted | under_review | info_requested | accepted | rejected | closed
   // Resolution note (filled when accepted/rejected/closed).
-  resolution      String   @default("")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  resolution String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([claimId])
   @@index([status])
@@ -797,35 +798,35 @@ model RightsDispute {
 // Per spec §45: "Support where applicable: low latency, chat, moderation,
 // slow mode, subscriber/follower mode, polls, Q&A, replay, DVR, clips, chapters."
 model LivePoll {
-  id          String   @id @default(cuid())
+  id        String    @id @default(cuid())
   // The videoId of the live stream (live streams are stored as Video records with visibility="live").
-  videoId     String
-  question    String
+  videoId   String
+  question  String
   // JSON-encoded options: [{ "text": "Yes", "votes": 0 }, { "text": "No", "votes": 0 }]
-  options     String   @default("[]")
+  options   String    @default("[]")
   // Poll status: active | closed
-  status      String   @default("active")
-  createdAt   DateTime @default(now())
-  closedAt    DateTime?
+  status    String    @default("active")
+  createdAt DateTime  @default(now())
+  closedAt  DateTime?
 
   @@index([videoId])
   @@index([status])
 }
 
 model LiveQA {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   videoId     String
   // The viewer who asked the question.
   askerName   String
-  askerAvatar String   @default("")
+  askerAvatar String    @default("")
   question    String
   // Optional answer from the creator.
-  answer      String   @default("")
-  answeredBy  String   @default("")
+  answer      String    @default("")
+  answeredBy  String    @default("")
   answeredAt  DateTime?
   // upvotes from other viewers.
-  upvotes     Int      @default(0)
-  createdAt   DateTime @default(now())
+  upvotes     Int       @default(0)
+  createdAt   DateTime  @default(now())
 
   @@index([videoId])
   @@index([answeredBy])
@@ -836,19 +837,19 @@ model LiveQA {
 // affiliate content, paid placement. Never make paid content deceptive."
 // Per spec §15: "Never make paid placements look identical to organic results."
 model AdDisclosure {
-  id          String   @id @default(cuid())
-  videoId     String
+  id             String   @id @default(cuid())
+  videoId        String
   // The type of advertising (§61).
-  adType      String   // platform_ad | creator_sponsorship | affiliate | paid_placement
+  adType         String // platform_ad | creator_sponsorship | affiliate | paid_placement
   // The sponsor/brand name.
-  sponsor     String
+  sponsor        String
   // The product/service being promoted.
-  product     String   @default("")
+  product        String   @default("")
   // Whether this is a paid placement that must be disclosed.
-  isPaid      Boolean  @default(true)
+  isPaid         Boolean  @default(true)
   // Optional disclosure note from the creator.
-  disclosureNote String @default("")
-  createdAt   DateTime @default(now())
+  disclosureNote String   @default("")
+  createdAt      DateTime @default(now())
 
   @@index([videoId])
   @@index([adType])
@@ -858,15 +859,15 @@ model AdDisclosure {
 // Sponsored hashtags appear on the home feed as discovery chips.
 // Per spec §15: "Never make paid placements look identical to organic results."
 model SponsoredHashtag {
-  id          String   @id @default(cuid())
-  hashtag     String   @unique // e.g. "TechTuesday"
-  advertiser  String   @default("")
-  city        String   @default("") // geo-targeting (empty = worldwide)
-  budget      Int      @default(0) // remaining budget in minor units
-  startsAt    DateTime @default(now())
-  endsAt      DateTime?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  id         String    @id @default(cuid())
+  hashtag    String    @unique // e.g. "TechTuesday"
+  advertiser String    @default("")
+  city       String    @default("") // geo-targeting (empty = worldwide)
+  budget     Int       @default(0) // remaining budget in minor units
+  startsAt   DateTime  @default(now())
+  endsAt     DateTime?
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
 
   @@index([active])
   @@index([hashtag])
@@ -876,26 +877,26 @@ model SponsoredHashtag {
 // Community-submitted fact-check notes on videos.
 // Per spec §21: "Support differentiated signals such as: accurate, misleading."
 model FactCheckNote {
-  id          String   @id @default(cuid())
-  videoId     String
+  id            String   @id @default(cuid())
+  videoId       String
   // The timestamp the fact-check applies to (seconds, or null for whole video).
-  timestamp   Int?
+  timestamp     Int?
   // The claim being fact-checked.
-  claim       String
+  claim         String
   // The fact-check verdict: true | false | misleading | unverified | context_needed
-  verdict     String
+  verdict       String
   // Evidence/sources supporting the fact-check.
-  evidence    String   @default("")
+  evidence      String   @default("")
   // Who submitted the fact-check.
-  submitterId String
-  submitterName String @default("Anonymous")
+  submitterId   String
+  submitterName String   @default("Anonymous")
   // Community agreement: upvotes - downvotes.
-  upvotes     Int      @default(0)
-  downvotes   Int      @default(0)
+  upvotes       Int      @default(0)
+  downvotes     Int      @default(0)
   // Status: pending | verified | disputed | resolved
-  status      String   @default("pending")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  status        String   @default("pending")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([videoId])
   @@index([status])
@@ -978,13 +979,13 @@ model LiveTVChannel {
   category    String   @default("General") // News, Sports, Music, Entertainment, etc.
   country     String   @default("")
   language    String   @default("")
-  streamUrl   String   // HLS .m3u8 URL (the actual live stream)
+  streamUrl   String // HLS .m3u8 URL (the actual live stream)
   streamType  String   @default("hls") // hls | dash | mp4
   isLive      Boolean  @default(true)
   isVerified  Boolean  @default(false)
   // Current program (EPG - Electronic Program Guide)
   nowPlaying  String   @default("")
-  nextProgram String  @default("")
+  nextProgram String   @default("")
   viewers     Int      @default(0)
   // Owner (the creator/channel operator who added this TV channel)
   ownerId     String   @default("")
@@ -994,4 +995,24 @@ model LiveTVChannel {
   @@index([isLive])
   @@index([category])
   @@index([country])
+}
+
+// Pass 96: Community Tab (gap feature from YouTube)
+// Creators can post text updates, polls, and images on their channel.
+model CommunityPost {
+  id          String   @id @default(cuid())
+  channelId   String
+  type        String   @default("text") // text | poll | image
+  text        String   @default("")
+  pollOptions String   @default("[]") // JSON array of {text, votes}
+  pollVotes   String   @default("[]") // JSON array of voter IDs
+  imageUrl    String   @default("")
+  likes       Int      @default(0)
+  comments    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  channel Channel @relation(fields: [channelId], references: [id])
+
+  @@index([channelId])
+  @@index([createdAt])
 }
