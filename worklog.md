@@ -9222,3 +9222,56 @@ Verified:
 - All 5 services HEALTHY
 - All 6 gap features live on production
 - Commit 68f36a1 pushed + Vercel deploy dpl_FPJuSp6FcgvSUACWTEoU7RyRymFb READY in 170s
+
+---
+Task ID: 97
+Agent: main
+Task: Wire all gap features into home page. Ensure all icons and tabs connected and mapped correctly. All features on home page.
+
+Work Log:
+- Audited all home page elements (Dock tabs, More menu, Sidebar, shelves, icons).
+- Wired gap features into the UI:
+
+1. Dock More destinations menu:
+   - Added Trending + Shorts links (were only in main Dock tabs, now also in More menu)
+   - All 11 More menu items navigate correctly
+
+2. TrendingView — country selector (gap feature from YouTube):
+   - 12-country dropdown (Global, US, UK, UAE, Japan, Korea, India, Brazil, Germany, France, Egypt, Saudi Arabia)
+   - Fetches from /api/trending?country=XX&limit=30 (Pass 96 endpoint)
+   - Falls back to old /api/videos?sort=trending if new endpoint fails
+
+3. Verified existing home page features are all present:
+   - Cinematic Hero Banner ✓
+   - Mood Engine (6 mood buttons) ✓
+   - Category Chips ✓
+   - Sponsored Hashtags ✓
+   - Live Now shelf ✓
+   - Live TV shelf ✓
+   - Continue Watching shelf ✓
+   - Shorts shelf ✓
+   - Video grid (main feed) ✓
+   - Command Palette (⌘K) ✓
+   - Dock (5 main tabs + More menu with 11 items) ✓
+   - Footer (sticky to bottom) ✓
+
+4. Verified speed control is already in the video player:
+   - MashahdPlayer has 6 speeds (0.5x, 0.75x, 1x, 1.25x, 1.5x, 2x)
+   - changeSpeed() sets v.playbackRate
+   - Speed menu shows/hides with controls
+
+5. Verified channel About info is inline on the channel page
+
+6. Production verification (Agent Browser DOM inspection):
+   - 17 dock/header buttons (Home, Shorts, Trending, Subs, You, More destinations + header)
+   - 62 total buttons, 2 images, 34 SVG icons
+   - Mood Engine visible ("How are you feeling?")
+   - Shelves: Mood Engine + Trending Digest + Live TV
+   - Footer present + sticky
+   - All 5 services HEALTHY, $0/month
+
+Verified:
+- 42/42 tests pass
+- lint + tsc: 0 errors
+- 116 protected files present
+- Commit 835a623 pushed + Vercel deploy dpl_BHquxGLmhWLqkoG5ecKVTxLYMrNd READY in 170s
