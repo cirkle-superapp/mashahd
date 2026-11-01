@@ -213,8 +213,7 @@ function createModel(client: Client, table: string) {
                   .map((r: any) => r[fk])
                   .filter((id: any) => id != null && id !== "")
               ),
-              , { name: "CommunityPost", sql: "CREATE TABLE IF NOT EXISTS CommunityPost (id TEXT PRIMARY KEY, channelId TEXT, type TEXT DEFAULT 'text', text TEXT DEFAULT '', pollOptions TEXT DEFAULT '[]', pollVotes TEXT DEFAULT '[]', imageUrl TEXT DEFAULT '', likes INTEGER DEFAULT 0, comments INTEGER DEFAULT 0, createdAt TEXT)" },
-  ];
+            ];
             if (fkIds.length === 0) {
               // No foreign keys to resolve — set all to null.
               for (const row of rows) row[relName] = null;
@@ -570,6 +569,8 @@ async function ensureAllTables(client: Client): Promise<void> {
     { name: "LiveStream", sql: "CREATE TABLE IF NOT EXISTS LiveStream (id TEXT PRIMARY KEY, channelId TEXT DEFAULT '', streamerId TEXT DEFAULT '', streamerName TEXT DEFAULT 'Anonymous', title TEXT, description TEXT DEFAULT '', category TEXT DEFAULT 'Tech', privacy TEXT DEFAULT 'public', status TEXT DEFAULT 'preparing', viewerCount INTEGER DEFAULT 0, peakViewerCount INTEGER DEFAULT 0, streamKey TEXT UNIQUE, watchPartyCode TEXT DEFAULT '', thumbnailUrl TEXT DEFAULT '', startedAt TEXT DEFAULT '', endedAt TEXT DEFAULT '', vodVideoId TEXT DEFAULT '', createdAt TEXT, updatedAt TEXT)" },
     // ── LiveTVChannel (Pass 77) ──
     { name: "LiveTVChannel", sql: "CREATE TABLE IF NOT EXISTS LiveTVChannel (id TEXT PRIMARY KEY, name TEXT, slug TEXT UNIQUE, logoUrl TEXT DEFAULT '', description TEXT DEFAULT '', category TEXT DEFAULT 'General', country TEXT DEFAULT '', language TEXT DEFAULT '', streamUrl TEXT, streamType TEXT DEFAULT 'hls', isLive INTEGER DEFAULT 1, isVerified INTEGER DEFAULT 0, nowPlaying TEXT DEFAULT '', nextProgram TEXT DEFAULT '', viewers INTEGER DEFAULT 0, ownerId TEXT DEFAULT '', createdAt TEXT, updatedAt TEXT)" },
+    // ── CommunityPost (Pass 96) ──
+    { name: "CommunityPost", sql: "CREATE TABLE IF NOT EXISTS CommunityPost (id TEXT PRIMARY KEY, channelId TEXT, type TEXT DEFAULT 'text', text TEXT DEFAULT '', pollOptions TEXT DEFAULT '[]', pollVotes TEXT DEFAULT '[]', imageUrl TEXT DEFAULT '', likes INTEGER DEFAULT 0, comments INTEGER DEFAULT 0, createdAt TEXT)" },
   ];
 
   for (const { name, sql } of tables) {
