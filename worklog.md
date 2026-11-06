@@ -9275,3 +9275,13 @@ Verified:
 - lint + tsc: 0 errors
 - 116 protected files present
 - Commit 835a623 pushed + Vercel deploy dpl_BHquxGLmhWLqkoG5ecKVTxLYMrNd READY in 170s
+
+## Pass 104 — [2026-11-07] 🚨 Production Incident: Vercel DEPLOYMENT_DISABLED
+
+- **Detected by:** scheduled health-check cron (Job 510085, every 30 min)
+- **Symptom:** ALL routes on mashahd.vercel.app return HTTP 402 `x-vercel-error: DEPLOYMENT_DISABLED`
+- **Scope:** entire web serving layer (home, /api/ready, /api/cost-dashboard). Not a backend failure.
+- **Recovery attempted:** empty-commit redeploy (3ee7fbe) → still 402 after build window. Account-level disable; cannot fix from git.
+- **Likely cause:** Vercel Hobby plan monthly usage cap (bandwidth 100GB / function / image overage) or manual pause.
+- **Data safety:** Turso + Neon are separate services — VERIFIED LIVE and unaffected. All platform data intact.
+- **Action required (owner):** Vercel dashboard → Settings → Usage → restore, wait for cycle reset, or switch to the self-hosted Caddy setup (SELF_HOSTED_DEPLOYMENT.md — preserves $0/no-billing constraint).
