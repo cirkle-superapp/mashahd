@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Heart, Bookmark, Wand2, Loader2, ChevronDown, Sparkle } from "lucide-react";
 import { VideoCardHorizontal, VideoCard } from "./video-card";
@@ -323,6 +323,48 @@ export function SearchView({ query }: { query: string }) {
 
 export function TrendingView() {
   const [country, setCountry] = useState("global");
+
+  // Pass 99: Auto-detect viewer country from IANA timezone (FREE FOREVER —
+  // no GeoIP API call). Falls back to 'global' if timezone can't be mapped.
+  useEffect(() => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      fetch(`/api/open-data/geo?tz=${encodeURIComponent(tz)}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.countryCode && d.countryCode !== "global") {
+            setCountry(d.countryCode);
+          }
+        })
+        .catch(() => {/* silent — keep 'global' */});
+    } catch { /* Intl not available */ }
+  }, []);
+
+  // Pass 99: Fetch full 250-country list from open-data (vs. old hardcoded 12).
+  // Grouped by region for a searchable, scrollable selector.
+  const { data: countryList } = useQuery({
+    queryKey: ["open-data-countries-selector"],
+    queryFn: async () => {
+      const res = await fetch(`/api/open-data/countries?format=selector&limit=300`);
+      if (!res.ok) return null;
+      const d = await res.json();
+      return d.countries as Array<{ code: string; label: string; region: string }>;
+    },
+    staleTime: 24 * 60 * 60 * 1000, // cache 24h — data is static
+  });
+
+  // Group countries by region for the optgroup UI.
+  const groupedCountries = useMemo(() => {
+    const list = countryList || [];
+    const groups: Record<string, typeof list> = {};
+    for (const c of list) {
+      const r = c.region || "Other";
+      if (!groups[r]) groups[r] = [];
+      groups[r].push(c);
+    }
+    return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [countryList]);
+
   const { data, isLoading } = useQuery({
     queryKey: ["trending", country],
     queryFn: async () => {
@@ -351,35 +393,36 @@ export function TrendingView() {
     },
   });
 
-  const COUNTRIES = [
-    { code: "global", label: "🌍 Global" },
-    { code: "US", label: "🇺🇸 United States" },
-    { code: "GB", label: "🇬🇧 United Kingdom" },
-    { code: "AE", label: "🇦🇪 UAE" },
-    { code: "JP", label: "🇯🇵 Japan" },
-    { code: "KR", label: "🇰🇷 Korea" },
-    { code: "IN", label: "🇮🇳 India" },
-    { code: "BR", label: "🇧🇷 Brazil" },
-    { code: "DE", label: "🇩🇪 Germany" },
-    { code: "FR", label: "🇫🇷 France" },
-    { code: "EG", label: "🇪🇬 Egypt" },
-    { code: "SA", label: "🇸🇦 Saudi Arabia" },
-  ];
-
   return (
     <div className="px-4 sm:px-6 py-6 max-w-[1400px] mx-auto">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h1 className="text-2xl font-bold">Trending</h1>
-        {/* Pass 97: Country selector (gap feature from YouTube) */}
+        {/* Pass 99: Country selector backed by 250-country open database (FREE FOREVER).
+            Auto-detects viewer country via IANA timezone on first load. */}
         <select
           value={country}
           onChange={(e) => setCountry(e.target.value)}
-          className="text-sm bg-surface border border-border rounded-full px-3 py-1.5 cursor-pointer hover:border-gold/30 transition-colors"
+          className="text-sm bg-surface border border-border rounded-full px-3 py-1.5 cursor-pointer hover:border-gold/30 transition-colors max-w-[220px]"
           aria-label="Select country for trending"
         >
-          {COUNTRIES.map((c) => (
-            <option key={c.code} value={c.code}>{c.label}</option>
-          ))}
+          {groupedCountries.length === 0 ? (
+            // Fallback if open-data fails to load
+            <>
+              <option value="global">🌍 Global</option>
+              <option value="US">🇺🇸 United States</option>
+              <option value="EG">🇪🇬 Egypt</option>
+              <option value="SA">🇸🇦 Saudi Arabia</option>
+              <option value="AE">🇦🇪 UAE</option>
+            </>
+          ) : (
+            groupedCountries.map(([region, items]) => (
+              <optgroup key={region} label={region}>
+                {items.map((c) => (
+                  <option key={c.code} value={c.code}>{c.label}</option>
+                ))}
+              </optgroup>
+            ))
+          )}
         </select>
       </div>
       <div className="flex flex-col gap-5">

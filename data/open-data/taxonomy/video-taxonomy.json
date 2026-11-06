@@ -1,0 +1,189 @@
+{
+  "meta": {
+    "name": "Mashahd Video Taxonomy",
+    "version": "1.0.0",
+    "license": "CC0 (public domain)",
+    "source": "Curated from iTunes/YouTube category conventions + platform-specific"
+  },
+  "primaryCategories": [
+    {
+      "id": "film",
+      "name": "Film & Animation",
+      "icon": "Film",
+      "color": "rose"
+    },
+    {
+      "id": "music",
+      "name": "Music",
+      "icon": "Music",
+      "color": "fuchsia"
+    },
+    {
+      "id": "tech",
+      "name": "Science & Technology",
+      "icon": "Cpu",
+      "color": "cyan"
+    },
+    {
+      "id": "news",
+      "name": "News & Politics",
+      "icon": "Newspaper",
+      "color": "slate"
+    },
+    {
+      "id": "sports",
+      "name": "Sports",
+      "icon": "Trophy",
+      "color": "orange"
+    },
+    {
+      "id": "gaming",
+      "name": "Gaming",
+      "icon": "Gamepad2",
+      "color": "violet"
+    },
+    {
+      "id": "education",
+      "name": "Education",
+      "icon": "GraduationCap",
+      "color": "emerald"
+    },
+    {
+      "id": "comedy",
+      "name": "Comedy",
+      "icon": "Smile",
+      "color": "amber"
+    },
+    {
+      "id": "entertainment",
+      "name": "Entertainment",
+      "icon": "Star",
+      "color": "pink"
+    },
+    {
+      "id": "travel",
+      "name": "Travel & Events",
+      "icon": "Plane",
+      "color": "sky"
+    },
+    {
+      "id": "food",
+      "name": "Food & Cooking",
+      "icon": "UtensilsCrossed",
+      "color": "yellow"
+    },
+    {
+      "id": "health",
+      "name": "Health & Fitness",
+      "icon": "HeartPulse",
+      "color": "red"
+    },
+    {
+      "id": "diy",
+      "name": "DIY & Crafts",
+      "icon": "Hammer",
+      "color": "lime"
+    },
+    {
+      "id": "auto",
+      "name": "Autos & Vehicles",
+      "icon": "Car",
+      "color": "stone"
+    },
+    {
+      "id": "animals",
+      "name": "Pets & Animals",
+      "icon": "PawPrint",
+      "color": "teal"
+    },
+    {
+      "id": "people",
+      "name": "People & Blogs",
+      "icon": "Users",
+      "color": "indigo"
+    },
+    {
+      "id": "style",
+      "name": "Beauty & Fashion",
+      "icon": "Sparkles",
+      "color": "purple"
+    },
+    {
+      "id": "finance",
+      "name": "Business & Finance",
+      "icon": "TrendingUp",
+      "color": "green"
+    },
+    {
+      "id": "religion",
+      "name": "Religion & Spirituality",
+      "icon": "Church",
+      "color": "gold"
+    }
+  ],
+  "contentRatings": [
+    {
+      "code": "G",
+      "name": "General Audience",
+      "desc": "Suitable for all ages"
+    },
+    {
+      "code": "PG",
+      "name": "Parental Guidance",
+      "desc": "Some material may not suit young children"
+    },
+    {
+      "code": "T",
+      "name": "Teen",
+      "desc": "Suitable for ages 13+"
+    },
+    {
+      "code": "MA",
+      "name": "Mature Audience",
+      "desc": "Ages 17+"
+    },
+    {
+      "code": "RP",
+      "name": "Restricted Preview",
+      "desc": "Preview required before broad distribution"
+    }
+  ],
+  "moods": [
+    {
+      "id": "energetic",
+      "name": "Energetic",
+      "emoji": "⚡",
+      "color": "yellow"
+    },
+    {
+      "id": "calm",
+      "name": "Calm",
+      "emoji": "🌙",
+      "color": "sky"
+    },
+    {
+      "id": "focus",
+      "name": "Focus",
+      "icon": "Target",
+      "color": "emerald"
+    },
+    {
+      "id": "inspire",
+      "name": "Inspire",
+      "emoji": "✨",
+      "color": "fuchsia"
+    },
+    {
+      "id": "learn",
+      "name": "Learn",
+      "emoji": "📚",
+      "color": "cyan"
+    },
+    {
+      "id": "laugh",
+      "name": "Laugh",
+      "emoji": "😂",
+      "color": "amber"
+    }
+  ]
+}

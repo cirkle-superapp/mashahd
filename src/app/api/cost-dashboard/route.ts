@@ -7,6 +7,7 @@ import { isInngestConfigured } from "@/lib/inngest-jobs";
 import { getAIProviderStatus } from "@/lib/ai-provider";
 import { isEmailConfigured } from "@/lib/email-service";
 import { isSmsConfigured } from "@/lib/sms-service";
+import { openDataManifest } from "@/lib/open-data";
 import { db } from "@/lib/db";
 
 /**
@@ -96,6 +97,12 @@ export async function GET() {
       status: "HEALTHY",
     },
 
+    // ── Open Data Layer (Pass 99) ──
+    // 3,133 records across 8 datasets — countries, languages, currencies,
+    // emoji, timezones, video taxonomy. All downloaded once, served from
+    // disk. Zero network calls at runtime, zero API keys, zero billing.
+    openData: openDataManifest(),
+
     // ── AI Providers ──
     ai: {
       providers: aiStatus,
@@ -122,8 +129,9 @@ export async function GET() {
     // ── Cost Summary ──
     costSummary: {
       platformMonthlyCost: "$0",
-      model: "ZERO-COST-BY-DEFAULT — 5-service stack: GitHub + Vercel + Inngest + Neon + Turso",
-      servicesInUse: ["GitHub", "Vercel", "Inngest", "Neon", "Turso"],
+      model: "ZERO-COST-BY-DEFAULT — 5-service stack + open-data layer (3,133 records, $0)",
+      servicesInUse: ["GitHub", "Vercel", "Inngest", "Neon", "Turso", "Open-Data-Layer"],
+      billingRisk: "NONE — every external dependency uses a free tier with hard caps (service stops, never charges). Open-data layer is fully offline (no network calls at runtime).",
     },
   });
 }

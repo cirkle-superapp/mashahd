@@ -1,0 +1,3386 @@
+[
+  {
+    "timezone": "Europe/Andorra",
+    "countryCode": "AD",
+    "countryName": "Andorra",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "coords": "+4230+00131"
+  },
+  {
+    "timezone": "Asia/Dubai",
+    "countryCode": "AE",
+    "countryName": "United Arab Emirates",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+2518+05518"
+  },
+  {
+    "timezone": "Asia/Dubai",
+    "countryCode": "OM",
+    "countryName": "Oman",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+2518+05518"
+  },
+  {
+    "timezone": "Asia/Dubai",
+    "countryCode": "RE",
+    "countryName": "Réunion",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "+2518+05518"
+  },
+  {
+    "timezone": "Asia/Dubai",
+    "countryCode": "SC",
+    "countryName": "Seychelles",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "+2518+05518"
+  },
+  {
+    "timezone": "Asia/Dubai",
+    "countryCode": "TF",
+    "countryName": "French Southern and Antarctic Lands",
+    "region": "Antarctic",
+    "subregion": "",
+    "coords": "+2518+05518"
+  },
+  {
+    "timezone": "Asia/Kabul",
+    "countryCode": "AF",
+    "countryName": "Afghanistan",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "coords": "+3431+06912"
+  },
+  {
+    "timezone": "Europe/Tirane",
+    "countryCode": "AL",
+    "countryName": "Albania",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "coords": "+4120+01950"
+  },
+  {
+    "timezone": "Asia/Yerevan",
+    "countryCode": "AM",
+    "countryName": "Armenia",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+4011+04430"
+  },
+  {
+    "timezone": "Antarctica/Casey",
+    "countryCode": "AQ",
+    "countryName": "Antarctica",
+    "region": "Antarctic",
+    "subregion": "",
+    "coords": "-6617+11031"
+  },
+  {
+    "timezone": "Antarctica/Davis",
+    "countryCode": "AQ",
+    "countryName": "Antarctica",
+    "region": "Antarctic",
+    "subregion": "",
+    "coords": "-6835+07758"
+  },
+  {
+    "timezone": "Antarctica/Mawson",
+    "countryCode": "AQ",
+    "countryName": "Antarctica",
+    "region": "Antarctic",
+    "subregion": "",
+    "coords": "-6736+06253"
+  },
+  {
+    "timezone": "Antarctica/Palmer",
+    "countryCode": "AQ",
+    "countryName": "Antarctica",
+    "region": "Antarctic",
+    "subregion": "",
+    "coords": "-6448-06406"
+  },
+  {
+    "timezone": "Antarctica/Rothera",
+    "countryCode": "AQ",
+    "countryName": "Antarctica",
+    "region": "Antarctic",
+    "subregion": "",
+    "coords": "-6734-06808"
+  },
+  {
+    "timezone": "Antarctica/Troll",
+    "countryCode": "AQ",
+    "countryName": "Antarctica",
+    "region": "Antarctic",
+    "subregion": "",
+    "coords": "-720041+0023206"
+  },
+  {
+    "timezone": "Antarctica/Vostok",
+    "countryCode": "AQ",
+    "countryName": "Antarctica",
+    "region": "Antarctic",
+    "subregion": "",
+    "coords": "-7824+10654"
+  },
+  {
+    "timezone": "America/Argentina/Buenos_Aires",
+    "countryCode": "AR",
+    "countryName": "Argentina",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-3436-05827"
+  },
+  {
+    "timezone": "America/Argentina/Cordoba",
+    "countryCode": "AR",
+    "countryName": "Argentina",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-3124-06411"
+  },
+  {
+    "timezone": "America/Argentina/Salta",
+    "countryCode": "AR",
+    "countryName": "Argentina",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-2447-06525"
+  },
+  {
+    "timezone": "America/Argentina/Jujuy",
+    "countryCode": "AR",
+    "countryName": "Argentina",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-2411-06518"
+  },
+  {
+    "timezone": "America/Argentina/Tucuman",
+    "countryCode": "AR",
+    "countryName": "Argentina",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-2649-06513"
+  },
+  {
+    "timezone": "America/Argentina/Catamarca",
+    "countryCode": "AR",
+    "countryName": "Argentina",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-2828-06547"
+  },
+  {
+    "timezone": "America/Argentina/La_Rioja",
+    "countryCode": "AR",
+    "countryName": "Argentina",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-2926-06651"
+  },
+  {
+    "timezone": "America/Argentina/San_Juan",
+    "countryCode": "AR",
+    "countryName": "Argentina",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-3132-06831"
+  },
+  {
+    "timezone": "America/Argentina/Mendoza",
+    "countryCode": "AR",
+    "countryName": "Argentina",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-3253-06849"
+  },
+  {
+    "timezone": "America/Argentina/San_Luis",
+    "countryCode": "AR",
+    "countryName": "Argentina",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-3319-06621"
+  },
+  {
+    "timezone": "America/Argentina/Rio_Gallegos",
+    "countryCode": "AR",
+    "countryName": "Argentina",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-5138-06913"
+  },
+  {
+    "timezone": "America/Argentina/Ushuaia",
+    "countryCode": "AR",
+    "countryName": "Argentina",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-5448-06818"
+  },
+  {
+    "timezone": "Pacific/Pago_Pago",
+    "countryCode": "AS",
+    "countryName": "American Samoa",
+    "region": "Oceania",
+    "subregion": "Polynesia",
+    "coords": "-1416-17042"
+  },
+  {
+    "timezone": "Pacific/Pago_Pago",
+    "countryCode": "UM",
+    "countryName": "United States Minor Outlying Islands",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "-1416-17042"
+  },
+  {
+    "timezone": "Europe/Vienna",
+    "countryCode": "AT",
+    "countryName": "Austria",
+    "region": "Europe",
+    "subregion": "Central Europe",
+    "coords": "+4813+01620"
+  },
+  {
+    "timezone": "Australia/Lord_Howe",
+    "countryCode": "AU",
+    "countryName": "Australia",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "-3133+15905"
+  },
+  {
+    "timezone": "Antarctica/Macquarie",
+    "countryCode": "AU",
+    "countryName": "Australia",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "-5430+15857"
+  },
+  {
+    "timezone": "Australia/Hobart",
+    "countryCode": "AU",
+    "countryName": "Australia",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "-4253+14719"
+  },
+  {
+    "timezone": "Australia/Melbourne",
+    "countryCode": "AU",
+    "countryName": "Australia",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "-3749+14458"
+  },
+  {
+    "timezone": "Australia/Sydney",
+    "countryCode": "AU",
+    "countryName": "Australia",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "-3352+15113"
+  },
+  {
+    "timezone": "Australia/Broken_Hill",
+    "countryCode": "AU",
+    "countryName": "Australia",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "-3157+14127"
+  },
+  {
+    "timezone": "Australia/Brisbane",
+    "countryCode": "AU",
+    "countryName": "Australia",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "-2728+15302"
+  },
+  {
+    "timezone": "Australia/Lindeman",
+    "countryCode": "AU",
+    "countryName": "Australia",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "-2016+14900"
+  },
+  {
+    "timezone": "Australia/Adelaide",
+    "countryCode": "AU",
+    "countryName": "Australia",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "-3455+13835"
+  },
+  {
+    "timezone": "Australia/Darwin",
+    "countryCode": "AU",
+    "countryName": "Australia",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "-1228+13050"
+  },
+  {
+    "timezone": "Australia/Perth",
+    "countryCode": "AU",
+    "countryName": "Australia",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "-3157+11551"
+  },
+  {
+    "timezone": "Australia/Eucla",
+    "countryCode": "AU",
+    "countryName": "Australia",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "-3143+12852"
+  },
+  {
+    "timezone": "Asia/Baku",
+    "countryCode": "AZ",
+    "countryName": "Azerbaijan",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+4023+04951"
+  },
+  {
+    "timezone": "America/Barbados",
+    "countryCode": "BB",
+    "countryName": "Barbados",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+1306-05937"
+  },
+  {
+    "timezone": "Asia/Dhaka",
+    "countryCode": "BD",
+    "countryName": "Bangladesh",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "coords": "+2343+09025"
+  },
+  {
+    "timezone": "Europe/Brussels",
+    "countryCode": "BE",
+    "countryName": "Belgium",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "coords": "+5050+00420"
+  },
+  {
+    "timezone": "Europe/Brussels",
+    "countryCode": "LU",
+    "countryName": "Luxembourg",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "coords": "+5050+00420"
+  },
+  {
+    "timezone": "Europe/Brussels",
+    "countryCode": "NL",
+    "countryName": "Netherlands",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "coords": "+5050+00420"
+  },
+  {
+    "timezone": "Europe/Sofia",
+    "countryCode": "BG",
+    "countryName": "Bulgaria",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "coords": "+4241+02319"
+  },
+  {
+    "timezone": "Atlantic/Bermuda",
+    "countryCode": "BM",
+    "countryName": "Bermuda",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+3217-06446"
+  },
+  {
+    "timezone": "America/La_Paz",
+    "countryCode": "BO",
+    "countryName": "Bolivia",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-1630-06809"
+  },
+  {
+    "timezone": "America/Noronha",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-0351-03225"
+  },
+  {
+    "timezone": "America/Belem",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-0127-04829"
+  },
+  {
+    "timezone": "America/Fortaleza",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-0343-03830"
+  },
+  {
+    "timezone": "America/Recife",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-0803-03454"
+  },
+  {
+    "timezone": "America/Araguaina",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-0712-04812"
+  },
+  {
+    "timezone": "America/Maceio",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-0940-03543"
+  },
+  {
+    "timezone": "America/Bahia",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-1259-03831"
+  },
+  {
+    "timezone": "America/Sao_Paulo",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-2332-04637"
+  },
+  {
+    "timezone": "America/Campo_Grande",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-2027-05437"
+  },
+  {
+    "timezone": "America/Cuiaba",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-1535-05605"
+  },
+  {
+    "timezone": "America/Santarem",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-0226-05452"
+  },
+  {
+    "timezone": "America/Porto_Velho",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-0846-06354"
+  },
+  {
+    "timezone": "America/Boa_Vista",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "+0249-06040"
+  },
+  {
+    "timezone": "America/Manaus",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-0308-06001"
+  },
+  {
+    "timezone": "America/Eirunepe",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-0640-06952"
+  },
+  {
+    "timezone": "America/Rio_Branco",
+    "countryCode": "BR",
+    "countryName": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-0958-06748"
+  },
+  {
+    "timezone": "Asia/Thimphu",
+    "countryCode": "BT",
+    "countryName": "Bhutan",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "coords": "+2728+08939"
+  },
+  {
+    "timezone": "Europe/Minsk",
+    "countryCode": "BY",
+    "countryName": "Belarus",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5354+02734"
+  },
+  {
+    "timezone": "America/Belize",
+    "countryCode": "BZ",
+    "countryName": "Belize",
+    "region": "Americas",
+    "subregion": "Central America",
+    "coords": "+1730-08812"
+  },
+  {
+    "timezone": "America/St_Johns",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+4734-05243"
+  },
+  {
+    "timezone": "America/Halifax",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+4439-06336"
+  },
+  {
+    "timezone": "America/Glace_Bay",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+4612-05957"
+  },
+  {
+    "timezone": "America/Moncton",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+4606-06447"
+  },
+  {
+    "timezone": "America/Goose_Bay",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+5320-06025"
+  },
+  {
+    "timezone": "America/Toronto",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+4339-07923"
+  },
+  {
+    "timezone": "America/Toronto",
+    "countryCode": "BS",
+    "countryName": "Bahamas",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+4339-07923"
+  },
+  {
+    "timezone": "America/Iqaluit",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+6344-06828"
+  },
+  {
+    "timezone": "America/Winnipeg",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+4953-09709"
+  },
+  {
+    "timezone": "America/Resolute",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+744144-0944945"
+  },
+  {
+    "timezone": "America/Rankin_Inlet",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+624900-0920459"
+  },
+  {
+    "timezone": "America/Regina",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+5024-10439"
+  },
+  {
+    "timezone": "America/Swift_Current",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+5017-10750"
+  },
+  {
+    "timezone": "America/Edmonton",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+5333-11328"
+  },
+  {
+    "timezone": "America/Cambridge_Bay",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+690650-1050310"
+  },
+  {
+    "timezone": "America/Inuvik",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+682059-1334300"
+  },
+  {
+    "timezone": "America/Vancouver",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+4916-12307"
+  },
+  {
+    "timezone": "America/Dawson_Creek",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+5546-12014"
+  },
+  {
+    "timezone": "America/Fort_Nelson",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+5848-12242"
+  },
+  {
+    "timezone": "America/Whitehorse",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+6043-13503"
+  },
+  {
+    "timezone": "America/Dawson",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+6404-13925"
+  },
+  {
+    "timezone": "Europe/Zurich",
+    "countryCode": "CH",
+    "countryName": "Switzerland",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "coords": "+4723+00832"
+  },
+  {
+    "timezone": "Europe/Zurich",
+    "countryCode": "DE",
+    "countryName": "Germany",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "coords": "+4723+00832"
+  },
+  {
+    "timezone": "Europe/Zurich",
+    "countryCode": "LI",
+    "countryName": "Liechtenstein",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "coords": "+4723+00832"
+  },
+  {
+    "timezone": "Africa/Abidjan",
+    "countryCode": "CI",
+    "countryName": "Ivory Coast",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+0519-00402"
+  },
+  {
+    "timezone": "Africa/Abidjan",
+    "countryCode": "BF",
+    "countryName": "Burkina Faso",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+0519-00402"
+  },
+  {
+    "timezone": "Africa/Abidjan",
+    "countryCode": "GH",
+    "countryName": "Ghana",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+0519-00402"
+  },
+  {
+    "timezone": "Africa/Abidjan",
+    "countryCode": "GM",
+    "countryName": "Gambia",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+0519-00402"
+  },
+  {
+    "timezone": "Africa/Abidjan",
+    "countryCode": "GN",
+    "countryName": "Guinea",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+0519-00402"
+  },
+  {
+    "timezone": "Africa/Abidjan",
+    "countryCode": "IS",
+    "countryName": "Iceland",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+0519-00402"
+  },
+  {
+    "timezone": "Africa/Abidjan",
+    "countryCode": "ML",
+    "countryName": "Mali",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+0519-00402"
+  },
+  {
+    "timezone": "Africa/Abidjan",
+    "countryCode": "MR",
+    "countryName": "Mauritania",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+0519-00402"
+  },
+  {
+    "timezone": "Africa/Abidjan",
+    "countryCode": "SH",
+    "countryName": "Saint Helena, Ascension and Tristan da Cunha",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+0519-00402"
+  },
+  {
+    "timezone": "Africa/Abidjan",
+    "countryCode": "SL",
+    "countryName": "Sierra Leone",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+0519-00402"
+  },
+  {
+    "timezone": "Africa/Abidjan",
+    "countryCode": "SN",
+    "countryName": "Senegal",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+0519-00402"
+  },
+  {
+    "timezone": "Africa/Abidjan",
+    "countryCode": "TG",
+    "countryName": "Togo",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+0519-00402"
+  },
+  {
+    "timezone": "Pacific/Rarotonga",
+    "countryCode": "CK",
+    "countryName": "Cook Islands",
+    "region": "Oceania",
+    "subregion": "Polynesia",
+    "coords": "-2114-15946"
+  },
+  {
+    "timezone": "America/Santiago",
+    "countryCode": "CL",
+    "countryName": "Chile",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-3327-07040"
+  },
+  {
+    "timezone": "America/Coyhaique",
+    "countryCode": "CL",
+    "countryName": "Chile",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-4534-07204"
+  },
+  {
+    "timezone": "America/Punta_Arenas",
+    "countryCode": "CL",
+    "countryName": "Chile",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-5309-07055"
+  },
+  {
+    "timezone": "Pacific/Easter",
+    "countryCode": "CL",
+    "countryName": "Chile",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-2709-10926"
+  },
+  {
+    "timezone": "Asia/Shanghai",
+    "countryCode": "CN",
+    "countryName": "China",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "coords": "+3114+12128"
+  },
+  {
+    "timezone": "Asia/Urumqi",
+    "countryCode": "CN",
+    "countryName": "China",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "coords": "+4348+08735"
+  },
+  {
+    "timezone": "America/Bogota",
+    "countryCode": "CO",
+    "countryName": "Colombia",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "+0436-07405"
+  },
+  {
+    "timezone": "America/Costa_Rica",
+    "countryCode": "CR",
+    "countryName": "Costa Rica",
+    "region": "Americas",
+    "subregion": "Central America",
+    "coords": "+0956-08405"
+  },
+  {
+    "timezone": "America/Havana",
+    "countryCode": "CU",
+    "countryName": "Cuba",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+2308-08222"
+  },
+  {
+    "timezone": "Atlantic/Cape_Verde",
+    "countryCode": "CV",
+    "countryName": "Cape Verde",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+1455-02331"
+  },
+  {
+    "timezone": "Asia/Nicosia",
+    "countryCode": "CY",
+    "countryName": "Cyprus",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "coords": "+3510+03322"
+  },
+  {
+    "timezone": "Asia/Famagusta",
+    "countryCode": "CY",
+    "countryName": "Cyprus",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "coords": "+3507+03357"
+  },
+  {
+    "timezone": "Europe/Prague",
+    "countryCode": "CZ",
+    "countryName": "Czechia",
+    "region": "Europe",
+    "subregion": "Central Europe",
+    "coords": "+5005+01426"
+  },
+  {
+    "timezone": "Europe/Prague",
+    "countryCode": "SK",
+    "countryName": "Slovakia",
+    "region": "Europe",
+    "subregion": "Central Europe",
+    "coords": "+5005+01426"
+  },
+  {
+    "timezone": "Europe/Berlin",
+    "countryCode": "DE",
+    "countryName": "Germany",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "coords": "+5230+01322"
+  },
+  {
+    "timezone": "Europe/Berlin",
+    "countryCode": "DK",
+    "countryName": "Denmark",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+5230+01322"
+  },
+  {
+    "timezone": "Europe/Berlin",
+    "countryCode": "NO",
+    "countryName": "Norway",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+5230+01322"
+  },
+  {
+    "timezone": "Europe/Berlin",
+    "countryCode": "SE",
+    "countryName": "Sweden",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+5230+01322"
+  },
+  {
+    "timezone": "Europe/Berlin",
+    "countryCode": "SJ",
+    "countryName": "Svalbard and Jan Mayen",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+5230+01322"
+  },
+  {
+    "timezone": "America/Santo_Domingo",
+    "countryCode": "DO",
+    "countryName": "Dominican Republic",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+1828-06954"
+  },
+  {
+    "timezone": "Africa/Algiers",
+    "countryCode": "DZ",
+    "countryName": "Algeria",
+    "region": "Africa",
+    "subregion": "Northern Africa",
+    "coords": "+3647+00303"
+  },
+  {
+    "timezone": "America/Guayaquil",
+    "countryCode": "EC",
+    "countryName": "Ecuador",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-0210-07950"
+  },
+  {
+    "timezone": "Pacific/Galapagos",
+    "countryCode": "EC",
+    "countryName": "Ecuador",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-0054-08936"
+  },
+  {
+    "timezone": "Europe/Tallinn",
+    "countryCode": "EE",
+    "countryName": "Estonia",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+5925+02445"
+  },
+  {
+    "timezone": "Africa/Cairo",
+    "countryCode": "EG",
+    "countryName": "Egypt",
+    "region": "Africa",
+    "subregion": "Northern Africa",
+    "coords": "+3003+03115"
+  },
+  {
+    "timezone": "Africa/El_Aaiun",
+    "countryCode": "EH",
+    "countryName": "Western Sahara",
+    "region": "Africa",
+    "subregion": "Northern Africa",
+    "coords": "+2709-01312"
+  },
+  {
+    "timezone": "Europe/Madrid",
+    "countryCode": "ES",
+    "countryName": "Spain",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "coords": "+4024-00341"
+  },
+  {
+    "timezone": "Africa/Ceuta",
+    "countryCode": "ES",
+    "countryName": "Spain",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "coords": "+3553-00519"
+  },
+  {
+    "timezone": "Atlantic/Canary",
+    "countryCode": "ES",
+    "countryName": "Spain",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "coords": "+2806-01524"
+  },
+  {
+    "timezone": "Europe/Helsinki",
+    "countryCode": "FI",
+    "countryName": "Finland",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+6010+02458"
+  },
+  {
+    "timezone": "Europe/Helsinki",
+    "countryCode": "AX",
+    "countryName": "Åland Islands",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+6010+02458"
+  },
+  {
+    "timezone": "Pacific/Fiji",
+    "countryCode": "FJ",
+    "countryName": "Fiji",
+    "region": "Oceania",
+    "subregion": "Melanesia",
+    "coords": "-1808+17825"
+  },
+  {
+    "timezone": "Atlantic/Stanley",
+    "countryCode": "FK",
+    "countryName": "Falkland Islands",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-5142-05751"
+  },
+  {
+    "timezone": "Pacific/Kosrae",
+    "countryCode": "FM",
+    "countryName": "Micronesia",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "coords": "+0519+16259"
+  },
+  {
+    "timezone": "Atlantic/Faroe",
+    "countryCode": "FO",
+    "countryName": "Faroe Islands",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+6201-00646"
+  },
+  {
+    "timezone": "Europe/Paris",
+    "countryCode": "FR",
+    "countryName": "France",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "coords": "+4852+00220"
+  },
+  {
+    "timezone": "Europe/Paris",
+    "countryCode": "MC",
+    "countryName": "Monaco",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "coords": "+4852+00220"
+  },
+  {
+    "timezone": "Europe/London",
+    "countryCode": "GB",
+    "countryName": "United Kingdom",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+513030-0000731"
+  },
+  {
+    "timezone": "Europe/London",
+    "countryCode": "GG",
+    "countryName": "Guernsey",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+513030-0000731"
+  },
+  {
+    "timezone": "Europe/London",
+    "countryCode": "IM",
+    "countryName": "Isle of Man",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+513030-0000731"
+  },
+  {
+    "timezone": "Europe/London",
+    "countryCode": "JE",
+    "countryName": "Jersey",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+513030-0000731"
+  },
+  {
+    "timezone": "Asia/Tbilisi",
+    "countryCode": "GE",
+    "countryName": "Georgia",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+4143+04449"
+  },
+  {
+    "timezone": "America/Cayenne",
+    "countryCode": "GF",
+    "countryName": "French Guiana",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "+0456-05220"
+  },
+  {
+    "timezone": "Europe/Gibraltar",
+    "countryCode": "GI",
+    "countryName": "Gibraltar",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "coords": "+3608-00521"
+  },
+  {
+    "timezone": "America/Nuuk",
+    "countryCode": "GL",
+    "countryName": "Greenland",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+6411-05144"
+  },
+  {
+    "timezone": "America/Danmarkshavn",
+    "countryCode": "GL",
+    "countryName": "Greenland",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+7646-01840"
+  },
+  {
+    "timezone": "America/Scoresbysund",
+    "countryCode": "GL",
+    "countryName": "Greenland",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+7029-02158"
+  },
+  {
+    "timezone": "America/Thule",
+    "countryCode": "GL",
+    "countryName": "Greenland",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+7634-06847"
+  },
+  {
+    "timezone": "Europe/Athens",
+    "countryCode": "GR",
+    "countryName": "Greece",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "coords": "+3758+02343"
+  },
+  {
+    "timezone": "Atlantic/South_Georgia",
+    "countryCode": "GS",
+    "countryName": "South Georgia",
+    "region": "Antarctic",
+    "subregion": "",
+    "coords": "-5416-03632"
+  },
+  {
+    "timezone": "America/Guatemala",
+    "countryCode": "GT",
+    "countryName": "Guatemala",
+    "region": "Americas",
+    "subregion": "Central America",
+    "coords": "+1438-09031"
+  },
+  {
+    "timezone": "Pacific/Guam",
+    "countryCode": "GU",
+    "countryName": "Guam",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "coords": "+1328+14445"
+  },
+  {
+    "timezone": "Pacific/Guam",
+    "countryCode": "MP",
+    "countryName": "Northern Mariana Islands",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "coords": "+1328+14445"
+  },
+  {
+    "timezone": "Africa/Bissau",
+    "countryCode": "GW",
+    "countryName": "Guinea-Bissau",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+1151-01535"
+  },
+  {
+    "timezone": "America/Guyana",
+    "countryCode": "GY",
+    "countryName": "Guyana",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "+0648-05810"
+  },
+  {
+    "timezone": "Asia/Hong_Kong",
+    "countryCode": "HK",
+    "countryName": "Hong Kong",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "coords": "+2217+11409"
+  },
+  {
+    "timezone": "America/Tegucigalpa",
+    "countryCode": "HN",
+    "countryName": "Honduras",
+    "region": "Americas",
+    "subregion": "Central America",
+    "coords": "+1406-08713"
+  },
+  {
+    "timezone": "America/Port-au-Prince",
+    "countryCode": "HT",
+    "countryName": "Haiti",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+1832-07220"
+  },
+  {
+    "timezone": "Europe/Budapest",
+    "countryCode": "HU",
+    "countryName": "Hungary",
+    "region": "Europe",
+    "subregion": "Central Europe",
+    "coords": "+4730+01905"
+  },
+  {
+    "timezone": "Asia/Jakarta",
+    "countryCode": "ID",
+    "countryName": "Indonesia",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "-0610+10648"
+  },
+  {
+    "timezone": "Asia/Pontianak",
+    "countryCode": "ID",
+    "countryName": "Indonesia",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "-0002+10920"
+  },
+  {
+    "timezone": "Asia/Makassar",
+    "countryCode": "ID",
+    "countryName": "Indonesia",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "-0507+11924"
+  },
+  {
+    "timezone": "Asia/Jayapura",
+    "countryCode": "ID",
+    "countryName": "Indonesia",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "-0232+14042"
+  },
+  {
+    "timezone": "Europe/Dublin",
+    "countryCode": "IE",
+    "countryName": "Ireland",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+5320-00615"
+  },
+  {
+    "timezone": "Asia/Jerusalem",
+    "countryCode": "IL",
+    "countryName": "Israel",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+314650+0351326"
+  },
+  {
+    "timezone": "Asia/Kolkata",
+    "countryCode": "IN",
+    "countryName": "India",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "coords": "+2232+08822"
+  },
+  {
+    "timezone": "Indian/Chagos",
+    "countryCode": "IO",
+    "countryName": "British Indian Ocean Territory",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-0720+07225"
+  },
+  {
+    "timezone": "Asia/Baghdad",
+    "countryCode": "IQ",
+    "countryName": "Iraq",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+3321+04425"
+  },
+  {
+    "timezone": "Asia/Tehran",
+    "countryCode": "IR",
+    "countryName": "Iran",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "coords": "+3540+05126"
+  },
+  {
+    "timezone": "Europe/Rome",
+    "countryCode": "IT",
+    "countryName": "Italy",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "coords": "+4154+01229"
+  },
+  {
+    "timezone": "Europe/Rome",
+    "countryCode": "SM",
+    "countryName": "San Marino",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "coords": "+4154+01229"
+  },
+  {
+    "timezone": "Europe/Rome",
+    "countryCode": "VA",
+    "countryName": "Vatican City",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "coords": "+4154+01229"
+  },
+  {
+    "timezone": "America/Jamaica",
+    "countryCode": "JM",
+    "countryName": "Jamaica",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+175805-0764736"
+  },
+  {
+    "timezone": "Asia/Amman",
+    "countryCode": "JO",
+    "countryName": "Jordan",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+3157+03556"
+  },
+  {
+    "timezone": "Asia/Tokyo",
+    "countryCode": "JP",
+    "countryName": "Japan",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "coords": "+353916+1394441"
+  },
+  {
+    "timezone": "Asia/Tokyo",
+    "countryCode": "AU",
+    "countryName": "Australia",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "+353916+1394441"
+  },
+  {
+    "timezone": "Africa/Nairobi",
+    "countryCode": "KE",
+    "countryName": "Kenya",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-0117+03649"
+  },
+  {
+    "timezone": "Africa/Nairobi",
+    "countryCode": "DJ",
+    "countryName": "Djibouti",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-0117+03649"
+  },
+  {
+    "timezone": "Africa/Nairobi",
+    "countryCode": "ER",
+    "countryName": "Eritrea",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-0117+03649"
+  },
+  {
+    "timezone": "Africa/Nairobi",
+    "countryCode": "ET",
+    "countryName": "Ethiopia",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-0117+03649"
+  },
+  {
+    "timezone": "Africa/Nairobi",
+    "countryCode": "KM",
+    "countryName": "Comoros",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-0117+03649"
+  },
+  {
+    "timezone": "Africa/Nairobi",
+    "countryCode": "MG",
+    "countryName": "Madagascar",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-0117+03649"
+  },
+  {
+    "timezone": "Africa/Nairobi",
+    "countryCode": "SO",
+    "countryName": "Somalia",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-0117+03649"
+  },
+  {
+    "timezone": "Africa/Nairobi",
+    "countryCode": "TZ",
+    "countryName": "Tanzania",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-0117+03649"
+  },
+  {
+    "timezone": "Africa/Nairobi",
+    "countryCode": "UG",
+    "countryName": "Uganda",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-0117+03649"
+  },
+  {
+    "timezone": "Africa/Nairobi",
+    "countryCode": "YT",
+    "countryName": "Mayotte",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-0117+03649"
+  },
+  {
+    "timezone": "Asia/Bishkek",
+    "countryCode": "KG",
+    "countryName": "Kyrgyzstan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "coords": "+4254+07436"
+  },
+  {
+    "timezone": "Pacific/Tarawa",
+    "countryCode": "KI",
+    "countryName": "Kiribati",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "coords": "+0125+17300"
+  },
+  {
+    "timezone": "Pacific/Tarawa",
+    "countryCode": "MH",
+    "countryName": "Marshall Islands",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "coords": "+0125+17300"
+  },
+  {
+    "timezone": "Pacific/Tarawa",
+    "countryCode": "TV",
+    "countryName": "Tuvalu",
+    "region": "Oceania",
+    "subregion": "Polynesia",
+    "coords": "+0125+17300"
+  },
+  {
+    "timezone": "Pacific/Tarawa",
+    "countryCode": "UM",
+    "countryName": "United States Minor Outlying Islands",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+0125+17300"
+  },
+  {
+    "timezone": "Pacific/Tarawa",
+    "countryCode": "WF",
+    "countryName": "Wallis and Futuna",
+    "region": "Oceania",
+    "subregion": "Polynesia",
+    "coords": "+0125+17300"
+  },
+  {
+    "timezone": "Pacific/Kanton",
+    "countryCode": "KI",
+    "countryName": "Kiribati",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "coords": "-0247-17143"
+  },
+  {
+    "timezone": "Pacific/Kiritimati",
+    "countryCode": "KI",
+    "countryName": "Kiribati",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "coords": "+0152-15720"
+  },
+  {
+    "timezone": "Asia/Pyongyang",
+    "countryCode": "KP",
+    "countryName": "North Korea",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "coords": "+3901+12545"
+  },
+  {
+    "timezone": "Asia/Seoul",
+    "countryCode": "KR",
+    "countryName": "South Korea",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "coords": "+3733+12658"
+  },
+  {
+    "timezone": "Asia/Almaty",
+    "countryCode": "KZ",
+    "countryName": "Kazakhstan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "coords": "+4315+07657"
+  },
+  {
+    "timezone": "Asia/Qyzylorda",
+    "countryCode": "KZ",
+    "countryName": "Kazakhstan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "coords": "+4448+06528"
+  },
+  {
+    "timezone": "Asia/Qostanay",
+    "countryCode": "KZ",
+    "countryName": "Kazakhstan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "coords": "+5312+06337"
+  },
+  {
+    "timezone": "Asia/Aqtobe",
+    "countryCode": "KZ",
+    "countryName": "Kazakhstan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "coords": "+5017+05710"
+  },
+  {
+    "timezone": "Asia/Aqtau",
+    "countryCode": "KZ",
+    "countryName": "Kazakhstan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "coords": "+4431+05016"
+  },
+  {
+    "timezone": "Asia/Atyrau",
+    "countryCode": "KZ",
+    "countryName": "Kazakhstan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "coords": "+4707+05156"
+  },
+  {
+    "timezone": "Asia/Oral",
+    "countryCode": "KZ",
+    "countryName": "Kazakhstan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "coords": "+5113+05121"
+  },
+  {
+    "timezone": "Asia/Beirut",
+    "countryCode": "LB",
+    "countryName": "Lebanon",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+3353+03530"
+  },
+  {
+    "timezone": "Asia/Colombo",
+    "countryCode": "LK",
+    "countryName": "Sri Lanka",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "coords": "+0656+07951"
+  },
+  {
+    "timezone": "Africa/Monrovia",
+    "countryCode": "LR",
+    "countryName": "Liberia",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+0618-01047"
+  },
+  {
+    "timezone": "Europe/Vilnius",
+    "countryCode": "LT",
+    "countryName": "Lithuania",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+5441+02519"
+  },
+  {
+    "timezone": "Europe/Riga",
+    "countryCode": "LV",
+    "countryName": "Latvia",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "coords": "+5657+02406"
+  },
+  {
+    "timezone": "Africa/Tripoli",
+    "countryCode": "LY",
+    "countryName": "Libya",
+    "region": "Africa",
+    "subregion": "Northern Africa",
+    "coords": "+3254+01311"
+  },
+  {
+    "timezone": "Africa/Casablanca",
+    "countryCode": "MA",
+    "countryName": "Morocco",
+    "region": "Africa",
+    "subregion": "Northern Africa",
+    "coords": "+3339-00735"
+  },
+  {
+    "timezone": "Europe/Chisinau",
+    "countryCode": "MD",
+    "countryName": "Moldova",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+4700+02850"
+  },
+  {
+    "timezone": "Pacific/Kwajalein",
+    "countryCode": "MH",
+    "countryName": "Marshall Islands",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "coords": "+0905+16720"
+  },
+  {
+    "timezone": "Asia/Yangon",
+    "countryCode": "MM",
+    "countryName": "Myanmar",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "+1647+09610"
+  },
+  {
+    "timezone": "Asia/Yangon",
+    "countryCode": "CC",
+    "countryName": "Cocos (Keeling) Islands",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "+1647+09610"
+  },
+  {
+    "timezone": "Asia/Ulaanbaatar",
+    "countryCode": "MN",
+    "countryName": "Mongolia",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "coords": "+4755+10653"
+  },
+  {
+    "timezone": "Asia/Hovd",
+    "countryCode": "MN",
+    "countryName": "Mongolia",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "coords": "+4801+09139"
+  },
+  {
+    "timezone": "Asia/Macau",
+    "countryCode": "MO",
+    "countryName": "Macau",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "coords": "+221150+1133230"
+  },
+  {
+    "timezone": "America/Martinique",
+    "countryCode": "MQ",
+    "countryName": "Martinique",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+1436-06105"
+  },
+  {
+    "timezone": "Europe/Malta",
+    "countryCode": "MT",
+    "countryName": "Malta",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "coords": "+3554+01431"
+  },
+  {
+    "timezone": "Indian/Mauritius",
+    "countryCode": "MU",
+    "countryName": "Mauritius",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-2010+05730"
+  },
+  {
+    "timezone": "Indian/Maldives",
+    "countryCode": "MV",
+    "countryName": "Maldives",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "coords": "+0410+07330"
+  },
+  {
+    "timezone": "Indian/Maldives",
+    "countryCode": "TF",
+    "countryName": "French Southern and Antarctic Lands",
+    "region": "Antarctic",
+    "subregion": "",
+    "coords": "+0410+07330"
+  },
+  {
+    "timezone": "America/Mexico_City",
+    "countryCode": "MX",
+    "countryName": "Mexico",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+1924-09909"
+  },
+  {
+    "timezone": "America/Cancun",
+    "countryCode": "MX",
+    "countryName": "Mexico",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+2105-08646"
+  },
+  {
+    "timezone": "America/Merida",
+    "countryCode": "MX",
+    "countryName": "Mexico",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+2058-08937"
+  },
+  {
+    "timezone": "America/Monterrey",
+    "countryCode": "MX",
+    "countryName": "Mexico",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+2540-10019"
+  },
+  {
+    "timezone": "America/Matamoros",
+    "countryCode": "MX",
+    "countryName": "Mexico",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+2550-09730"
+  },
+  {
+    "timezone": "America/Chihuahua",
+    "countryCode": "MX",
+    "countryName": "Mexico",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+2838-10605"
+  },
+  {
+    "timezone": "America/Ciudad_Juarez",
+    "countryCode": "MX",
+    "countryName": "Mexico",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+3144-10629"
+  },
+  {
+    "timezone": "America/Ojinaga",
+    "countryCode": "MX",
+    "countryName": "Mexico",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+2934-10425"
+  },
+  {
+    "timezone": "America/Mazatlan",
+    "countryCode": "MX",
+    "countryName": "Mexico",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+2313-10625"
+  },
+  {
+    "timezone": "America/Bahia_Banderas",
+    "countryCode": "MX",
+    "countryName": "Mexico",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+2048-10515"
+  },
+  {
+    "timezone": "America/Hermosillo",
+    "countryCode": "MX",
+    "countryName": "Mexico",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+2904-11058"
+  },
+  {
+    "timezone": "America/Tijuana",
+    "countryCode": "MX",
+    "countryName": "Mexico",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+3232-11701"
+  },
+  {
+    "timezone": "Asia/Kuching",
+    "countryCode": "MY",
+    "countryName": "Malaysia",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "+0133+11020"
+  },
+  {
+    "timezone": "Asia/Kuching",
+    "countryCode": "BN",
+    "countryName": "Brunei",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "+0133+11020"
+  },
+  {
+    "timezone": "Africa/Maputo",
+    "countryCode": "MZ",
+    "countryName": "Mozambique",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-2558+03235"
+  },
+  {
+    "timezone": "Africa/Maputo",
+    "countryCode": "BI",
+    "countryName": "Burundi",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-2558+03235"
+  },
+  {
+    "timezone": "Africa/Maputo",
+    "countryCode": "BW",
+    "countryName": "Botswana",
+    "region": "Africa",
+    "subregion": "Southern Africa",
+    "coords": "-2558+03235"
+  },
+  {
+    "timezone": "Africa/Maputo",
+    "countryCode": "CD",
+    "countryName": "DR Congo",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "coords": "-2558+03235"
+  },
+  {
+    "timezone": "Africa/Maputo",
+    "countryCode": "MW",
+    "countryName": "Malawi",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-2558+03235"
+  },
+  {
+    "timezone": "Africa/Maputo",
+    "countryCode": "RW",
+    "countryName": "Rwanda",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-2558+03235"
+  },
+  {
+    "timezone": "Africa/Maputo",
+    "countryCode": "ZM",
+    "countryName": "Zambia",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-2558+03235"
+  },
+  {
+    "timezone": "Africa/Maputo",
+    "countryCode": "ZW",
+    "countryName": "Zimbabwe",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "coords": "-2558+03235"
+  },
+  {
+    "timezone": "Africa/Windhoek",
+    "countryCode": "NA",
+    "countryName": "Namibia",
+    "region": "Africa",
+    "subregion": "Southern Africa",
+    "coords": "-2234+01706"
+  },
+  {
+    "timezone": "Pacific/Noumea",
+    "countryCode": "NC",
+    "countryName": "New Caledonia",
+    "region": "Oceania",
+    "subregion": "Melanesia",
+    "coords": "-2216+16627"
+  },
+  {
+    "timezone": "Pacific/Norfolk",
+    "countryCode": "NF",
+    "countryName": "Norfolk Island",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "-2903+16758"
+  },
+  {
+    "timezone": "Africa/Lagos",
+    "countryCode": "NG",
+    "countryName": "Nigeria",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+0627+00324"
+  },
+  {
+    "timezone": "Africa/Lagos",
+    "countryCode": "AO",
+    "countryName": "Angola",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "coords": "+0627+00324"
+  },
+  {
+    "timezone": "Africa/Lagos",
+    "countryCode": "BJ",
+    "countryName": "Benin",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+0627+00324"
+  },
+  {
+    "timezone": "Africa/Lagos",
+    "countryCode": "CD",
+    "countryName": "DR Congo",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "coords": "+0627+00324"
+  },
+  {
+    "timezone": "Africa/Lagos",
+    "countryCode": "CF",
+    "countryName": "Central African Republic",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "coords": "+0627+00324"
+  },
+  {
+    "timezone": "Africa/Lagos",
+    "countryCode": "CG",
+    "countryName": "Congo",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "coords": "+0627+00324"
+  },
+  {
+    "timezone": "Africa/Lagos",
+    "countryCode": "CM",
+    "countryName": "Cameroon",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "coords": "+0627+00324"
+  },
+  {
+    "timezone": "Africa/Lagos",
+    "countryCode": "GA",
+    "countryName": "Gabon",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "coords": "+0627+00324"
+  },
+  {
+    "timezone": "Africa/Lagos",
+    "countryCode": "GQ",
+    "countryName": "Equatorial Guinea",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "coords": "+0627+00324"
+  },
+  {
+    "timezone": "Africa/Lagos",
+    "countryCode": "NE",
+    "countryName": "Niger",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "coords": "+0627+00324"
+  },
+  {
+    "timezone": "America/Managua",
+    "countryCode": "NI",
+    "countryName": "Nicaragua",
+    "region": "Americas",
+    "subregion": "Central America",
+    "coords": "+1209-08617"
+  },
+  {
+    "timezone": "Asia/Kathmandu",
+    "countryCode": "NP",
+    "countryName": "Nepal",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "coords": "+2743+08519"
+  },
+  {
+    "timezone": "Pacific/Nauru",
+    "countryCode": "NR",
+    "countryName": "Nauru",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "coords": "-0031+16655"
+  },
+  {
+    "timezone": "Pacific/Niue",
+    "countryCode": "NU",
+    "countryName": "Niue",
+    "region": "Oceania",
+    "subregion": "Polynesia",
+    "coords": "-1901-16955"
+  },
+  {
+    "timezone": "Pacific/Auckland",
+    "countryCode": "NZ",
+    "countryName": "New Zealand",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "-3652+17446"
+  },
+  {
+    "timezone": "Pacific/Auckland",
+    "countryCode": "AQ",
+    "countryName": "Antarctica",
+    "region": "Antarctic",
+    "subregion": "",
+    "coords": "-3652+17446"
+  },
+  {
+    "timezone": "Pacific/Chatham",
+    "countryCode": "NZ",
+    "countryName": "New Zealand",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "-4357-17633"
+  },
+  {
+    "timezone": "America/Panama",
+    "countryCode": "PA",
+    "countryName": "Panama",
+    "region": "Americas",
+    "subregion": "Central America",
+    "coords": "+0858-07932"
+  },
+  {
+    "timezone": "America/Panama",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+0858-07932"
+  },
+  {
+    "timezone": "America/Panama",
+    "countryCode": "KY",
+    "countryName": "Cayman Islands",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+0858-07932"
+  },
+  {
+    "timezone": "America/Lima",
+    "countryCode": "PE",
+    "countryName": "Peru",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-1203-07703"
+  },
+  {
+    "timezone": "Pacific/Tahiti",
+    "countryCode": "PF",
+    "countryName": "French Polynesia",
+    "region": "Oceania",
+    "subregion": "Polynesia",
+    "coords": "-1732-14934"
+  },
+  {
+    "timezone": "Pacific/Marquesas",
+    "countryCode": "PF",
+    "countryName": "French Polynesia",
+    "region": "Oceania",
+    "subregion": "Polynesia",
+    "coords": "-0900-13930"
+  },
+  {
+    "timezone": "Pacific/Gambier",
+    "countryCode": "PF",
+    "countryName": "French Polynesia",
+    "region": "Oceania",
+    "subregion": "Polynesia",
+    "coords": "-2308-13457"
+  },
+  {
+    "timezone": "Pacific/Port_Moresby",
+    "countryCode": "PG",
+    "countryName": "Papua New Guinea",
+    "region": "Oceania",
+    "subregion": "Melanesia",
+    "coords": "-0930+14710"
+  },
+  {
+    "timezone": "Pacific/Port_Moresby",
+    "countryCode": "AQ",
+    "countryName": "Antarctica",
+    "region": "Antarctic",
+    "subregion": "",
+    "coords": "-0930+14710"
+  },
+  {
+    "timezone": "Pacific/Port_Moresby",
+    "countryCode": "FM",
+    "countryName": "Micronesia",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "coords": "-0930+14710"
+  },
+  {
+    "timezone": "Pacific/Bougainville",
+    "countryCode": "PG",
+    "countryName": "Papua New Guinea",
+    "region": "Oceania",
+    "subregion": "Melanesia",
+    "coords": "-0613+15534"
+  },
+  {
+    "timezone": "Asia/Manila",
+    "countryCode": "PH",
+    "countryName": "Philippines",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "+143512+1205804"
+  },
+  {
+    "timezone": "Asia/Karachi",
+    "countryCode": "PK",
+    "countryName": "Pakistan",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "coords": "+2452+06703"
+  },
+  {
+    "timezone": "Europe/Warsaw",
+    "countryCode": "PL",
+    "countryName": "Poland",
+    "region": "Europe",
+    "subregion": "Central Europe",
+    "coords": "+5215+02100"
+  },
+  {
+    "timezone": "America/Miquelon",
+    "countryCode": "PM",
+    "countryName": "Saint Pierre and Miquelon",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+4703-05620"
+  },
+  {
+    "timezone": "Pacific/Pitcairn",
+    "countryCode": "PN",
+    "countryName": "Pitcairn Islands",
+    "region": "Oceania",
+    "subregion": "Polynesia",
+    "coords": "-2504-13005"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "PR",
+    "countryName": "Puerto Rico",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "AG",
+    "countryName": "Antigua and Barbuda",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "AI",
+    "countryName": "Anguilla",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "AW",
+    "countryName": "Aruba",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "BL",
+    "countryName": "Saint Barthélemy",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "BQ",
+    "countryName": "Caribbean Netherlands",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "CW",
+    "countryName": "Curaçao",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "DM",
+    "countryName": "Dominica",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "GD",
+    "countryName": "Grenada",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "GP",
+    "countryName": "Guadeloupe",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "KN",
+    "countryName": "Saint Kitts and Nevis",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "LC",
+    "countryName": "Saint Lucia",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "MF",
+    "countryName": "Saint Martin",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "MS",
+    "countryName": "Montserrat",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "SX",
+    "countryName": "Sint Maarten",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "TT",
+    "countryName": "Trinidad and Tobago",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "VC",
+    "countryName": "Saint Vincent and the Grenadines",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "VG",
+    "countryName": "British Virgin Islands",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "America/Puerto_Rico",
+    "countryCode": "VI",
+    "countryName": "United States Virgin Islands",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+182806-0660622"
+  },
+  {
+    "timezone": "Asia/Gaza",
+    "countryCode": "PS",
+    "countryName": "Palestine",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+3130+03428"
+  },
+  {
+    "timezone": "Asia/Hebron",
+    "countryCode": "PS",
+    "countryName": "Palestine",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+313200+0350542"
+  },
+  {
+    "timezone": "Europe/Lisbon",
+    "countryCode": "PT",
+    "countryName": "Portugal",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "coords": "+3843-00908"
+  },
+  {
+    "timezone": "Atlantic/Madeira",
+    "countryCode": "PT",
+    "countryName": "Portugal",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "coords": "+3238-01654"
+  },
+  {
+    "timezone": "Atlantic/Azores",
+    "countryCode": "PT",
+    "countryName": "Portugal",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "coords": "+3744-02540"
+  },
+  {
+    "timezone": "Pacific/Palau",
+    "countryCode": "PW",
+    "countryName": "Palau",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "coords": "+0720+13429"
+  },
+  {
+    "timezone": "America/Asuncion",
+    "countryCode": "PY",
+    "countryName": "Paraguay",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-2516-05740"
+  },
+  {
+    "timezone": "Asia/Qatar",
+    "countryCode": "QA",
+    "countryName": "Qatar",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+2517+05132"
+  },
+  {
+    "timezone": "Asia/Qatar",
+    "countryCode": "BH",
+    "countryName": "Bahrain",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+2517+05132"
+  },
+  {
+    "timezone": "Europe/Bucharest",
+    "countryCode": "RO",
+    "countryName": "Romania",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "coords": "+4426+02606"
+  },
+  {
+    "timezone": "Europe/Belgrade",
+    "countryCode": "RS",
+    "countryName": "Serbia",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "coords": "+4450+02030"
+  },
+  {
+    "timezone": "Europe/Belgrade",
+    "countryCode": "BA",
+    "countryName": "Bosnia and Herzegovina",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "coords": "+4450+02030"
+  },
+  {
+    "timezone": "Europe/Belgrade",
+    "countryCode": "HR",
+    "countryName": "Croatia",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "coords": "+4450+02030"
+  },
+  {
+    "timezone": "Europe/Belgrade",
+    "countryCode": "ME",
+    "countryName": "Montenegro",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "coords": "+4450+02030"
+  },
+  {
+    "timezone": "Europe/Belgrade",
+    "countryCode": "MK",
+    "countryName": "North Macedonia",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "coords": "+4450+02030"
+  },
+  {
+    "timezone": "Europe/Belgrade",
+    "countryCode": "SI",
+    "countryName": "Slovenia",
+    "region": "Europe",
+    "subregion": "Central Europe",
+    "coords": "+4450+02030"
+  },
+  {
+    "timezone": "Europe/Kaliningrad",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5443+02030"
+  },
+  {
+    "timezone": "Europe/Moscow",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+554521+0373704"
+  },
+  {
+    "timezone": "Europe/Simferopol",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+4457+03406"
+  },
+  {
+    "timezone": "Europe/Simferopol",
+    "countryCode": "UA",
+    "countryName": "Ukraine",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+4457+03406"
+  },
+  {
+    "timezone": "Europe/Kirov",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5836+04939"
+  },
+  {
+    "timezone": "Europe/Volgograd",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+4844+04425"
+  },
+  {
+    "timezone": "Europe/Astrakhan",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+4621+04803"
+  },
+  {
+    "timezone": "Europe/Saratov",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5134+04602"
+  },
+  {
+    "timezone": "Europe/Ulyanovsk",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5420+04824"
+  },
+  {
+    "timezone": "Europe/Samara",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5312+05009"
+  },
+  {
+    "timezone": "Asia/Yekaterinburg",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5651+06036"
+  },
+  {
+    "timezone": "Asia/Omsk",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5500+07324"
+  },
+  {
+    "timezone": "Asia/Novosibirsk",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5502+08255"
+  },
+  {
+    "timezone": "Asia/Barnaul",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5322+08345"
+  },
+  {
+    "timezone": "Asia/Tomsk",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5630+08458"
+  },
+  {
+    "timezone": "Asia/Novokuznetsk",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5345+08707"
+  },
+  {
+    "timezone": "Asia/Krasnoyarsk",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5601+09250"
+  },
+  {
+    "timezone": "Asia/Irkutsk",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5216+10420"
+  },
+  {
+    "timezone": "Asia/Chita",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5203+11328"
+  },
+  {
+    "timezone": "Asia/Yakutsk",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+6200+12940"
+  },
+  {
+    "timezone": "Asia/Khandyga",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+623923+1353314"
+  },
+  {
+    "timezone": "Asia/Vladivostok",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+4310+13156"
+  },
+  {
+    "timezone": "Asia/Ust-Nera",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+643337+1431336"
+  },
+  {
+    "timezone": "Asia/Magadan",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5934+15048"
+  },
+  {
+    "timezone": "Asia/Sakhalin",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+4658+14242"
+  },
+  {
+    "timezone": "Asia/Srednekolymsk",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+6728+15343"
+  },
+  {
+    "timezone": "Asia/Kamchatka",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5301+15839"
+  },
+  {
+    "timezone": "Asia/Anadyr",
+    "countryCode": "RU",
+    "countryName": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+6445+17729"
+  },
+  {
+    "timezone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "countryName": "Saudi Arabia",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+2438+04643"
+  },
+  {
+    "timezone": "Asia/Riyadh",
+    "countryCode": "AQ",
+    "countryName": "Antarctica",
+    "region": "Antarctic",
+    "subregion": "",
+    "coords": "+2438+04643"
+  },
+  {
+    "timezone": "Asia/Riyadh",
+    "countryCode": "KW",
+    "countryName": "Kuwait",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+2438+04643"
+  },
+  {
+    "timezone": "Asia/Riyadh",
+    "countryCode": "YE",
+    "countryName": "Yemen",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+2438+04643"
+  },
+  {
+    "timezone": "Pacific/Guadalcanal",
+    "countryCode": "SB",
+    "countryName": "Solomon Islands",
+    "region": "Oceania",
+    "subregion": "Melanesia",
+    "coords": "-0932+16012"
+  },
+  {
+    "timezone": "Pacific/Guadalcanal",
+    "countryCode": "FM",
+    "countryName": "Micronesia",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "coords": "-0932+16012"
+  },
+  {
+    "timezone": "Africa/Khartoum",
+    "countryCode": "SD",
+    "countryName": "Sudan",
+    "region": "Africa",
+    "subregion": "Northern Africa",
+    "coords": "+1536+03232"
+  },
+  {
+    "timezone": "Asia/Singapore",
+    "countryCode": "SG",
+    "countryName": "Singapore",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "+0117+10351"
+  },
+  {
+    "timezone": "Asia/Singapore",
+    "countryCode": "AQ",
+    "countryName": "Antarctica",
+    "region": "Antarctic",
+    "subregion": "",
+    "coords": "+0117+10351"
+  },
+  {
+    "timezone": "Asia/Singapore",
+    "countryCode": "MY",
+    "countryName": "Malaysia",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "+0117+10351"
+  },
+  {
+    "timezone": "America/Paramaribo",
+    "countryCode": "SR",
+    "countryName": "Suriname",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "+0550-05510"
+  },
+  {
+    "timezone": "Africa/Juba",
+    "countryCode": "SS",
+    "countryName": "South Sudan",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "coords": "+0451+03137"
+  },
+  {
+    "timezone": "Africa/Sao_Tome",
+    "countryCode": "ST",
+    "countryName": "São Tomé and Príncipe",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "coords": "+0020+00644"
+  },
+  {
+    "timezone": "America/El_Salvador",
+    "countryCode": "SV",
+    "countryName": "El Salvador",
+    "region": "Americas",
+    "subregion": "Central America",
+    "coords": "+1342-08912"
+  },
+  {
+    "timezone": "Asia/Damascus",
+    "countryCode": "SY",
+    "countryName": "Syria",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+3330+03618"
+  },
+  {
+    "timezone": "America/Grand_Turk",
+    "countryCode": "TC",
+    "countryName": "Turks and Caicos Islands",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "coords": "+2128-07108"
+  },
+  {
+    "timezone": "Africa/Ndjamena",
+    "countryCode": "TD",
+    "countryName": "Chad",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "coords": "+1207+01503"
+  },
+  {
+    "timezone": "Asia/Bangkok",
+    "countryCode": "TH",
+    "countryName": "Thailand",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "+1345+10031"
+  },
+  {
+    "timezone": "Asia/Bangkok",
+    "countryCode": "CX",
+    "countryName": "Christmas Island",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "coords": "+1345+10031"
+  },
+  {
+    "timezone": "Asia/Bangkok",
+    "countryCode": "KH",
+    "countryName": "Cambodia",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "+1345+10031"
+  },
+  {
+    "timezone": "Asia/Bangkok",
+    "countryCode": "LA",
+    "countryName": "Laos",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "+1345+10031"
+  },
+  {
+    "timezone": "Asia/Bangkok",
+    "countryCode": "VN",
+    "countryName": "Vietnam",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "+1345+10031"
+  },
+  {
+    "timezone": "Asia/Dushanbe",
+    "countryCode": "TJ",
+    "countryName": "Tajikistan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "coords": "+3835+06848"
+  },
+  {
+    "timezone": "Pacific/Fakaofo",
+    "countryCode": "TK",
+    "countryName": "Tokelau",
+    "region": "Oceania",
+    "subregion": "Polynesia",
+    "coords": "-0922-17114"
+  },
+  {
+    "timezone": "Asia/Dili",
+    "countryCode": "TL",
+    "countryName": "Timor-Leste",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "-0833+12535"
+  },
+  {
+    "timezone": "Asia/Ashgabat",
+    "countryCode": "TM",
+    "countryName": "Turkmenistan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "coords": "+3757+05823"
+  },
+  {
+    "timezone": "Africa/Tunis",
+    "countryCode": "TN",
+    "countryName": "Tunisia",
+    "region": "Africa",
+    "subregion": "Northern Africa",
+    "coords": "+3648+01011"
+  },
+  {
+    "timezone": "Pacific/Tongatapu",
+    "countryCode": "TO",
+    "countryName": "Tonga",
+    "region": "Oceania",
+    "subregion": "Polynesia",
+    "coords": "-210800-1751200"
+  },
+  {
+    "timezone": "Europe/Istanbul",
+    "countryCode": "TR",
+    "countryName": "Türkiye",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "coords": "+4101+02858"
+  },
+  {
+    "timezone": "Asia/Taipei",
+    "countryCode": "TW",
+    "countryName": "Taiwan",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "coords": "+2503+12130"
+  },
+  {
+    "timezone": "Europe/Kyiv",
+    "countryCode": "UA",
+    "countryName": "Ukraine",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "coords": "+5026+03031"
+  },
+  {
+    "timezone": "America/New_York",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+404251-0740023"
+  },
+  {
+    "timezone": "America/Detroit",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+421953-0830245"
+  },
+  {
+    "timezone": "America/Kentucky/Louisville",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+381515-0854534"
+  },
+  {
+    "timezone": "America/Kentucky/Monticello",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+364947-0845057"
+  },
+  {
+    "timezone": "America/Indiana/Indianapolis",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+394606-0860929"
+  },
+  {
+    "timezone": "America/Indiana/Vincennes",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+384038-0873143"
+  },
+  {
+    "timezone": "America/Indiana/Winamac",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+410305-0863611"
+  },
+  {
+    "timezone": "America/Indiana/Marengo",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+382232-0862041"
+  },
+  {
+    "timezone": "America/Indiana/Petersburg",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+382931-0871643"
+  },
+  {
+    "timezone": "America/Indiana/Vevay",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+384452-0850402"
+  },
+  {
+    "timezone": "America/Chicago",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+415100-0873900"
+  },
+  {
+    "timezone": "America/Indiana/Tell_City",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+375711-0864541"
+  },
+  {
+    "timezone": "America/Indiana/Knox",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+411745-0863730"
+  },
+  {
+    "timezone": "America/Menominee",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+450628-0873651"
+  },
+  {
+    "timezone": "America/North_Dakota/Center",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+470659-1011757"
+  },
+  {
+    "timezone": "America/North_Dakota/New_Salem",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+465042-1012439"
+  },
+  {
+    "timezone": "America/North_Dakota/Beulah",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+471551-1014640"
+  },
+  {
+    "timezone": "America/Denver",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+394421-1045903"
+  },
+  {
+    "timezone": "America/Boise",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+433649-1161209"
+  },
+  {
+    "timezone": "America/Phoenix",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+332654-1120424"
+  },
+  {
+    "timezone": "America/Phoenix",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+332654-1120424"
+  },
+  {
+    "timezone": "America/Los_Angeles",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+340308-1181434"
+  },
+  {
+    "timezone": "America/Anchorage",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+611305-1495401"
+  },
+  {
+    "timezone": "America/Juneau",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+581807-1342511"
+  },
+  {
+    "timezone": "America/Sitka",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+571035-1351807"
+  },
+  {
+    "timezone": "America/Metlakatla",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+550737-1313435"
+  },
+  {
+    "timezone": "America/Yakutat",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+593249-1394338"
+  },
+  {
+    "timezone": "America/Nome",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+643004-1652423"
+  },
+  {
+    "timezone": "America/Adak",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+515248-1763929"
+  },
+  {
+    "timezone": "Pacific/Honolulu",
+    "countryCode": "US",
+    "countryName": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "coords": "+211825-1575130"
+  },
+  {
+    "timezone": "America/Montevideo",
+    "countryCode": "UY",
+    "countryName": "Uruguay",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "-345433-0561245"
+  },
+  {
+    "timezone": "Asia/Samarkand",
+    "countryCode": "UZ",
+    "countryName": "Uzbekistan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "coords": "+3940+06648"
+  },
+  {
+    "timezone": "Asia/Tashkent",
+    "countryCode": "UZ",
+    "countryName": "Uzbekistan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "coords": "+4120+06918"
+  },
+  {
+    "timezone": "America/Caracas",
+    "countryCode": "VE",
+    "countryName": "Venezuela",
+    "region": "Americas",
+    "subregion": "South America",
+    "coords": "+1030-06656"
+  },
+  {
+    "timezone": "Asia/Ho_Chi_Minh",
+    "countryCode": "VN",
+    "countryName": "Vietnam",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "coords": "+1045+10640"
+  },
+  {
+    "timezone": "Pacific/Efate",
+    "countryCode": "VU",
+    "countryName": "Vanuatu",
+    "region": "Oceania",
+    "subregion": "Melanesia",
+    "coords": "-1740+16825"
+  },
+  {
+    "timezone": "Pacific/Apia",
+    "countryCode": "WS",
+    "countryName": "Samoa",
+    "region": "Oceania",
+    "subregion": "Polynesia",
+    "coords": "-1350-17144"
+  },
+  {
+    "timezone": "Africa/Johannesburg",
+    "countryCode": "ZA",
+    "countryName": "South Africa",
+    "region": "Africa",
+    "subregion": "Southern Africa",
+    "coords": "-2615+02800"
+  },
+  {
+    "timezone": "Africa/Johannesburg",
+    "countryCode": "LS",
+    "countryName": "Lesotho",
+    "region": "Africa",
+    "subregion": "Southern Africa",
+    "coords": "-2615+02800"
+  },
+  {
+    "timezone": "Africa/Johannesburg",
+    "countryCode": "SZ",
+    "countryName": "Eswatini",
+    "region": "Africa",
+    "subregion": "Southern Africa",
+    "coords": "-2615+02800"
+  }
+]

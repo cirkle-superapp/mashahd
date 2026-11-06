@@ -12,4 +12,6 @@ agent-ctx/
 backups/
 .zscripts/
 tool-results/
-data/
+data/*
+!data/open-data/
+data/open-data/**/*.tmp

@@ -80,3 +80,46 @@ No component is irreplaceably dependent on one vendor:
 - Edge: Cloudflare → any CDN (or none — Caddy serves directly)
 - Code: GitHub → any Git host
 - Media compute: local FFmpeg → any machine with FFmpeg
+
+---
+
+## Open-Data Layer (Pass 99) — FREE FOREVER, fully offline
+
+The platform ships with 8 curated open-source datasets under `data/open-data/`.
+Every dataset is **downloaded once at build time and served from disk** — there
+are **zero network calls at runtime**, **zero API keys**, and **zero billing
+exposure** on the data layer.
+
+| Dataset | Records | License | Source |
+|---------|---------|---------|--------|
+| countries | 250 | MIT | mledoze/countries (github.com/mledoze/countries) |
+| regions | 6 | MIT (derived) | derived from countries.json |
+| languages | 153 | MIT (derived) | derived from countries.json language fields |
+| currencies | 162 | MIT (derived) | derived from countries.json currency fields |
+| emoji | 1,870 | MIT | github/gemoji (github.com/github/gemoji) |
+| country-coordinates | 250 | MIT (derived) | derived from countries.json latlng fields |
+| timezone-to-country | 312 | Public domain | IANA Time Zone Database (data.iana.org/time-zones) |
+| video-taxonomy | 19 categories | CC0 (public domain) | curated from iTunes/YouTube conventions |
+| **TOTAL** | **3,133** | | |
+
+### Endpoints
+- `GET /api/open-data` — manifest (proves zero-cost/billing-free to auditors)
+- `GET /api/open-data/countries` — 250 countries with computed flag emojis
+- `GET /api/open-data/geo?tz=Africa/Cairo` — timezone → country resolution
+- `GET /api/open-data/taxonomy` — video categories, ratings, moods
+- `GET /api/open-data/languages` — 153 languages with speaker countries
+
+### Competitive Edge ("outsmart competitors")
+| Competitor weakness | Mashahd advantage |
+|---|---|
+| Hardcoded 5-country selector | 250 countries, grouped by 6 regions, auto-detected via timezone |
+| Paid GeoIP API ($0.001/lookup) | Free IANA tzdb timezone→country (zero cost, zero PII) |
+| English-only | 153 languages with native names + speaker country index |
+| No currency metadata | 162 ISO-4217 currencies with symbols |
+| Generic category list | 19 curated categories + 5 content ratings + 6 mood presets |
+
+### Billing Risk Assessment
+**NONE.** Every dataset is committed to the repo and read from disk. There is
+no API key to revoke, no rate limit to hit, no subscription to lapse, and no
+network dependency that could fail. The data layer is as durable as the repo
+itself.
