@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { useAppStore } from "@/store/app-store";
-import { InterestProfilesSection } from "@/components/youtube/interest-profiles-section";
+import { InterestProfilesSection } from "@/components/engagement/interest-profiles-section";
 
 /**
  * SettingsView — Mashahd's settings & about screen.

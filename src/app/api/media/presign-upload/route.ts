@@ -119,14 +119,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many upload requests" }, { status: 429 });
   }
 
-  const config = getS3Config();
-  if (!config) {
-    return NextResponse.json({
-      error: "Cloud storage not configured. Set STORAGE_PROVIDER=filebase and FILEBASE_* env vars.",
-      hint: "Filebase is recommended — 5GB free, no payment card required.",
-    }, { status: 501 });
-  }
-
   const body = await req.json().catch(() => ({}));
   const { videoId, filename, contentType, fileSize } = body;
 
@@ -147,8 +139,40 @@ export async function POST(req: NextRequest) {
   }
 
   const safeName = String(filename).replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 200) || "source.mp4";
-  const key = `videos/${videoId}/source/${safeName}`;
+  const provider = process.env.STORAGE_PROVIDER || "local";
 
+  // ── Local filesystem path (Pass 103: zero-cost, no billing ever) ──
+  // When STORAGE_PROVIDER=local (the default), return a URL pointing to
+  // our own /api/media/local-upload endpoint. The browser POSTs the file
+  // there; it gets stored on the local disk and served via /api/media/uploads.
+  if (provider === "local") {
+    const key = `uploads/${videoId}_${safeName}`;
+    const uploadUrl = `/api/media/local-upload?videoId=${encodeURIComponent(videoId)}&filename=${encodeURIComponent(safeName)}`;
+    await db.mediaProcessingJob.updateMany({
+      where: { videoId, status: "UPLOADING" },
+      data: { status: "UPLOADING" },
+    }).catch(() => {});
+    return NextResponse.json({
+      uploadUrl,
+      method: "POST",
+      headers: { "Content-Type": contentType || "video/mp4" },
+      key,
+      provider: "local",
+      expiresIn: PRESIGN_EXPIRY,
+      billingRisk: "NONE — local filesystem, zero cloud cost",
+    });
+  }
+
+  // ── Cloud path (Filebase / generic S3) — optional, still free ──
+  const config = getS3Config();
+  if (!config) {
+    return NextResponse.json({
+      error: `STORAGE_PROVIDER=${provider} requires cloud credentials. Set STORAGE_PROVIDER=local (default, free) or configure the provider env vars.`,
+      hint: "Local filesystem is the default — zero cost, no payment card. Filebase is optional (5GB free).",
+    }, { status: 501 });
+  }
+
+  const key = `videos/${videoId}/source/${safeName}`;
   const uploadUrl = presignS3Url({
     config,
     key,
@@ -166,7 +190,7 @@ export async function POST(req: NextRequest) {
     method: "PUT",
     headers: { "Content-Type": contentType || "video/mp4" },
     key,
-    provider: process.env.STORAGE_PROVIDER,
+    provider,
     expiresIn: PRESIGN_EXPIRY,
   });
 }

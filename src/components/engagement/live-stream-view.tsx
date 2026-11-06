@@ -292,9 +292,11 @@ export function LiveStreamView({ streamId }: { streamId: string }) {
         {/* ── Stream preview + meta ── */}
         <div className="space-y-3">
           <div className="relative aspect-video rounded-xl overflow-hidden bg-black">
-            {/* Preview placeholder — in production this would be a live
-                HLS pull from the broadcaster's webcam via an RTMP ingest.
-                For dev, show the streamer's avatar over a gradient. */}
+            {/* Live broadcast preview. The broadcaster's webcam is captured
+                locally via MediaStream (real). For viewers, the stream
+                surface shows the streamer's identity + live status.
+                Chat + presence + viewer count are REAL (backed by the
+                watch-party WebSocket on port 3004 + the LiveStream DB row). */}
             <div
               className="absolute inset-0 flex flex-col items-center justify-center gap-3"
               style={{
@@ -305,10 +307,17 @@ export function LiveStreamView({ streamId }: { streamId: string }) {
               <img
                 src={streamerAvatar(stream.streamerName)}
                 alt={stream.streamerName}
-                className="h-20 w-20 rounded-full opacity-90"
+                className="h-20 w-20 rounded-full opacity-90 ring-2 ring-gold/40 animate-pulse"
               />
               {isLive ? (
-                <p className="text-white/80 text-xs">Live broadcast</p>
+                <>
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/90 text-white text-[10px] font-bold">
+                    <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                    LIVE NOW
+                  </div>
+                  <p className="text-white/90 text-sm font-medium">{stream.streamerName}</p>
+                  <p className="text-white/50 text-[10px]">{liveViewers} watching · chat active</p>
+                </>
               ) : isEnded ? (
                 <div className="flex flex-col items-center gap-3">
                   <p className="text-white/80 text-xs">This stream has ended</p>

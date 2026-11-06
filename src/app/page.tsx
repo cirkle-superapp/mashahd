@@ -2,14 +2,14 @@
 
 import { useEffect } from "react";
 import { useAppStore } from "@/store/app-store";
-import { Header } from "@/components/youtube/header";
-import { Dock } from "@/components/youtube/dock";
-import { HomeView } from "@/components/youtube/home-view";
-import { WatchView } from "@/components/youtube/watch-view";
-import { ChannelView } from "@/components/youtube/channel-view";
-import { CategoryView } from "@/components/youtube/category-view";
-import { SettingsView } from "@/components/youtube/settings-view";
-import { ProfileView } from "@/components/youtube/profile-view";
+import { Header } from "@/components/engagement/header";
+import { Dock } from "@/components/engagement/dock";
+import { HomeView } from "@/components/engagement/home-view";
+import { WatchView } from "@/components/engagement/watch-view";
+import { ChannelView } from "@/components/engagement/channel-view";
+import { CategoryView } from "@/components/engagement/category-view";
+import { SettingsView } from "@/components/engagement/settings-view";
+import { ProfileView } from "@/components/engagement/profile-view";
 import {
   SearchView,
   TrendingView,
@@ -19,21 +19,21 @@ import {
   LibraryView,
   FavoritesView,
   WatchLaterView,
-} from "@/components/youtube/list-views";
-import { Footer } from "@/components/youtube/footer";
-import { CommandPalette } from "@/components/youtube/command-palette";
-import { Splash } from "@/components/youtube/splash";
-import { KeyboardShortcuts } from "@/components/youtube/keyboard-shortcuts";
-import { MiniPlayer } from "@/components/youtube/mini-player";
-import { OnboardingTour } from "@/components/youtube/onboarding-tour";
-import { PlaylistView } from "@/components/youtube/playlist-view";
-import { ClipView } from "@/components/youtube/clip-view";
-import { RecommendationProfileView } from "@/components/youtube/recommendation-profile-view";
-import { SmartPlaylistResultsView } from "@/components/youtube/smart-playlist-creator";
-import { ShortsFeedView } from "@/components/youtube/shorts-feed-view";
-import { LiveStreamView } from "@/components/youtube/live-stream-view";
-import { LiveTVChannelView } from "@/components/youtube/live-tv-channel-view";
-import { LegalView } from "@/components/youtube/legal-view";
+} from "@/components/engagement/list-views";
+import { Footer } from "@/components/engagement/footer";
+import { CommandPalette } from "@/components/engagement/command-palette";
+import { Splash } from "@/components/engagement/splash";
+import { KeyboardShortcuts } from "@/components/engagement/keyboard-shortcuts";
+import { MiniPlayer } from "@/components/engagement/mini-player";
+import { OnboardingTour } from "@/components/engagement/onboarding-tour";
+import { PlaylistView } from "@/components/engagement/playlist-view";
+import { ClipView } from "@/components/engagement/clip-view";
+import { RecommendationProfileView } from "@/components/engagement/recommendation-profile-view";
+import { SmartPlaylistResultsView } from "@/components/engagement/smart-playlist-creator";
+import { ShortsFeedView } from "@/components/engagement/shorts-feed-view";
+import { LiveStreamView } from "@/components/engagement/live-stream-view";
+import { LiveTVChannelView } from "@/components/engagement/live-tv-channel-view";
+import { LegalView } from "@/components/engagement/legal-view";
 import { useMashahdBridge } from "@/lib/mashahd-bridge";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { cn } from "@/lib/utils";
