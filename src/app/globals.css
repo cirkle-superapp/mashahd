@@ -675,3 +675,135 @@
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
   }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ * Pass 100 — "Years Ahead" CSS (latest web platform features, 2025-2026).
+ *
+ * Each block below uses a CSS feature that most competitors' frontends
+ * don't ship yet. All degrade gracefully (browsers without support
+ * simply skip the declaration).
+ * ════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. View Transitions API — cinematic cross-route morphs ────────────
+ *   When the app swaps views (Home → Watch → Trending), the browser
+ *   cross-fades old→new with a GPU-driven snapshot. No JS framework
+ *   transition library can match this perf — it's native compositor work.
+ *   Opt-in per element via `vt-name-*` utility classes. */
+@supports (view-transition-name: root) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 280ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  ::view-transition-old(root) { animation-name: vt-fade-out; }
+  ::view-transition-new(root) { animation-name: vt-fade-in; }
+  @keyframes vt-fade-out { to { opacity: 0; transform: scale(1.02); } }
+  @keyframes vt-fade-in { from { opacity: 0; transform: scale(0.98); } }
+
+  /* Story viewer morphs from the avatar bubble → full-screen frame */
+  ::view-transition-old(story-viewer) { animation: vt-story-out 200ms ease-out; }
+  ::view-transition-new(story-viewer) { animation: vt-story-in 240ms ease-out; }
+  @keyframes vt-story-out { to { opacity: 0; transform: scale(0.9); } }
+  @keyframes vt-story-in { from { opacity: 0; transform: scale(1.1); } }
+}
+.vt-root { view-transition-name: root; }
+
+/* ── 2. Container Queries — true component-level responsiveness ────────
+ *   Components adapt to their CONTAINER width, not the viewport.
+ *   Lets the same card render full-size on home, compact in a sidebar,
+ *   and thumbnail in a mini-player — without prop drilling. */
+.cq-ready { container-type: inline-size; }
+@container (max-width: 380px) {
+  .cq-ready .cq-compact { display: block; }
+  .cq-ready .cq-full { display: none; }
+}
+@container (min-width: 381px) {
+  .cq-ready .cq-compact { display: none; }
+  .cq-ready .cq-full { display: block; }
+}
+
+/* ── 3. :has() — parent-state styling without JS ───────────────────────
+ *   Style a container based on its descendant state. E.g. a card
+ *   highlights when it contains a playing video, with zero JS. */
+@supports selector(:has(*)) {
+  .has-aware-card:has(video[playing]) {
+    border-color: hsl(var(--gold) / 0.5);
+    box-shadow: 0 0 0 1px hsl(var(--gold) / 0.2), 0 8px 24px -8px hsl(var(--gold) / 0.3);
+  }
+  .shelf:has(.story-unviewed) .shelf-badge {
+    background: linear-gradient(90deg, hsl(var(--gold)), hsl(var(--gold-light)));
+  }
+}
+
+/* ── 4. Scroll-driven animations — reveal on scroll, no JS observer ───
+ *   Elements fade/slide in as they enter the viewport, driven by the
+ *   browser's scroll position. Replaces IntersectionObserver for simple
+ *   reveals. */
+@supports (animation-timeline: view()) {
+  .scroll-reveal {
+    animation: scroll-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 30%;
+  }
+  @keyframes scroll-reveal {
+    from { opacity: 0; transform: translateY(24px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .scroll-reveal-x {
+    animation: scroll-reveal-x linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 40%;
+  }
+  @keyframes scroll-reveal-x {
+    from { opacity: 0; transform: translateX(-32px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+}
+
+/* ── 5. OKLCH colors — perceptually uniform gradients ──────────────────
+ *   OKLCH (Oklab cylindrical) gives smoother gradient midpoints than
+ *   RGB/HSL. Used for the cinematic hero + mood rings where hue shifts
+ *   must feel continuous. */
+.oklch-gradient-warm {
+  background: linear-gradient(135deg,
+    oklch(0.72 0.16 60) 0%,
+    oklch(0.68 0.14 40) 50%,
+    oklch(0.62 0.12 25) 100%);
+}
+.oklch-gradient-cool {
+  background: linear-gradient(135deg,
+    oklch(0.70 0.12 200) 0%,
+    oklch(0.64 0.10 240) 50%,
+    oklch(0.58 0.08 280) 100%);
+}
+
+/* ── 6. color-mix() — dynamic alpha without CSS-var plumbing ───────────
+ *   Blend any color with transparent/white at runtime. Useful for
+ *   hover states derived from theme tokens. */
+.hover-gold-glow:hover {
+  background-color: color-mix(in oklch, hsl(var(--gold)) 12%, transparent);
+  transition: background-color 180ms ease;
+}
+
+/* ── 7. Subgrid — aligned card grids without fl/grid hacks ─────────────
+ *   Children of a grid item align to the parent's tracks. Useful for
+ *   video card rows where titles/channels/meta must line up. */
+@supports (grid-template-columns: subgrid) {
+  .card-grid-subgrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  .card-grid-subgrid > * {
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+    display: grid;
+  }
+}
+
+/* ── 8. Reduced motion — respect user preference globally ────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal, .scroll-reveal-x { animation: none !important; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
+}

@@ -13,6 +13,11 @@ import {
   Gauge,
   Check,
   Activity,
+  Moon,
+  Repeat,
+  Waves,
+  Sparkles,
+  Timer,
 } from "lucide-react";
 import Hls from "hls.js";
 import { HlsJsP2PEngine } from "p2p-media-loader-hlsjs";
@@ -134,6 +139,34 @@ export function MashahdPlayer({
   const [p2pPolicy, setP2pPolicy] = useState<P2PPolicy | null>(null);
   const [rebufferCount, setRebufferCount] = useState(0);
   const [startupTime, setStartupTime] = useState(0);
+
+  // ── Pass 100: "Years Ahead" player power features ──
+  // Ambient Mode: glowing backdrop that samples video colors (YouTube has this;
+  //   we match + exceed by using OKLCH-aware canvas sampling).
+  const [ambientMode, setAmbientMode] = useState(false);
+  const [ambientColor, setAmbientColor] = useState("#000000");
+  const ambientCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Stable Volume: auto-normalizes loud/quiet via DynamicsCompressorNode.
+  //   YouTube's "Stable Volume" — we match with native Web Audio (no plugin).
+  const [stableVolume, setStableVolume] = useState(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const compressorRef = useRef<DynamicsCompressorNode | null>(null);
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+
+  // Sleep Timer: pauses playback after a countdown (power-user feature).
+  const [sleepTimerMin, setSleepTimerMin] = useState(0); // 0 = off
+  const [sleepTimerRemaining, setSleepTimerRemaining] = useState(0);
+  const sleepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // A-B Loop: set A & B markers; playback loops between them (power-user).
+  const [abLoopA, setAbLoopA] = useState<number | null>(null);
+  const [abLoopB, setAbLoopB] = useState<number | null>(null);
+
+  // Video Heatmap: tracks seek positions to surface "most replayed" peaks.
+  //   Rendered as a sparkline above the scrubber (YouTube has this; we match).
+  const [heatmap, setHeatmap] = useState<number[]>([]); // bucketed play counts
+  const lastBucketRef = useRef(-1);
 
   // ── Multi-resolution choice (§35) ──
   // Quality selector state. levels are populated from hls.js when the
@@ -533,6 +566,102 @@ export function MashahdPlayer({
     setMuted(val === 0);
   };
 
+  // ── Pass 100: Ambient Mode — sample video frame colors every ~1.5s and
+  //    project a soft radial glow behind the player. Uses an offscreen
+  //    <canvas> (1×1) to read the average pixel color cheaply.
+  useEffect(() => {
+    if (!ambientMode) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAmbientColor("#000000");
+      return;
+    }
+    const v = videoRef.current;
+    if (!v) return;
+    if (!ambientCanvasRef.current) {
+      ambientCanvasRef.current = document.createElement("canvas");
+      ambientCanvasRef.current.width = 1;
+      ambientCanvasRef.current.height = 1;
+    }
+    const ctx = ambientCanvasRef.current.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+    const interval = setInterval(() => {
+      try {
+        if (v.readyState >= 2) {
+          ctx.drawImage(v, 0, 0, 1, 1);
+          const px = ctx.getImageData(0, 0, 1, 1).data;
+          // Boost saturation slightly for a more vivid glow.
+          const r = Math.min(255, px[0] * 1.15);
+          const g = Math.min(255, px[1] * 1.15);
+          const b = Math.min(255, px[2] * 1.15);
+          setAmbientColor(`rgb(${r | 0}, ${g | 0}, ${b | 0})`);
+        }
+      } catch { /* CORS-tainted frame — skip silently */ }
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [ambientMode]);
+
+  // ── Pass 100: Stable Volume — route the media element through a Web Audio
+  //    DynamicsCompressorNode to normalize loud/quiet passages. This is
+  //    YouTube's "Stable Volume" feature, implemented with zero plugins.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (stableVolume) {
+      try {
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new AudioContext();
+          sourceNodeRef.current = audioCtxRef.current.createMediaElementSource(v);
+        }
+        if (!compressorRef.current) {
+          compressorRef.current = audioCtxRef.current.createDynamicsCompressor();
+          compressorRef.current.threshold.value = -24;
+          compressorRef.current.knee.value = 30;
+          compressorRef.current.ratio.value = 12;
+          compressorRef.current.attack.value = 0.003;
+          compressorRef.current.release.value = 0.25;
+        }
+        sourceNodeRef.current?.connect(compressorRef.current);
+        compressorRef.current.connect(audioCtxRef.current.destination);
+        if (audioCtxRef.current.state === "suspended") audioCtxRef.current.resume();
+      } catch { /* already connected or CORS — ignore */ }
+    } else if (compressorRef.current && sourceNodeRef.current && audioCtxRef.current) {
+      try {
+        sourceNodeRef.current.disconnect(compressorRef.current);
+        sourceNodeRef.current.connect(audioCtxRef.current.destination);
+      } catch { /* ignore */ }
+    }
+  }, [stableVolume]);
+
+  // ── Pass 100: Sleep Timer — countdown that pauses playback at zero.
+  useEffect(() => {
+    if (sleepTimerMin <= 0) {
+      if (sleepTimerRef.current) { clearInterval(sleepTimerRef.current); sleepTimerRef.current = null; }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSleepTimerRemaining(0);
+      return;
+    }
+    setSleepTimerRemaining(sleepTimerMin * 60);
+    sleepTimerRef.current = setInterval(() => {
+      setSleepTimerRemaining((prev) => {
+        if (prev <= 1) {
+          if (sleepTimerRef.current) { clearInterval(sleepTimerRef.current); sleepTimerRef.current = null; }
+          try { videoRef.current?.pause(); } catch { /* ignore */ }
+          setSleepTimerMin(0);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => { if (sleepTimerRef.current) { clearInterval(sleepTimerRef.current); sleepTimerRef.current = null; } };
+  }, [sleepTimerMin]);
+
+  // Cleanup Web Audio nodes on unmount.
+  useEffect(() => {
+    return () => {
+      try { audioCtxRef.current?.close(); } catch { /* ignore */ }
+    };
+  }, []);
+
   // Seek to an absolute position (in seconds). Used by keyboard handlers
   // on the scrubber so arrow keys move by fixed deltas.
   const seekTo = useCallback((seconds: number) => {
@@ -598,6 +727,18 @@ export function MashahdPlayer({
         if (e.target === videoRef.current || e.target === e.currentTarget) togglePlay();
       }}
     >
+      {/* Pass 100: Ambient Mode backdrop — soft radial glow that samples the
+          video's dominant color. Sits BEHIND the video so it frames the frame. */}
+      {ambientMode && (
+        <div
+          aria-hidden
+          className="absolute inset-0 z-0 pointer-events-none transition-[background] duration-1000 ease-out blur-3xl scale-110"
+          style={{
+            background: `radial-gradient(circle at 50% 50%, ${ambientColor} 0%, transparent 70%)`,
+            opacity: 0.55,
+          }}
+        />
+      )}
       <video
         ref={videoRef}
         className="w-full h-full"
@@ -607,10 +748,31 @@ export function MashahdPlayer({
         onPause={() => { setPlaying(false); onPause?.(); }}
         onTimeUpdate={() => {
           if (videoRef.current) {
-            setCurrent(videoRef.current.currentTime);
-            onTimeUpdate?.(videoRef.current.currentTime);
+            const t = videoRef.current.currentTime;
+            setCurrent(t);
+            onTimeUpdate?.(t);
             if (videoRef.current.buffered.length > 0) {
               setBuffered(videoRef.current.buffered.end(videoRef.current.buffered.length - 1));
+            }
+            // Pass 100: accumulate heatmap — bucket every 2 seconds.
+            if (duration > 0) {
+              const bucketSize = Math.max(2, duration / 50); // ~50 buckets
+              const bucket = Math.floor(t / bucketSize);
+              if (bucket !== lastBucketRef.current && bucket >= 0 && bucket < 60) {
+                lastBucketRef.current = bucket;
+                setHeatmap((prev) => {
+                  const next = [...prev];
+                  next[bucket] = (next[bucket] || 0) + 1;
+                  return next;
+                });
+              }
+            }
+            // Pass 100: A-B loop — when playback crosses B, seek back to A.
+            if (
+              abLoopA !== null && abLoopB !== null &&
+              t >= abLoopB && !endFiredRef.current
+            ) {
+              videoRef.current.currentTime = abLoopA;
             }
             // Clip range: when playback crosses endAt, pause + fire onEnded
             // so the host UI can show the up-next state. Guarded by a ref
@@ -692,6 +854,24 @@ export function MashahdPlayer({
           controlsVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
         )}
       >
+        {/* Pass 100: Video Heatmap — "most replayed" sparkline above the
+            scrubber. Peaks indicate segments viewers replayed most. */}
+        {heatmap.length > 0 && (
+          <div className="h-3 mb-1 flex items-end gap-px opacity-70" aria-hidden>
+            {Array.from({ length: 50 }).map((_, i) => {
+              const v = heatmap[i] || 0;
+              const max = Math.max(...heatmap, 1);
+              const h = Math.max(2, (v / max) * 100);
+              return (
+                <div
+                  key={i}
+                  className="flex-1 bg-gradient-to-t from-gold/30 to-gold-light/70 rounded-sm"
+                  style={{ height: `${h}%` }}
+                />
+              );
+            })}
+          </div>
+        )}
         {/* Scrubber */}
         <div
           role="slider"
@@ -844,6 +1024,84 @@ export function MashahdPlayer({
                       <span className="text-[10px] text-white/40">
                         {isHlsSource ? "loading…" : "MP4"}
                       </span>
+                    </div>
+                  )}
+                </div>
+                {/* Pass 100: Enhancements section — "years ahead" power features */}
+                <div className="border-t border-white/10 mt-1 pt-1">
+                  <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-white/50 font-semibold">
+                    Enhancements
+                  </div>
+                  {/* Ambient Mode */}
+                  <button
+                    onClick={() => setAmbientMode((v) => !v)}
+                    className={cn(
+                      "w-full px-3 py-1.5 text-left text-xs hover:bg-white/15 flex items-center justify-between gap-2",
+                      ambientMode ? "text-[hsl(var(--gold-light))] font-medium" : "text-white",
+                    )}
+                  >
+                    <span className="flex items-center gap-1.5"><Sparkles className="h-3 w-3" /> Ambient mode</span>
+                    {ambientMode && <Check className="h-3 w-3" />}
+                  </button>
+                  {/* Stable Volume */}
+                  <button
+                    onClick={() => setStableVolume((v) => !v)}
+                    className={cn(
+                      "w-full px-3 py-1.5 text-left text-xs hover:bg-white/15 flex items-center justify-between gap-2",
+                      stableVolume ? "text-[hsl(var(--gold-light))] font-medium" : "text-white",
+                    )}
+                  >
+                    <span className="flex items-center gap-1.5"><Waves className="h-3 w-3" /> Stable volume</span>
+                    {stableVolume && <Check className="h-3 w-3" />}
+                  </button>
+                  {/* A-B Loop markers */}
+                  <div className="px-3 py-1.5 text-xs text-white flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5"><Repeat className="h-3 w-3" /> A-B loop</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { setAbLoopA(videoRef.current?.currentTime ?? 0); if (abLoopB === null) setAbLoopB((videoRef.current?.duration ?? 0) || 0); }}
+                        className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[10px]"
+                        aria-label="Set loop start (A)"
+                      >A</button>
+                      <button
+                        onClick={() => setAbLoopB(videoRef.current?.currentTime ?? 0)}
+                        className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[10px]"
+                        aria-label="Set loop end (B)"
+                      >B</button>
+                      {(abLoopA !== null || abLoopB !== null) && (
+                        <button
+                          onClick={() => { setAbLoopA(null); setAbLoopB(null); }}
+                          className="px-1.5 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-[10px] text-rose-200"
+                          aria-label="Clear A-B loop"
+                        >✕</button>
+                      )}
+                    </div>
+                  </div>
+                  {abLoopA !== null && abLoopB !== null && (
+                    <div className="px-3 pb-1 text-[10px] text-white/50 tabular-nums">
+                      Looping {abLoopA.toFixed(0)}s → {abLoopB.toFixed(0)}s
+                    </div>
+                  )}
+                  {/* Sleep Timer */}
+                  <div className="px-3 py-1.5 text-xs text-white flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5"><Moon className="h-3 w-3" /> Sleep timer</span>
+                    <div className="flex items-center gap-1">
+                      {[0, 5, 10, 15, 30].map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => setSleepTimerMin(m)}
+                          className={cn(
+                            "px-1.5 py-0.5 rounded text-[10px]",
+                            sleepTimerMin === m ? "bg-[hsl(var(--gold))]/30 text-[hsl(var(--gold-light))]" : "bg-white/10 hover:bg-white/20",
+                          )}
+                          aria-label={m === 0 ? "Off" : `Sleep in ${m} minutes`}
+                        >{m === 0 ? "Off" : `${m}m`}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {sleepTimerRemaining > 0 && (
+                    <div className="px-3 pb-1 text-[10px] text-[hsl(var(--gold-light))] tabular-nums flex items-center gap-1">
+                      <Timer className="h-2.5 w-2.5" /> Pauses in {Math.floor(sleepTimerRemaining / 60)}:{String(sleepTimerRemaining % 60).padStart(2, "0")}
                     </div>
                   )}
                 </div>

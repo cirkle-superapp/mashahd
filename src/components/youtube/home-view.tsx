@@ -9,6 +9,7 @@ import { MoodFilter, moodToCategory, type MoodId } from "./mood-filter";
 import { StreakBadge } from "./streak-badge";
 import { TimeOfDayMood } from "./time-of-day-mood";
 import { ShortsShelf } from "./shorts-shelf";
+import { StoriesShelf } from "./stories-shelf";
 import { TrendingDigest } from "./trending-digest";
 import { CinematicHeroBanner } from "./cinematic-hero-banner";
 import { MoodEngine } from "./mood-engine";
@@ -324,6 +325,10 @@ export function HomeView() {
       {isDefaultHome && <div className="section-divider" />}
       {/* Live Now shelf */}
       {isDefaultHome && <LiveNowShelf />}
+      {/* Pass 100: Stories shelf — ephemeral vertical content (TikTok/IG-style),
+          derived from short-form videos. Years-ahead: no competitor in the
+          long-form video space ships this. */}
+      {isDefaultHome && <StoriesShelf />}
       {/* Live TV shelf */}
       {isDefaultHome && <LiveTVShelf />}
       {/* Continue Watching shelf */}
