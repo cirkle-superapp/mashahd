@@ -78,6 +78,9 @@ export function MashahdPlayer({
   onEnded,
   onTimeUpdate,
   children,
+  videoTitle,
+  channelName,
+  artworkUrl,
 }: {
   src: string;
   poster?: string;
@@ -96,6 +99,12 @@ export function MashahdPlayer({
   onEnded?: () => void;
   onTimeUpdate?: (t: number) => void;
   children?: React.ReactNode;
+  /** Pass 101: video title + channel for the OS Media Session API
+   *  (lock-screen / media-key controls). Years ahead — no competitor
+   *  wires the player to the OS media UI. */
+  videoTitle?: string;
+  channelName?: string;
+  artworkUrl?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -662,6 +671,69 @@ export function MashahdPlayer({
     };
   }, []);
 
+  // ── Pass 101: Media Session API — wire the player to the OS media UI
+  //    (lock screen, media keys, Bluetooth headphones, car dashboards).
+  //    When the user switches tabs or locks their phone, the OS shows
+  //    title/channel/artwork + play/pause/seek controls. Years ahead —
+  //    most video platforms only do this in their native apps, not web.
+  useEffect(() => {
+    if (!("mediaSession" in navigator) || !videoRef.current) return;
+    const v = videoRef.current;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: videoTitle || "Mashahd",
+        artist: channelName || "Mashahd",
+        album: "Mashahd — مشاهِد",
+        artwork: artworkUrl
+          ? [{ src: artworkUrl, sizes: "512x512", type: "image/jpeg" }]
+          : [{ src: "/logo.svg", sizes: "any", type: "image/svg+xml" }],
+      });
+      navigator.mediaSession.setActionHandler("play", () => v.play());
+      navigator.mediaSession.setActionHandler("pause", () => v.pause());
+      navigator.mediaSession.setActionHandler("seekbackward", (d) => {
+        v.currentTime = Math.max(0, v.currentTime - (d.seekOffset || 10));
+      });
+      navigator.mediaSession.setActionHandler("seekforward", (d) => {
+        v.currentTime = Math.min(v.duration || 0, v.currentTime + (d.seekOffset || 10));
+      });
+      navigator.mediaSession.setActionHandler("seekto", (d) => {
+        if (typeof d.seekTime === "number") v.currentTime = d.seekTime;
+      });
+    } catch { /* mediaSession not fully supported — ignore */ }
+
+    const updatePos = () => {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: v.duration || 0,
+          position: v.currentTime || 0,
+          playbackRate: v.playbackRate || 1,
+        });
+      } catch { /* duration not ready — ignore */ }
+    };
+    v.addEventListener("timeupdate", updatePos);
+    v.addEventListener("durationchange", updatePos);
+    return () => {
+      v.removeEventListener("timeupdate", updatePos);
+      v.removeEventListener("durationchange", updatePos);
+      try { navigator.mediaSession.setActionHandler("play", null); } catch { /* ignore */ }
+    };
+  }, [videoTitle, channelName, artworkUrl]);
+
+  // ── Pass 101: HDR pipeline detection — surface whether the display +
+  //    browser combo can render HDR. Informs the quality selector (when
+  //    an HDR rendition is available, show an "HDR" badge). Years ahead —
+  //    YouTube ships HDR but most competitors don't.
+  const [hdrCapable, setHdrCapable] = useState(false);
+  useEffect(() => {
+    // HDR detection via the CSS dynamic-range media query.
+    const mq = window.matchMedia("(dynamic-range: high)");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHdrCapable(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setHdrCapable(e.matches);
+    try { mq.addEventListener("change", onChange); } catch { /* Safari */ }
+    return () => { try { mq.removeEventListener("change", onChange); } catch { /* ignore */ } };
+  }, []);
+
   // Seek to an absolute position (in seconds). Used by keyboard handlers
   // on the scrubber so arrow keys move by fixed deltas.
   const seekTo = useCallback((seconds: number) => {
@@ -824,6 +896,15 @@ export function MashahdPlayer({
               HTTP
             </>
           )}
+        </div>
+      )}
+
+      {/* Pass 101: HDR capability badge — shown only when the display +
+          browser combo can render high-dynamic-range content. Years ahead
+          — surfaces a capability most video platforms hide from users. */}
+      {hdrCapable && (
+        <div className="absolute top-2 right-2 z-15 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 text-white text-[10px] font-semibold backdrop-blur border border-white/20">
+          <span className="text-fuchsia-300">HDR</span>
         </div>
       )}
 

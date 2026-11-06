@@ -675,7 +675,6 @@
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
   }
-}
 
 /* ════════════════════════════════════════════════════════════════════════
  * Pass 100 — "Years Ahead" CSS (latest web platform features, 2025-2026).

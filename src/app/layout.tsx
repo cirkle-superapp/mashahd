@@ -3,6 +3,7 @@ import { Inter, Fraunces, Tajawal } from "next/font/google";
 import "./globals.css";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers";
+import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap" });
 const fraunces = Fraunces({
@@ -72,6 +73,8 @@ export default function RootLayout({
         <Providers>
           {children}
           <Sonner position="bottom-right" richColors closeButton />
+          {/* Pass 101: PWA service worker — offline shell + installable app */}
+          <ServiceWorkerRegistration />
         </Providers>
       </body>
     </html>

@@ -25,6 +25,7 @@ import { ClipDialog } from "./clip-dialog";
 import { EndScreen } from "./end-screen";
 import { SmartUpNext } from "./smart-up-next";
 import { SocialProofBubbles } from "./social-proof-bubbles";
+import { WatchRewards } from "./watch-rewards";
 import { SmartResumeRecap } from "./smart-resume-recap";
 import { fireReaction } from "./reaction-burst";
 import { AiRecap } from "./ai-recap";
@@ -888,6 +889,9 @@ export function WatchView({ videoId }: { videoId: string }) {
             poster={video.thumbnailUrl}
             videoId={video.id}
             autoPlay={!needsAgeGate}
+            videoTitle={video.title}
+            channelName={video.channel?.name}
+            artworkUrl={video.thumbnailUrl}
             onPlay={() => { setPaused(false); setUpNext(false); }}
             onPause={() => setPaused(true)}
             onTimeUpdate={(t) => setLiveCurrentTime(t)}
@@ -1003,6 +1007,11 @@ export function WatchView({ videoId }: { videoId: string }) {
               up from the button and fades it out (CSS animation), and also
               sends a "like" to the video via the existing like API. Bursts
               are tracked in local state and removed after the 2s animation. */}
+
+          {/* Pass 101: Watch Rewards — compact points display in the action bar */}
+          <div className="mt-2 px-4 sm:px-0 flex justify-end">
+            <WatchRewards compact />
+          </div>
           <div className="relative mt-2 px-4 sm:px-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               {REACTION_EMOJIS.map((emoji) => (

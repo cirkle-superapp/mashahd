@@ -23,6 +23,7 @@ import { useWatchParty } from "@/hooks/use-watch-party";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { HypeTrain, dispatchEngagement } from "./hype-train";
 
 import { customAvatarUrl } from "@/lib/custom-avatar";
 
@@ -210,7 +211,9 @@ export function LiveStreamView({ streamId }: { streamId: string }) {
     if (!chatInput.trim()) return;
     party.sendChat(chatInput);
     setChatInput("");
-  }, [chatInput, party]);
+    // Pass 101: feed the Hype Train — each chat message boosts engagement.
+    if (stream) dispatchEngagement(stream.id, 3);
+  }, [chatInput, party, stream]);
 
   const copyCode = async () => {
     if (!stream?.watchPartyCode) return;
@@ -273,14 +276,17 @@ export function LiveStreamView({ streamId }: { streamId: string }) {
 
   return (
     <div className="px-4 sm:px-6 py-4 max-w-5xl mx-auto pb-24">
-      {/* Back link */}
-      <button
-        onClick={() => navigate({ kind: "home" })}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3 min-h-[44px] py-1"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Back to home
-      </button>
+      {/* Back link + Hype Train (Pass 101) */}
+      <div className="flex items-center justify-between mb-3 gap-3">
+        <button
+          onClick={() => navigate({ kind: "home" })}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors min-h-[44px] py-1"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to home
+        </button>
+        <HypeTrain streamId={stream.id} />
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-[1fr_320px] gap-4">
         {/* ── Stream preview + meta ── */}
