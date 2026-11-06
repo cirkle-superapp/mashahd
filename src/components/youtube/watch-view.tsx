@@ -26,6 +26,8 @@ import { EndScreen } from "./end-screen";
 import { SmartUpNext } from "./smart-up-next";
 import { SocialProofBubbles } from "./social-proof-bubbles";
 import { WatchRewards } from "./watch-rewards";
+import { SponsoredRing } from "./sponsored-ring";
+import { SponsoredQuest } from "./sponsored-quest";
 import { SmartResumeRecap } from "./smart-resume-recap";
 import { fireReaction } from "./reaction-burst";
 import { AiRecap } from "./ai-recap";
@@ -883,6 +885,9 @@ export function WatchView({ videoId }: { videoId: string }) {
         {/* Main column — single-column layout (Mashahd identity, not
             YouTube's player + vertical sidebar split) */}
         <div className="w-full min-w-0">
+          {/* Pass 102: SponsoredRing — unique ambient brand glow around the
+              player. Non-interruptive ad format no competitor has. */}
+          <SponsoredRing videoId={video.id} />
           {/* MashahdPlayer — custom player with fullscreen, PiP, speed, etc. */}
           <MashahdPlayer
             src={video.videoUrl}
@@ -1009,8 +1014,12 @@ export function WatchView({ videoId }: { videoId: string }) {
               are tracked in local state and removed after the 2s animation. */}
 
           {/* Pass 101: Watch Rewards — compact points display in the action bar */}
-          <div className="mt-2 px-4 sm:px-0 flex justify-end">
+          <div className="mt-2 px-4 sm:px-0 flex justify-end items-center gap-3">
             <WatchRewards compact />
+            {/* Pass 102: SponsoredQuest — gamified micro-ad → rewards */}
+            <div className="flex-1 max-w-xs">
+              <SponsoredQuest />
+            </div>
           </div>
           <div className="relative mt-2 px-4 sm:px-0">
             <div className="flex items-center gap-1.5 flex-wrap">

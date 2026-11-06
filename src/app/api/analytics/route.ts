@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-gate";
 import { getAnalytics } from "@/lib/neon-analytics";
 
 /**
@@ -12,6 +13,8 @@ import { getAnalytics } from "@/lib/neon-analytics";
  *   days — number of days to look back (default 7)
  */
 export async function GET(req: NextRequest) {
+  const gate = requireAdmin(req);
+  if (gate) return gate;
   const url = new URL(req.url);
   const days = parseInt(url.searchParams.get("days") || "7", 10);
 

@@ -10,6 +10,7 @@ import { StreakBadge } from "./streak-badge";
 import { TimeOfDayMood } from "./time-of-day-mood";
 import { ShortsShelf } from "./shorts-shelf";
 import { StoriesShelf } from "./stories-shelf";
+import { AdLotus } from "./ad-lotus";
 import { TrendingDigest } from "./trending-digest";
 import { CinematicHeroBanner } from "./cinematic-hero-banner";
 import { MoodEngine } from "./mood-engine";
@@ -331,6 +332,9 @@ export function HomeView() {
       {isDefaultHome && <StoriesShelf />}
       {/* Live TV shelf */}
       {isDefaultHome && <LiveTVShelf />}
+      {/* Pass 102: AdLotus — unique rotating mandala of sponsored brand tiles.
+          Non-interruptive, gamified, brand-native ad format no competitor has. */}
+      {isDefaultHome && <AdLotus />}
       {/* Continue Watching shelf */}
       {isDefaultHome && continueWatchingEnabled && <ContinueWatchingShelf />}
       {/* Premium section divider between shelves and feed */}

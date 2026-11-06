@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/admin-gate";
 import { getMetrics } from "@/lib/metrics-store";
 import { getResourceMetrics } from "@/lib/resource-governor";
 
@@ -23,6 +24,8 @@ import { getResourceMetrics } from "@/lib/resource-governor";
  */
 
 export async function GET(req: NextRequest) {
+  const gate = requireAdmin(req);
+  if (gate) return gate;
   const url = new URL(req.url);
   const videoId = url.searchParams.get("videoId");
 

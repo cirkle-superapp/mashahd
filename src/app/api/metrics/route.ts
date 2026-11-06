@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/admin-gate";
 import { getCoalesceStats } from "@/lib/request-coalescer";
 import { getResourceMetrics } from "@/lib/resource-governor";
 import { getAIProviderStatus } from "@/lib/ai-provider";
@@ -12,7 +13,9 @@ import os from "node:os";
  * Returns a JSON snapshot of system + application metrics for observability.
  * Per v6 spec §174-180: tracks QoE, P2P, cost, AI, and admin decision metrics.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const gate = requireAdmin(req);
+  if (gate) return gate;
   const memTotal = os.totalmem();
   const memFree = os.freemem();
   const memUsed = memTotal - memFree;

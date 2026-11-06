@@ -23,7 +23,8 @@ export type View =
   | { kind: "recommendationProfile" }
   | { kind: "shorts" }
   | { kind: "live"; streamId: string }
-  | { kind: "live-tv"; channelId: string };
+  | { kind: "live-tv"; channelId: string }
+  | { kind: "legal"; section?: "terms" | "privacy" | "cookies" };
 
 type AppState = {
   view: View;
@@ -133,6 +134,8 @@ export function queryToView(search: string): View {
       return { kind: "live", streamId: sp.get("id") || "" };
     case "live-tv":
       return { kind: "live-tv", channelId: sp.get("id") || "" };
+    case "legal":
+      return { kind: "legal", section: (sp.get("section") as "terms" | "privacy" | "cookies") || "terms" };
     default:
       return { kind: "home" };
   }

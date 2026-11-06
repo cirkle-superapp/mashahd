@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-gate";
 import { getAIProviderStatus } from "@/lib/ai-provider";
 import { getFlushStatus } from "@/lib/custom-store-neon-flush";
 import { getRouterStatus } from "@/lib/custom-job-queue-inngest-router";
@@ -19,7 +20,9 @@ import { getRouterStatus } from "@/lib/custom-job-queue-inngest-router";
  *
  * SECURITY: read-only, exposes only presence/health, never secrets.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const gate = requireAdmin(req);
+  if (gate) return gate;
   const has = (k: string): boolean => {
     const v = process.env[k];
     return typeof v === "string" && v.length > 0;

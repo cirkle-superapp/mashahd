@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-gate";
 import { getAIProviderStatus } from "@/lib/ai-provider";
 
 /**
@@ -39,7 +40,9 @@ import { getAIProviderStatus } from "@/lib/ai-provider";
  *     "cost": "$0/month"
  *   }
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const gate = requireAdmin(req);
+  if (gate) return gate;
   // For each var, return true/false (presence only — never the value).
   const has = (k: string): boolean => {
     const v = process.env[k];

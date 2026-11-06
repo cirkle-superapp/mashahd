@@ -53,6 +53,9 @@ export function Footer() {
     { label: "Subscriptions", view: { kind: "subscriptions" } },
     { label: "History", view: { kind: "history" } },
     { label: "Liked", view: { kind: "liked" } },
+    { label: "Terms", view: { kind: "legal", section: "terms" } },
+    { label: "Privacy", view: { kind: "legal", section: "privacy" } },
+    { label: "Cookies", view: { kind: "legal", section: "cookies" } },
   ];
 
   return (

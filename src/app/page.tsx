@@ -33,6 +33,7 @@ import { SmartPlaylistResultsView } from "@/components/youtube/smart-playlist-cr
 import { ShortsFeedView } from "@/components/youtube/shorts-feed-view";
 import { LiveStreamView } from "@/components/youtube/live-stream-view";
 import { LiveTVChannelView } from "@/components/youtube/live-tv-channel-view";
+import { LegalView } from "@/components/youtube/legal-view";
 import { useMashahdBridge } from "@/lib/mashahd-bridge";
 import { useBrowserId } from "@/hooks/use-browser-id";
 import { cn } from "@/lib/utils";
@@ -81,6 +82,8 @@ function renderView(view: ReturnType<typeof useAppStore.getState>["view"]) {
       return <LiveStreamView streamId={view.streamId} />;
     case "live-tv":
       return <LiveTVChannelView channelId={view.channelId} />;
+    case "legal":
+      return <LegalView section={view.section} />;
   }
 }
 
