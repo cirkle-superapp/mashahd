@@ -9285,3 +9285,20 @@ Verified:
 - **Likely cause:** Vercel Hobby plan monthly usage cap (bandwidth 100GB / function / image overage) or manual pause.
 - **Data safety:** Turso + Neon are separate services — VERIFIED LIVE and unaffected. All platform data intact.
 - **Action required (owner):** Vercel dashboard → Settings → Usage → restore, wait for cycle reset, or switch to the self-hosted Caddy setup (SELF_HOSTED_DEPLOYMENT.md — preserves $0/no-billing constraint).
+
+## Pass 105 — [2026-11-08] 🔧 Root-Cause Fix: Service Restored in Sandbox + Full 5-Service Verification
+
+- **Root cause confirmed:** Vercel **account-level suspension** (402 DEPLOYMENT_DISABLED). Not an app bug, not a data-layer failure. The re-provided Vercel token (`vcp_1BUN…`) is the SAME token documented invalid since Pass 52 — `invalidToken: true` on every API call, so no Vercel-side repair is possible programmatically. Lifting the suspension is an owner-only dashboard action (billing/usage/ToS).
+- **Fix executed (service continuity):** Mashahd instance restored in the sandbox on port 3000, wired to the REAL production databases (Turso primary + Neon analytics via .env, ensure-env.sh restored). User has a working app via the preview panel while Vercel is resolved.
+- **Direct service verification (2026-11-08, from sandbox):**
+  - **Turso:** ✅ HEALTHY — `SELECT 1` 1.7s; Video=35, Channel=13, Comment=90, User=4, Session=5
+  - **Neon:** ✅ HEALTHY — TCP 5432 open, PG connect 4.2s, 3 public tables (matches Pass 98 audit). Note: node-pg chokes on `channel_binding=require` (libpq-only param) + bash `source .env` mangles `&` — both are diagnostic artifacts, NOT outages.
+  - **Inngest:** ⚠️ signkey present; function delivery hostage to the Vercel URL (cloud → app connectivity impossible while domain serves 402).
+  - **AI (CIRKLE BRAIN):** ⚠️ keys exist ONLY as Vercel env vars (not in .env, not re-provided) — unverifiable from here; app fails open (verified `/api/ai/trending-digest` → 200).
+  - **Vercel:** 🔴 DOWN — 402 on every route from hkg1/pdx1 edges for ~24h.
+- **Browser-verified (agent-browser):** home renders (title, moods, 19 categories), ALL API calls 200 (videos ×4 sorts, live-streams, live-tv, ads, sponsored-hashtags, user-state, ai/trending-digest), Music category click → `/api/videos?category=Music&sort=recent` 200, zero console errors. Screenshot: `screenshots/105-sandbox-restore-verify.png`.
+- **Owner recovery path (only way to restore mashahd.vercel.app):**
+  1. Vercel dashboard → Billing/Usage → resolve the suspension (upgrade to Pro $20/mo, clear flagged payment, or wait for Hobby cycle reset on Dec 1 UTC).
+  2. Repo is already connected — any push to `main` triggers auto-redeploy (latest code is on `main`).
+  3. Optional: fresh token at vercel.com/account/tokens → `VERCEL_TOKEN=<fresh> bash scripts/set-vercel-env.sh` (19 vars already set from prior runs — only needed to sync the newer Groq key).
+- **Monitoring:** cron Job 510085 continues 30-min probes of the production URL and will confirm recovery automatically.
