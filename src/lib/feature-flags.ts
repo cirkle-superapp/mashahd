@@ -100,7 +100,7 @@ export function getMediaFabricConfig(): MediaFabricConfig {
 
     TURN_ENABLED: parseBool(process.env.TURN_ENABLED, false),
 
-    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || "*",
+    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || "",
 
     ORIGIN_COST_PER_GB: parseNum(process.env.ORIGIN_COST_PER_GB, 0),
 

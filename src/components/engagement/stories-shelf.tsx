@@ -48,7 +48,7 @@ interface StoryItem {
 
 export function StoriesShelf() {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
-  const { bid } = useBrowserId();
+  const bid = useBrowserId();
 
   // Stories are derived from short-form videos. We fetch from /api/videos
   // filtered to shorts/vertical content. No new backend model needed.
@@ -232,7 +232,7 @@ function StoryViewer({
           <video
             ref={videoRef}
             src={story.videoUrl}
-            poster={getImageUrl(story.thumbnailUrl)}
+            poster={getImageUrl(story.thumbnailUrl, story.title)}
             className="w-full h-full object-cover"
             autoPlay
             playsInline
@@ -240,7 +240,7 @@ function StoryViewer({
           />
         ) : (
           <img
-            src={getImageUrl(story.thumbnailUrl)}
+            src={getImageUrl(story.thumbnailUrl, story.title)}
             alt={story.title}
             className="w-full h-full object-cover"
           />

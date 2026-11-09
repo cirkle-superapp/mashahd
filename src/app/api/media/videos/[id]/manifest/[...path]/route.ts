@@ -16,13 +16,17 @@ import { getStorage } from "@/lib/storage";
  */
 function getCorsOrigin(req: NextRequest): string {
   const allowed = process.env.ALLOWED_ORIGINS;
-  if (!allowed) return "*";
+  // Fail-closed (Pass 106): if ALLOWED_ORIGINS is unset, return empty string
+  // so no Access-Control-Allow-Origin header is sent — browsers block
+  // cross-origin reads. Previously returned "*" which silently opened the
+  // HLS manifest + segments to any origin on a misconfigured deployment.
+  if (!allowed) return "";
   const origins = allowed.split(",").map((s) => s.trim());
   const requestOrigin = req.headers.get("origin");
   if (requestOrigin && origins.includes(requestOrigin)) {
     return requestOrigin;
   }
-  return origins[0] || "*";
+  return origins[0] || "";
 }
 
 export async function GET(

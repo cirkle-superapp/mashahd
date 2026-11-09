@@ -86,6 +86,10 @@ export function viewToQuery(v: View): string {
       return `?v=live&id=${encodeURIComponent(v.streamId)}`;
     case "live-tv":
       return `?v=live-tv&id=${encodeURIComponent(v.channelId)}`;
+    case "legal":
+      return v.section
+        ? `?v=legal&section=${encodeURIComponent(v.section)}`
+        : `?v=legal`;
   }
 }
 

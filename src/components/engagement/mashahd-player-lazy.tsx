@@ -37,6 +37,11 @@ export type MashahdPlayerProps = {
   onEnded?: () => void;
   onTimeUpdate?: (t: number) => void;
   children?: React.ReactNode;
+  /** Pass 101: video title + channel for the OS Media Session API
+   *  (lock-screen / media-key controls). Forwarded to MashahdPlayer. */
+  videoTitle?: string;
+  channelName?: string;
+  artworkUrl?: string;
 };
 
 const MashahdPlayerInner = dynamic(

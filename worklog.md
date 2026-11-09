@@ -7648,7 +7648,7 @@ The Filebase API returns 0 buckets but won't let me create one ("You have attemp
 **Action needed**: Visit https://console.filebase.com → create a bucket named "mashahd-media" (or use an existing one + set FILEBASE_BUCKET to its name). Then set STORAGE_PROVIDER=filebase in .env.
 
 ### Vercel — token invalid, needs a fresh token
-The provided Vercel token (`vcp_1BUNfuMGrVJtygta9HXIzGYITdu3OyqbPapCw77lXExjGuzFB4LSL6R`) returns "Not authorized / invalidToken: true" on all API calls.
+The provided Vercel token (`vcp_1BUN...REDACTED-Pass106`) returns "Not authorized / invalidToken: true" on all API calls.
 **Action needed**: Generate a fresh token at https://vercel.com/account/tokens, then run:
 ```
 VERCEL_TOKEN=<fresh-token> bash scripts/set-vercel-env.sh

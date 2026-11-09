@@ -22,38 +22,51 @@ if [ "${1:-}" = "--check" ]; then
 fi
 
 ENV_FILE=".env"
+SECRETS_FILE=".env.secrets"  # gitignored — see Pass 106 scrub
 RESTORED=0
 MISSING=()
 
-# ── Critical env vars (with stable defaults for dev) ──
-# These are the vars that, if missing, cause real bugs:
-#   - BROWSER_ID_SECRET missing → 403s on every authenticated endpoint
-#     (server falls back to a random per-process secret, invalidating all
-#      browserIds on every dev restart)
-#   - APP_URL missing → webhook/signature URLs use wrong base
-#   - ALLOWED_ORIGINS missing → watch-party WS blocks cross-origin
-#   - P2P_SIGNALING_URL missing → player can't find the tracker
-# Production credentials are for the 5-service stack (Pass 53):
-#   GitHub (source control) + Vercel (deployment) + Inngest (workflows)
-#   + Neon (analytics) + Turso (transactional DB).
-# Filebase, Cloudflare R2, and Brevo were REMOVED per user request.
-# Media storage uses local filesystem (dev). Vercel production is read-only
-# so uploads work in dev; viewing works everywhere.
+# Source the gitignored secrets file (operational credentials that must
+# NEVER be committed). Falls back to OS env vars for Vercel/production.
+declare -A SECRETS=()
+if [ -f "$SECRETS_FILE" ]; then
+  while IFS='=' read -r key value; do
+    case "$key" in
+      ""|\#*) continue ;;
+    esac
+    SECRETS["$key"]="$value"
+  done < "$SECRETS_FILE"
+fi
+
+# Helper: resolve a secret var. Precedence: .env.secrets file → OS env → empty.
+secret_val() {
+  local key="$1"
+  if [ -n "${SECRETS[$key]:-}" ]; then printf '%s' "${SECRETS[$key]}"
+  else printenv "$key" 2>/dev/null || true
+  fi
+}
+
+# ── Critical env vars ──
+# Non-secret defaults are inline. SECRET values are resolved via secret_val()
+# from .env.secrets (gitignored) or OS env — NEVER hardcoded in this tracked file.
+# Pass 106 root-cause: the previous version hardcoded live Turso/Neon/Inngest
+# credentials in this tracked script, exposing them in the public repo history.
 declare -A REQUIRED_VARS=(
   ["APP_URL"]="https://mashahd.vercel.app"
   ["DATABASE_URL"]="file:/home/z/my-project/db/custom.db"
-  ["BROWSER_ID_SECRET"]="mashahd-dev-stable-secret-9f3b7e2a8c1d4f6b0e5a2c8d7f1b4e9a"
   ["MEDIA_STORAGE_PATH"]="/home/z/my-project/storage"
   ["STORAGE_PROVIDER"]="local"
   # Turso (transactional DB — 9GB free, 1B reads/month)
-  ["TURSO_URL"]="libsql://mashahd-fortleem.aws-us-east-1.turso.io"
-  ["TURSO_AUTH_TOKEN"]="eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJnaWQiOiIyMTIyNTIwNy1iNWJmLTRjM2MtOGFiNS0xYmEzNDNlNjU5NmEiLCJpYXQiOjE3ODkxNjE4MTksImtpZCI6IjJTRm4xQWZVUnU1TFF5a0xkc0d3YzV3VldVdlRlcVdhVjg2UXZYUk9DMWMiLCJyaWQiOiJlNzM4OTU1MS0xMTFlLTQ5NWYtYjkxZi0zNmI5M2UyNThhNGUifQ.fygqboSEmsvwsSpP0CpZo9uMAY0sJS8uAYdcoE5bFmvOY0pIPyNB8W3ILQUhXXC12peyvcomvW8ax7NN5RfsBg"
+  ["TURSO_URL"]="$(secret_val TURSO_URL)"
+  ["TURSO_AUTH_TOKEN"]="$(secret_val TURSO_AUTH_TOKEN)"
   # Neon Postgres (analytics warehouse — 0.5GB free)
-  ["NEON_DATABASE_URL"]="postgresql://neondb_owner:npg_P9rgaT5SsNoW@ep-empty-recipe-auue9q58-pooler.c-10.us-east-1.aws.neon.tech/MASHAHD?sslmode=require&channel_binding=require"
-  ["NEON_DATA_API"]="https://ep-empty-recipe-auue9q58.apirest.c-10.us-east-1.aws.neon.tech/MASHAHD/rest/v1"
+  ["NEON_DATABASE_URL"]="$(secret_val NEON_DATABASE_URL)"
+  ["NEON_DATA_API"]="$(secret_val NEON_DATA_API)"
   # Inngest (durable workflows — free tier)
-  ["INNGEST_KEY"]="signkey-prod-5e79fc7120134801543036c7ea0f33fea548e5ddda74443b0e4d627a62675b0d"
-  ["INNGEST_WEBHOOK_SECRET"]="signkey-prod-5e79fc7120134801543036c7ea0f33fea548e5ddda74443b0e4d627a62675b0d"
+  ["INNGEST_KEY"]="$(secret_val INNGEST_KEY)"
+  ["INNGEST_WEBHOOK_SECRET"]="$(secret_val INNGEST_WEBHOOK_SECRET)"
+  # browserId signing secret (stable across dev restarts)
+  ["BROWSER_ID_SECRET"]="$(secret_val BROWSER_ID_SECRET)"
   # Dev-only
   ["FFMPEG_PATH"]="ffmpeg"
   ["FFPROBE_PATH"]="ffprobe"
@@ -66,15 +79,7 @@ declare -A REQUIRED_VARS=(
   ["P2P_LOW_BATTERY_MODE"]="true"
   ["TURN_ENABLED"]="false"
   ["ALLOWED_ORIGINS"]="https://mashahd.vercel.app,http://localhost:3000"
-  # AI Providers — 5-provider consensus mode (Pass 81, 2026-09-25).
-  # All 5 are invoked in parallel by src/lib/ai-provider.ts; the longest
-  # non-empty response wins. These are REQUIRED_VARS so they auto-restore
-  # if .env gets stripped (regression that bit us once already).
-  # SECRET HANDLING: the actual values are NEVER hardcoded in this script
-  # (GitHub Push Protection blocks commits containing API keys). Instead,
-  # the values are read from the operator's OS env vars at restore time.
-  # If the OS env vars are unset, the script prints a clear warning telling
-  # the operator to export them before running `bun run dev`.
+  # AI Providers — 5-provider consensus mode. Read from OS env (operator exports).
   ["GROQ_API_KEY"]="${GROQ_API_KEY:-}"
   ["OPENROUTER_API_KEY"]="${OPENROUTER_API_KEY:-}"
   ["NVIDIA_API_KEY"]="${NVIDIA_API_KEY:-}"

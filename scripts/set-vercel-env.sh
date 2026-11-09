@@ -41,6 +41,17 @@ fi
 echo "Project: $PROJECT | Team: $TEAM_ID"
 API="https://api.vercel.com/v9/projects/$PROJECT/env?teamId=$TEAM_ID"
 
+# Source gitignored secrets (Pass 106 scrub — never hardcode creds in tracked files).
+SECRETS_FILE=".env.secrets"
+declare -A SECRETS=()
+if [ -f "$SECRETS_FILE" ]; then
+  while IFS='=' read -r key value; do
+    case "$key" in ""|\#*) continue ;; esac
+    SECRETS["$key"]="$value"
+  done < "$SECRETS_FILE"
+fi
+secret_val() { local k="$1"; if [ -n "${SECRETS[$k]:-}" ]; then printf '%s' "${SECRETS[$k]}"; else printenv "$k" 2>/dev/null || true; fi; }
+
 # Fetch existing env var IDs (so we can PATCH existing ones instead of failing).
 declare -A EXISTING_IDS
 curl -s "https://api.vercel.com/v9/projects/$PROJECT/env?limit=100&teamId=$TEAM_ID" \
@@ -69,18 +80,16 @@ echo "Found ${#EXISTING_IDS[@]} existing env vars"
 # The script reads them via ${VAR:-} expansion and pushes to Vercel.
 declare -a VARS=(
   "APP_URL=https://mashahd.vercel.app"
-  "BROWSER_ID_SECRET=mashahd-dev-stable-secret-9f3b7e2a8c1d4f6b0e5a2c8d7f1b4e9a"
+  "BROWSER_ID_SECRET=$(secret_val BROWSER_ID_SECRET)"
   "STORAGE_PROVIDER=local"
-  "TURSO_URL=libsql://mashahd-fortleem.aws-us-east-1.turso.io"
-  "TURSO_AUTH_TOKEN=eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJnaWQiOiIyMTIyNTIwNy1iNWJmLTRjM2MtOGFiNS0xYmEzNDNlNjU5NmEiLCJpYXQiOjE3ODkxNjE4MTksImtpZCI6IjJTRm4xQWZVUnU1TFF5a0xkc0d3YzV3VldVdlRlcVdhVjg2UXZYUk9DMWMiLCJyaWQiOiJlNzM4OTU1MS0xMTFlLTQ5NWYtYjkxZi0zNmI5M2UyNThhNGUifQ.fygqboSEmsvwsSpP0CpZo9uMAY0sJS8uAYdcoE5bFmvOY0pIPyNB8W3ILQUhXXC12peyvcomvW8ax7NN5RfsBg"
-  "NEON_DATABASE_URL=postgresql://neondb_owner:npg_P9rgaT5SsNoW@ep-empty-recipe-auue9q58-pooler.c-10.us-east-1.aws.neon.tech/MASHAHD?sslmode=require&channel_binding=require"
-  "NEON_DATA_API=https://ep-empty-recipe-auue9q58.apirest.c-10.us-east-1.aws.neon.tech/MASHAHD/rest/v1"
-  "INNGEST_KEY=signkey-prod-5e79fc7120134801543036c7ea0f33fea548e5ddda74443b0e4d627a62675b0d"
-  "INNGEST_WEBHOOK_SECRET=signkey-prod-5e79fc7120134801543036c7ea0f33fea548e5ddda74443b0e4d627a62675b0d"
+  "TURSO_URL=$(secret_val TURSO_URL)"
+  "TURSO_AUTH_TOKEN=$(secret_val TURSO_AUTH_TOKEN)"
+  "NEON_DATABASE_URL=$(secret_val NEON_DATABASE_URL)"
+  "NEON_DATA_API=$(secret_val NEON_DATA_API)"
+  "INNGEST_KEY=$(secret_val INNGEST_KEY)"
+  "INNGEST_WEBHOOK_SECRET=$(secret_val INNGEST_WEBHOOK_SECRET)"
   "ALLOWED_ORIGINS=https://mashahd.vercel.app,http://localhost:3000"
-  # AI Providers — 5-provider consensus mode (Pass 81, 2026-09-25).
-  # All 5 are invoked in parallel by src/lib/ai-provider.ts; longest non-empty
-  # response wins. Values are read from operator's OS env vars (see header).
+  # AI Providers — read from operator's OS env vars (see header).
   "GROQ_API_KEY=${GROQ_API_KEY:-}"
   "OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}"
   "NVIDIA_API_KEY=${NVIDIA_API_KEY:-}"

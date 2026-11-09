@@ -49,7 +49,7 @@ function saveRedeemed(bid: string, tiers: number[]) {
 }
 
 export function WatchRewards({ compact = false }: { compact?: boolean }) {
-  const { bid } = useBrowserId();
+  const bid = useBrowserId();
   const [points, setPoints] = useState(0);
   const [redeemed, setRedeemed] = useState<number[]>([]);
 
