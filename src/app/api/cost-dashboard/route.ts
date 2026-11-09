@@ -32,6 +32,56 @@ const FREE_TIER_LIMITS = {
   groq: { requestsPerDay: 14_400 },
 };
 
+/**
+ * Live-probe the Vercel production deployment. Resolves to a status object
+ * reflecting the ACTUAL edge response — not a config assumption. Root-cause
+ * fix (Pass 106) for the recurring "vercel.status = HEALTHY" lie while the
+ * domain was serving 402 DEPLOYMENT_DISABLED.
+ */
+async function probeVercel(): Promise<{
+  status: string;
+  httpStatus?: number;
+  responseMs?: number;
+  probedUrl?: string;
+}> {
+  const url = (process.env.APP_URL || "https://mashahd.vercel.app").replace(/\/$/, "") + "/api/ready";
+  const t0 = Date.now();
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const ms = Date.now() - t0;
+    if (res.status === 200) return { status: "HEALTHY", httpStatus: 200, responseMs: ms, probedUrl: url };
+    if (res.status === 402) return { status: "DEPLOYMENT_DISABLED", httpStatus: 402, responseMs: ms, probedUrl: url };
+    if (res.status >= 500) return { status: "UNHEALTHY", httpStatus: res.status, responseMs: ms, probedUrl: url };
+    return { status: "DEGRADED", httpStatus: res.status, responseMs: ms, probedUrl: url };
+  } catch {
+    return { status: "UNREACHABLE", probedUrl: url };
+  }
+}
+
+/**
+ * Live-probe Neon via a lightweight TCP connect to port 5432 (no creds sent).
+ * Confirms the pooler is reachable; full PG auth is exercised by analytics
+ * routes at request time.
+ */
+async function probeNeon(): Promise<{ status: string; probedHost?: string }> {
+  const cs = process.env.NEON_DATABASE_URL;
+  if (!cs) return { status: "NOT_CONFIGURED" };
+  let host = "";
+  try { host = new URL(cs).hostname; } catch { return { status: "MISCONFIGURED" }; }
+  try {
+    const net = await import("net");
+    const ok = await new Promise<boolean>((resolve) => {
+      const s = net.connect({ host, port: 5432, timeout: 3000 });
+      s.on("connect", () => { s.destroy(); resolve(true); });
+      s.on("error", () => resolve(false));
+      s.on("timeout", () => { s.destroy(); resolve(false); });
+    });
+    return { status: ok ? "HEALTHY" : "UNREACHABLE", probedHost: host };
+  } catch {
+    return { status: "UNREACHABLE", probedHost: host };
+  }
+}
+
 export async function GET() {
   const m = getMetrics();
   const resources = getResourceMetrics();
@@ -41,12 +91,17 @@ export async function GET() {
 
   // Count database records for storage estimation.
   let dbStats: Record<string, number> = {};
+  let tursoReachable = false;
   try {
     for (const model of ["Video", "Channel", "Comment", "User", "Session", "OutboxEvent"]) {
       const result = await (db as any)[model.charAt(0).toLowerCase() + model.slice(1)].findMany({ select: { id: true } });
       dbStats[model] = (result as any[]).length;
     }
-  } catch { /* DB error */ }
+    tursoReachable = true;
+  } catch { /* DB error — tursoReachable stays false */ }
+
+  // Live probes (Pass 106) — Vercel edge + Neon pooler.
+  const [vercelProbe, neonProbe] = await Promise.all([probeVercel(), probeNeon()]);
 
   // Calculate quota usage percentages.
   const brevoUsagePct = notificationQuota.email.limit > 0
@@ -66,17 +121,20 @@ export async function GET() {
       provider: "Turso",
       fundingModel: "FREE-TIER",
       limits: FREE_TIER_LIMITS.turso,
-      status: "HEALTHY",
+      status: tursoReachable ? "HEALTHY" : "UNREACHABLE",
       dbStats,
       circuitState: circuits["turso"]?.state || "CLOSED",
     },
 
-    // ── Vercel ──
+    // ── Vercel (live-probed) ──
     vercel: {
       provider: "Vercel",
       fundingModel: "FREE-TIER",
       limits: FREE_TIER_LIMITS.vercel,
-      status: "HEALTHY",
+      status: vercelProbe.status,
+      httpStatus: vercelProbe.httpStatus,
+      responseMs: vercelProbe.responseMs,
+      probedUrl: vercelProbe.probedUrl,
     },
 
     // ── Inngest ──
@@ -88,13 +146,14 @@ export async function GET() {
       status: isInngestConfigured() ? "HEALTHY" : "NOT_CONFIGURED",
     },
 
-    // ── Neon (Analytics + Recovery) ──
+    // ── Neon (Analytics + Recovery, live-probed) ──
     neon: {
       provider: "Neon Postgres",
       fundingModel: "FREE-TIER",
       limits: FREE_TIER_LIMITS.neon,
       role: "analytics + disaster recovery",
-      status: "HEALTHY",
+      status: neonProbe.status,
+      probedHost: neonProbe.probedHost,
     },
 
     // ── Open Data Layer (Pass 99) ──
