@@ -170,8 +170,8 @@ export function Header() {
           <Radio className="h-4 w-4 sm:mr-1.5 fill-current" />
           <span className="hidden sm:inline">Go Live</span>
         </Button>
-        <CreateButton />
-        <NotificationsButton />
+        <div className="hidden sm:flex"><CreateButton /></div>
+        <div className="hidden sm:flex"><NotificationsButton /></div>
         {mounted && (
           <Button
             variant="ghost"
@@ -210,12 +210,12 @@ export function Header() {
           <Button
             onClick={() => setAuthOpen(true)}
             size="sm"
-            className="ml-1 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 font-medium"
+            className="ml-1 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3 sm:px-4 font-medium"
             aria-label="Sign in"
             title="Sign in or create an account"
           >
-            <LogIn className="h-4 w-4 mr-1.5" />
-            Sign in
+            <LogIn className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Sign in</span>
           </Button>
         )}
         <Button
