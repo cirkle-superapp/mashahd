@@ -18,3 +18,4 @@ data/open-data/**/*.tmp
 
 # Operational secrets (Pass 106 scrub) — never track
 .env.secrets
+tsconfig.tsbuildinfo
