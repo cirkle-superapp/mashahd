@@ -9302,3 +9302,34 @@ Verified:
   2. Repo is already connected — any push to `main` triggers auto-redeploy (latest code is on `main`).
   3. Optional: fresh token at vercel.com/account/tokens → `VERCEL_TOKEN=<fresh> bash scripts/set-vercel-env.sh` (19 vars already set from prior runs — only needed to sync the newer Groq key).
 - **Monitoring:** cron Job 510085 continues 30-min probes of the production URL and will confirm recovery automatically.
+
+## Pass 106 — [2026-11-09] 🔧 COO/CTO Integrity Pass: Root-Cause Fixes + Harden + Backup + Retest
+
+**Trigger:** 52h Vercel outage (402 DEPLOYMENT_DISABLED) + directive to "fix from root cause, keep fixing till 100% solved, harden + backup, retest till clear."
+
+**Root-cause fixes executed:**
+1. **Dev server (permanent):** `scripts/dev-app.sh` launches `next dev --webpack` with a 4GB heap guard. The default Turbopack bundler crashes on the `next/font/google` import map every sandbox recycle — webpack eliminates the failure mode. `package.json` dev/dev:app now call the launcher so the driver's `bun run dev` survives recycles.
+2. **Cost-dashboard live probes:** `vercel.status` + `neon.status` were hardcoded "HEALTHY" — they lied for 52h while the domain served 402. Now `probeVercel()` does a 5s HTTP fetch of `APP_URL/api/ready` (HEALTHY | DEPLOYMENT_DISABLED | UNHEALTHY | DEGRADED | UNREACHABLE + httpStatus + responseMs); `probeNeon()` does a 3s TCP connect to port 5432; `turso.status` reflects dbStats query success.
+3. **Vercel production (documented):** account-level suspension — owner-only dashboard action (Billing/Usage → resolve → redeploy). The re-provided token is the same dead token from Pass 52. Turnkey recovery prepared: repo connected, code on `main`, `scripts/set-vercel-env.sh` ready for a fresh token.
+
+**Hardening:**
+4. **Secrets scrub (CRITICAL — repo public):** moved live Turso JWT, Neon password, Inngest signkey, BROWSER_ID_SECRET out of tracked scripts (`ensure-env.sh`, `set-vercel-env.sh`) into a gitignored `.env.secrets`. Scripts now source it via `secret_val()` (precedence: .env.secrets → OS env → empty). Redacted dead Vercel token from worklog + INCIDENT_PASS105.md. **Rotate Turso/Neon/Inngest creds at provider dashboards** (history still has old values).
+5. **CORS fail-closed (HIGH):** manifest route + feature-flags.ts defaulted to `*` when ALLOWED_ORIGINS unset — silently opening HLS to any origin. Now returns `''` (no ACAO header → browsers block cross-origin).
+6. **CVE deps (5 critical, 56 high):** `next 16.1.1 → 16.4.5` (Image Optimization SVG RCE, use-cache RCE, middleware bypass, Server Actions DoS), `sharp 0.34.3 → 0.35.5` (libvips/libheif/librsvg chain). Verified tsc 0 + lint 0 + dev Ready 354ms + all endpoints 200.
+7. **6 tsc errors fixed:** stories-shelf `bid` extraction + `getImageUrl` arity, MashahdPlayerProps `videoTitle/channelName/artworkUrl` forwarding, app-store `viewToQuery` missing `legal` case. `npx tsc --noEmit` exits 0.
+8. **Mobile responsive:** header action cluster overflowed 375px by 65px → Create/Notifications hidden `sm:flex`, Sign in icon-only on mobile. Verified scrollWidth=375 (zero overflow) + desktop 1280px fits.
+
+**Backup:**
+9. **Full remote DB dump:** `scripts/backup-remote.mjs` — Turso 50 tables (35 videos, 13 channels, 90 comments, 4 users, 681 telemetry events, ~1234 rows total) + Neon 3 tables → `backups/remote-{TS}/` with manifest. Wired into `bun run backup`. Reads .env via fs (not bash source) so the `&` in the Neon URL doesn't mangle the connection string.
+
+**Retest (100% clear):**
+- ✅ Lint: 0 errors
+- ✅ tsc: 0 errors
+- ✅ 10/10 API endpoints 200 (ready, videos, live-streams, live-tv, ads, sponsored-hashtags, ai/trending-digest, cost-dashboard, open-data countries+languages)
+- ✅ Browser E2E: home renders (4353 chars), video click navigates to watch view, zero console errors, mobile no-overflow, desktop fits
+- ✅ Mini-services: tracker :3003 + watch-party :3004 alive
+- ✅ Git: local `3696145` == origin `3696145`, clean tree
+- ✅ Databases: Turso HEALTHY (50 tables, live data), Neon HEALTHY (3 tables, TCP 5432 open)
+- ✅ cost-dashboard truthful: vercel=DEPLOYMENT_DISABLED (402), turso=HEALTHY, neon=HEALTHY
+
+**Commits:** 3fd6ffd (webpack+probes+backup) → d2cb830 (secrets+CORS+tsc) → ccefeb3 (CVE deps) → 3696145 (responsive).
